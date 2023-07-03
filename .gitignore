@@ -1,0 +1,16 @@
+target/
+
+.settings
+.project
+.classpath
+
+.idea
+*.iml
+
+.metals
+.bloop
+.bsp
+
+#api key
+.openai_api_key
+.ncbi_api_key
