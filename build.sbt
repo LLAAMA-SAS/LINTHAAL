@@ -2,9 +2,9 @@ name := "linthaal"
 
 version := "1.0"
 
-scalaVersion := "2.13.11"
+scalaVersion := "3.3.0"
 
-crossScalaVersions := Seq(scalaVersion.value, "3.3.0")
+crossScalaVersions := Seq(scalaVersion.value, "2.13.11")
 
 lazy val akkaVersion = "2.8.2"
 val akkaHttpVersion = "10.5.2"
