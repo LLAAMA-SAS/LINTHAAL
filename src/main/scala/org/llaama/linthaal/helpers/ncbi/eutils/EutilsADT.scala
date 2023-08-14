@@ -46,7 +46,7 @@ object EutilsADT {
 
   def pmAbstractsFromXml(ns: NodeSeq): List[PMAbstract] = {
     val absts = (ns \\"PubmedArticleSet" \\ "PubmedArticle" \\ "MedlineCitation")
-      .map(ar => PMAbstract( id = (ar \\ "PMID").text.toInt,
+      .map(ar => PMAbstract( id = (ar \ "PMID").text.toInt,
       title = (ar \\ "Article" \\ "ArticleTitle").text,
         abstractText = (pmXmlAbstToText(ar \\ "Article" \\ "Abstract")),
           stringToDate(pmXmlDate(ar \\ "Article" \\ "ArticleDate")))).toList
