@@ -2,6 +2,7 @@ package org.llaama.linthaal.helpers.ncbi.eutils
 
 import org.llaama.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.llaama.linthaal.helpers.{dateToIsoString, parseIsoDateString}
+import org.llaama.linthaal.tot.pubmed.PMAbstractsSummarizationAct.SummarizedAbstract
 import spray.json.DefaultJsonProtocol
 
 import java.util.Date
@@ -39,5 +40,6 @@ object PMJsonProt extends DefaultJsonProtocol {
   }
 
   implicit val jsonPMAbstract: RootJsonFormat[PMAbstract] = jsonFormat4(PMAbstract.apply)
+  implicit val jsonPMSummarizedAbstract: RootJsonFormat[SummarizedAbstract] = jsonFormat4(SummarizedAbstract.apply)
 
 }

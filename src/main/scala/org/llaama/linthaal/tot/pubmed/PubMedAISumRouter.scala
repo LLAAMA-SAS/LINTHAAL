@@ -4,7 +4,6 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors, Routers}
 import akka.actor.typed.{ActorRef, Behavior, DispatcherSelector, SupervisorStrategy}
 import org.llaama.linthaal.helpers.chatgpt.PromptService.Choice
 import org.llaama.linthaal.helpers.chatgpt.SimpleChatAct.AIResponse
-import org.llaama.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.llaama.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
 import org.llaama.linthaal.tot.pubmed.PMAbstractsSummarizationAct.{SummarizedAbstract, SummarizedAbstracts}
 
@@ -55,12 +54,12 @@ object PubmedAISumRouter {
         router ! PubMedAISumOne.DoSummarize(oneObj)
       }
 
-      summarizing(pmas.abstracts.size, List.empty, List.empty, List.empty, replyWhenDone, ctx)
+      summarizing(pmas.abstracts.size, pmas, List.empty, List.empty, replyWhenDone, ctx)
     }
 
   private def summarizing(
       toSummarize: Int,
-      originalAbstracts: List[PMAbstract],
+      originalAbstracts:PMAbstracts,
       aiResponses: List[AIResponse],
       summarized: List[SummarizedAbstract],
       replyWhenDone: ActorRef[SummarizedAbstracts],
@@ -68,7 +67,7 @@ object PubmedAISumRouter {
 
     Behaviors.receiveMessage {
       case aiResp: AIResponseWrap =>
-        val newSummarized = if (aiResp.aiR.choices.headOption.isDefined) {
+        val newSummarized = if (aiResp.aiR.choices.nonEmpty) {
           parseChoice(aiResp.aiR.choices.head) +: summarized
         } else summarized
 
@@ -76,21 +75,17 @@ object PubmedAISumRouter {
 
         ctx.log.info(s"total summarized done= ${newSummarized.size})")
         if (toSummarize <= 1) {
-          replyWhenDone ! SummarizedAbstracts(newSummarized, originalAbstracts,
-            newAIResponses)
+          replyWhenDone ! SummarizedAbstracts(originalAbstracts, newSummarized, newAIResponses)
           Behaviors.stopped
         } else {
-          summarizing(toSummarize - 1, originalAbstracts, newAIResponses,
-            newSummarized, replyWhenDone, ctx)
+          summarizing(toSummarize - 1, originalAbstracts, newAIResponses, newSummarized, replyWhenDone, ctx)
         }
     }
   }
 
   def parseChoice(choice: Choice): SummarizedAbstract = {
-      import spray.json.DefaultJsonProtocol._
-      import spray.json._
-      implicit val jsonSumAbstrs: RootJsonFormat[SummarizedAbstract] = jsonFormat4(SummarizedAbstract.apply)
-      choice.message.content.replace("'", "\"").parseJson.convertTo[SummarizedAbstract]
+    import org.llaama.linthaal.helpers.ncbi.eutils.PMJsonProt.jsonPMSummarizedAbstract
+    import spray.json._
+    choice.message.content.replace("'", "\"").parseJson.convertTo[SummarizedAbstract]
   }
-
 }

@@ -1,11 +1,13 @@
 package org.llaama.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ ActorRef, Behavior }
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
+import akka.actor.typed.{ActorRef, Behavior}
+import org.llaama.linthaal.helpers
 import org.llaama.linthaal.helpers.chatgpt.SimpleChatAct.AIResponse
-import org.llaama.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.llaama.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.llaama.linthaal.helpers.ncbi.eutils.{ EutilsCalls, PMActor }
+import org.llaama.linthaal.helpers.ncbi.eutils.{EutilsCalls, PMActor}
+
+import java.util.Date
 
 /**
   *
@@ -25,20 +27,31 @@ import org.llaama.linthaal.helpers.ncbi.eutils.{ EutilsCalls, PMActor }
   */
 object PMAbstractsSummarizationAct {
 
-  case class SummarizedAbstract(id: Int, sumTitle: String, sumAbstract: String, date: String)
+  case class SummarizedAbstract(id: Int, sumTitle: String, sumAbstract: String, date: Date)
+
+  sealed trait SummarizationResponse
 
   case class SummarizedAbstracts(
+      originalAbstracts: PMAbstracts,
       summarizedAbstracts: List[SummarizedAbstract] = List.empty,
-      originalAbstracts: List[PMAbstract] = List.empty,
       aiResponse: List[AIResponse] = List.empty,
-      metaInfo: String = "")
+      metaInfo: String = "") extends SummarizationResponse {
+    def summary: String =
+      s"""*********
+         |ai response= ${helpers.enoughButNotTooMuchInfo(aiResponse.toString(), 1000)}
+         |Total original abstracts= ${originalAbstracts.abstracts.size}
+         |Total summarized= ${summarizedAbstracts.size}
+         |Meta info= ${metaInfo}""".stripMargin
+  }
+
+  case class SummarizationFailed(reason: String) extends SummarizationResponse
 
   trait Command
 
   case class AbstractsWrap(pmAbsts: PMAbstracts) extends Command
   case class AISummarizationWrap(summarizedAbstracts: SummarizedAbstracts) extends Command
 
-  def apply(queryString: String, replyTo: ActorRef[SummarizedAbstracts], maxAbstracts: Int = 5): Behavior[Command] = {
+  def apply(queryString: String, replyTo: ActorRef[SummarizationResponse], maxAbstracts: Int = 20): Behavior[Command] = {
     Behaviors.setup[Command] { ctx =>
       val wrap: ActorRef[PMAbstracts] = ctx.messageAdapter(m => AbstractsWrap(m))
       ctx.spawn(PMActor.apply(EutilsCalls.eutilsDefaultConf, queryString, wrap), "pubmed_query_actor")
@@ -46,7 +59,7 @@ object PMAbstractsSummarizationAct {
     }
   }
 
-  def queryingAbstracts(replyTo: ActorRef[SummarizedAbstracts], maxAbstracts: Int): Behavior[Command] = {
+  def queryingAbstracts(replyTo: ActorRef[SummarizationResponse], maxAbstracts: Int): Behavior[Command] = {
 
     Behaviors.receive { (ctx, msg) =>
       msg match {
@@ -55,21 +68,22 @@ object PMAbstractsSummarizationAct {
           ctx.log.info(s"Limiting number of abstract to be processed by AI to: $maxAbstracts")
           val pmas = PMAbstracts(pmAbst.abstracts.take(maxAbstracts), pmAbst.msg)
           ctx.spawn(PubmedAISumRouter.apply(pmas, w), "ai_summarization_router_actor")
-          talkingToAI(replyTo)
+          talkingToAI(replyTo, ctx)
         case _ =>
-          replyTo ! SummarizedAbstracts(metaInfo = "Failed, problem retrieving abstracts from pubmed.")
+          replyTo ! SummarizationFailed("Failed, problem retrieving abstracts from pubmed.")
           Behaviors.stopped
       }
     }
   }
 
-  private def talkingToAI(replyWhenCompleted: ActorRef[SummarizedAbstracts]): Behavior[Command] = {
+  private def talkingToAI(replyWhenCompleted: ActorRef[SummarizationResponse], ctx: ActorContext[Command]): Behavior[Command] = {
     Behaviors.receiveMessage {
       case aiSumW: AISummarizationWrap =>
+        ctx.log.debug(aiSumW.summarizedAbstracts.summary)
         replyWhenCompleted ! aiSumW.summarizedAbstracts
         Behaviors.stopped
       case _ =>
-        replyWhenCompleted ! SummarizedAbstracts(metaInfo = "Failed")
+        replyWhenCompleted ! SummarizationFailed("Failed from AI calls.")
         Behaviors.stopped
     }
   }
