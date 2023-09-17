@@ -31,6 +31,4 @@ object LinthalGuardianAct {
       ctx.log.info("Starting Actor System, User Guardian...")
       Behaviors.stopped
     }
-
-  
 }

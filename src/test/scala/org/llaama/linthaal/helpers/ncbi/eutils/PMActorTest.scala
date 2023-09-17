@@ -1,7 +1,6 @@
-package org.llaama.linthaal.helpers.ncibi.eutils
+package org.llaama.linthaal.helpers.ncbi.eutils
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
-import com.typesafe.config.ConfigFactory
 import org.llaama.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
 import org.llaama.linthaal.helpers.ncbi.eutils.{EutilsCalls, PMActor}
 import org.scalatest.wordspec.AnyWordSpecLike
@@ -26,14 +25,11 @@ import scala.concurrent.duration.DurationInt
   */
 class PMActorTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
   //#definition
-  println("completion timeout from config: " + ConfigFactory.load().getDuration("akka.http.client.http2.completion-timeout"))
-  println("completion timeout from test AS: " + this.system.settings.config.getDuration("akka.http.client.http2.completion-timeout"))
-  // 
   "A query to Pubmed " must {
     val timeout = 10.seconds
     //#test
     "reply with a list of abstracts" in {
-      val conf = EutilsCalls.defaultConf
+      val conf = EutilsCalls.eutilsDefaultConf
       val replyProbe = createTestProbe[PMAbstracts]()
 
       val underTest = spawn(PMActor(conf, "pancreatic cancer", replyProbe.ref), "retrieve_abstracts")

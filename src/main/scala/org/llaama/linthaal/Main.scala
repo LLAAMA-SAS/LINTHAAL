@@ -26,5 +26,4 @@ class Main {
   def main(args: Array[String]) = {
     val acts = ActorSystem(LinthalGuardianAct(), "Linthal_Guardian")
   }
-
 }

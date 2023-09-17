@@ -96,7 +96,7 @@ object EutilsCalls {
     lazy val apiKeyURl = s"&api_key=$apiKey"
   }
 
-  val defaultConf = EutilsConfig(ApiKeys.getKey("ncbi.api_key"))
+  val eutilsDefaultConf = EutilsConfig(ApiKeys.getKey("ncbi.api_key"))
 
 }
 

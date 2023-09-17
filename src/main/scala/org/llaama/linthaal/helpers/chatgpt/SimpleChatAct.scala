@@ -33,8 +33,8 @@ object SimpleChatAct {
                         created: Long, choices: Seq[Choice],
                         messages: Seq[Message], temperature: Double = 0.0, model: String)
 
-  def apply(promtConf: PromptConfig, messages:Seq[Message],
-            temperature: Double = 0.0, replyTo: ActorRef[AIResponse]): Behavior[ChatMsg]= {
+  def apply(promtConf: PromptConfig, messages:Seq[Message], replyTo: ActorRef[AIResponse],
+            temperature: Double = 0.0): Behavior[ChatMsg]= {
 
     Behaviors.setup[ChatMsg] { ctx =>
       val prtServ: PromptService = new PromptService(promtConf)(ctx.system)

@@ -40,7 +40,7 @@ object PMActor {
         case Success(ns) =>
           ctx.log.info(enoughButNotTooMuchInfo(ns.toString()))
           val sr = EutilsADT.pmIdsfromXml(ns)
-          ctx.log.info(sr.toString)
+          ctx.log.info(s"found ${sr.ids.size} pmids")
           PMIds(sr)
         case Failure(r) =>
           ctx.log.error(r.getStackTrace.mkString("\n"))

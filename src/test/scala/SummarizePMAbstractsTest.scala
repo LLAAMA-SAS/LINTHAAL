@@ -1,6 +1,6 @@
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
-import org.llaama.linthaal.tot.PMAbstractsSummarizationAct.SummarizedAbstracts
-import org.llaama.linthaal.tot.PMAbstractsSummarizationAct
+import org.llaama.linthaal.tot.pubmed.PMAbstractsSummarizationAct
+import org.llaama.linthaal.tot.pubmed.PMAbstractsSummarizationAct.SummarizedAbstracts
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.duration.DurationInt
@@ -30,7 +30,7 @@ class SummarizePMAbstractsTest extends ScalaTestWithActorTestKit with AnyWordSpe
     //#test
     " reply with a list of summarized abstracts. " in {
       val replyProbe = createTestProbe[SummarizedAbstracts]()
-      val underTest = spawn(PMAbstractsSummarizationAct("pancreatic cancer", replyTo = replyProbe.ref))
+      val underTest = spawn(PMAbstractsSummarizationAct("pancreatic cancer biomarkers", replyTo = replyProbe.ref))
       replyProbe.expectMessageType[SummarizedAbstracts](timeout)
     }
   }

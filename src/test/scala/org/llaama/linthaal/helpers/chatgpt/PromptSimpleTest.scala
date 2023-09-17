@@ -1,7 +1,6 @@
 package org.llaama.linthaal.helpers.chatgpt
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
-import com.typesafe.config.ConfigFactory
 import org.llaama.linthaal.helpers.chatgpt.PromptService.Message
 import org.llaama.linthaal.helpers.chatgpt.SimpleChatAct.AIResponse
 import org.scalatest.wordspec.AnyWordSpecLike
@@ -26,26 +25,11 @@ import scala.concurrent.duration.DurationInt
   */
 class PromptSimpleTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
 
-  "A Simple prompt " must {
-    val timeout = 15.seconds
-    "reply with a simple answer" in {
-      val prConf = PromptService.defaultConf
-      val replyProbe = createTestProbe[AIResponse]()
-      val underTest =
-        spawn(SimpleChatAct(prConf, Seq(Message(content = "What was the capital of Germany in 1980?")), replyTo = replyProbe.ref))
-//        Seq(Message(content = "What is the capital of Germany?")),replyTo = replyProbe.ref))
-
-      replyProbe.expectMessageType[AIResponse](timeout)
-
-    }
-  }
-
   "A prompt to summarize one abstract " must {
     val timeout = 30.seconds
 
-
     "reply with a summary " in {
-      val prConf = PromptService.defaultConf
+      val prConf = PromptService.promptDefaultConf
       val replyProbe = createTestProbe[AIResponse]()
       val underTest = spawn(SimpleChatAct(prConf, Seq(Message(content = TestAIPromptQuestions.test2)), replyTo = replyProbe.ref))
 //        Seq(Message(content = "What is the capital of Germany?")),replyTo = replyProbe.ref))
@@ -59,13 +43,12 @@ class PromptSimpleTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
     val timeout = 30.seconds
 
     "reply with an Json output summarizing different texts " in {
-      val prConf = PromptService.defaultConf
+      val prConf = PromptService.promptDefaultConf
       val replyProbe = createTestProbe[AIResponse]()
       val underTest = spawn(SimpleChatAct(prConf, Seq(Message(content = TestAIPromptQuestions.test1)), replyTo = replyProbe.ref))
 //        Seq(Message(content = "What is the capital of Germany?")),replyTo = replyProbe.ref))
 
       replyProbe.expectMessageType[AIResponse](timeout)
-
     }
   }
 }

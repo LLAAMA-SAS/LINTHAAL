@@ -75,6 +75,7 @@ object PromptService {
   case class Message(role: String = "user", content: String)
 
   case class ChatRequest(model: String = "gpt-3.5-turbo", messages: Seq[Message], temperature: Double = 0.0)
+//  case class ChatRequest(model: String = "gpt-4", messages: Seq[Message], temperature: Double = 0.0)
 
   case class Choice(index: Int, message: Message, finishReason: String)
 
@@ -84,6 +85,7 @@ object PromptService {
   case class ChatResponse(id: String, chatObject: String, created: Long, model: String, usage: Usage, choices: Seq[Choice])
 
   case class PromptConfig(apiKey: String, uri: String = "https://api.openai.com/v1/chat/completions", model: String = "gpt-3.5-turbo")
+//  case class PromptConfig(apiKey: String, uri: String = "https://api.openai.com/v1/chat/completions", model: String = "gpt-4")
 
-  val defaultConf = PromptConfig(ApiKeys.getKey("openai.api_key"))
+  val promptDefaultConf = PromptConfig(ApiKeys.getKey("openai.api_key"))
 }
