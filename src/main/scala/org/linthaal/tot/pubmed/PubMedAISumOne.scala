@@ -2,9 +2,9 @@ package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import org.linthaal.helpers.chatgpt.PromptService.Message
-import org.linthaal.helpers.chatgpt.SimpleChatAct.AIResponse
-import org.linthaal.helpers.chatgpt.{PromptService, SimpleChatAct}
+import org.linthaal.ai.services.chatgpt.PromptService.Message
+import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
+import org.linthaal.ai.services.chatgpt.{PromptService, SimpleChatAct}
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 
 import java.util.UUID
@@ -28,24 +28,12 @@ import java.util.UUID
 
 object PubMedAISumOne {
 
-  val goalInstructions =
-    """Your goal is to summarize scientific text.
-      |An item is provided as a json object with 4 elements: id, title, abstractText, date.
-      |The json part starts with #### as delimiter.
-      |Your goal is:
-      |1) to summarize title in maximum 4 words which will be sumTitle,
-      |2) to summarize abstractText in maximum 20 words which will be sumAbstract,
-      |3) Keep the id
-      |4) Keep the date
-      |The users are very smart scientists, knowing the domain very well.
-      |Return the result as a json object in the following format: id, sumTitle, sumAbstract, date.
-      |""".stripMargin.replace("\n", " ")
-
   sealed trait SumCommand
 
   case class DoSummarize(pmAbst: PMAbstract) extends SumCommand
 
-  def apply(replyWhenDone: ActorRef[AIResponse]): Behavior[SumCommand] =
+  def apply(replyWhenDone: ActorRef[AIResponse],
+            instructions: String): Behavior[SumCommand] =
     Behaviors.setup { ctx =>
     ctx.log.info("starting prompt AI worker. ")
 
@@ -54,17 +42,17 @@ object PubMedAISumOne {
         ctx.log.info(s"summarizing pmID=${pmAbst.id}")
         ctx.spawn(
           SimpleChatAct.apply(PromptService.promptDefaultConf,
-            prepareMsg(pmAbst), replyWhenDone), s"talking-to-ai-${UUID.randomUUID().toString}")
+            prepareMsg(instructions, pmAbst), replyWhenDone), s"talking-to-ai-${UUID.randomUUID().toString}")
         Behaviors.same
     }
   }
 
-  private def prepareMsg(pmAb: PMAbstract): Seq[Message] = {
+  private def prepareMsg(instructions: String, pmAb: PMAbstract): Seq[Message] = {
     import org.linthaal.helpers.ncbi.eutils.PMJsonProt.jsonPMAbstract
     import spray.json._
 
     val asJsonString =
-      s"""$goalInstructions #### ${pmAb.toJson.compactPrint.replace("\\n", " ").replace("\"", "'")} ####""".stripMargin
+      s"""$instructions #### ${pmAb.toJson.compactPrint.replace("\\n", " ").replace("\"", "'")} ####""".stripMargin
 
     Seq(Message(content = asJsonString))
   }

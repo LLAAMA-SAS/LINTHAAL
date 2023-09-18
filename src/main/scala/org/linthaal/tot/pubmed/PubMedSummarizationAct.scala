@@ -2,8 +2,9 @@ package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
+import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
+import org.linthaal.api.protocols.APIMessages.PubMedAISummarizationRequest
 import org.linthaal.helpers
-import org.linthaal.helpers.chatgpt.SimpleChatAct.AIResponse
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
 import org.linthaal.helpers.ncbi.eutils.{EutilsCalls, PMActor}
 
@@ -25,7 +26,7 @@ import java.util.Date
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
   */
-object PMAbstractsSummarizationAct {
+object PubMedSummarizationAct {
 
   case class SummarizedAbstract(id: Int, sumTitle: String, sumAbstract: String, date: Date)
 
@@ -51,23 +52,28 @@ object PMAbstractsSummarizationAct {
   case class AbstractsWrap(pmAbsts: PMAbstracts) extends Command
   case class AISummarizationWrap(summarizedAbstracts: SummarizedAbstracts) extends Command
 
-  def apply(queryString: String, replyTo: ActorRef[SummarizationResponse], maxAbstracts: Int = 20): Behavior[Command] = {
+  def apply(aiReq: PubMedAISummarizationRequest, pmIdsAlreadyDone: List[Int],
+            replyTo: ActorRef[SummarizationResponse], maxAbstracts: Int = 20): Behavior[Command] = {
     Behaviors.setup[Command] { ctx =>
       val wrap: ActorRef[PMAbstracts] = ctx.messageAdapter(m => AbstractsWrap(m))
-      ctx.spawn(PMActor.apply(EutilsCalls.eutilsDefaultConf, queryString, wrap), "pubmed_query_actor")
-      queryingAbstracts(replyTo, maxAbstracts)
+      ctx.spawn(PMActor.apply(EutilsCalls.eutilsDefaultConf, aiReq.search,
+        pmIdsAlreadyDone, wrap), "pubmed_query_actor")
+      queryingAbstracts(replyTo, aiReq, maxAbstracts)
     }
   }
 
-  def queryingAbstracts(replyTo: ActorRef[SummarizationResponse], maxAbstracts: Int): Behavior[Command] = {
+  def queryingAbstracts(replyTo: ActorRef[SummarizationResponse],
+                        aiReq: PubMedAISummarizationRequest,
+                        maxAbstracts: Int): Behavior[Command] = {
 
     Behaviors.receive { (ctx, msg) =>
       msg match {
         case AbstractsWrap(pmAbst) =>
           val w: ActorRef[SummarizedAbstracts] = ctx.messageAdapter(m => AISummarizationWrap(m))
           ctx.log.info(s"Limiting number of abstract to be processed by AI to: $maxAbstracts")
+
           val pmas = PMAbstracts(pmAbst.abstracts.take(maxAbstracts), pmAbst.msg)
-          ctx.spawn(PubmedAISumRouter.apply(pmas, w), "ai_summarization_router_actor")
+          ctx.spawn(PubmedAISumRouter.apply(pmas,aiReq, w), "ai_summarization_router_actor")
           talkingToAI(replyTo, ctx)
         case _ =>
           replyTo ! SummarizationFailed("Failed, problem retrieving abstracts from pubmed.")

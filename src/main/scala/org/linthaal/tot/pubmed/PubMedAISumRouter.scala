@@ -1,11 +1,12 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{ActorContext, Behaviors, Routers}
-import akka.actor.typed.{ActorRef, Behavior, DispatcherSelector, SupervisorStrategy}
-import org.linthaal.helpers.chatgpt.PromptService.Choice
-import org.linthaal.helpers.chatgpt.SimpleChatAct.AIResponse
+import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, Routers }
+import akka.actor.typed.{ ActorRef, Behavior, DispatcherSelector, SupervisorStrategy }
+import org.linthaal.ai.services.chatgpt.PromptService.Choice
+import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
+import org.linthaal.api.protocols.APIMessages.PubMedAISummarizationRequest
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.linthaal.tot.pubmed.PMAbstractsSummarizationAct.{SummarizedAbstract, SummarizedAbstracts}
+import org.linthaal.tot.pubmed.PubMedSummarizationAct.{ SummarizedAbstract, SummarizedAbstracts }
 
 import scala.concurrent.duration.DurationInt
 
@@ -35,14 +36,18 @@ object PubmedAISumRouter {
   sealed trait SummarizationMsg
   case class AIResponseWrap(aiR: AIResponse) extends SummarizationMsg
 
-  def apply(pmas: PMAbstracts, replyWhenDone: ActorRef[SummarizedAbstracts]): Behavior[SummarizationMsg] =
+  def apply(
+      pmas: PMAbstracts,
+      aiReq: PubMedAISummarizationRequest,
+      replyWhenDone: ActorRef[SummarizedAbstracts]): Behavior[SummarizationMsg] =
     Behaviors.setup { ctx =>
       ctx.log.info(s"Starting summarization router. ")
+      val instructions = goalInstructions(aiReq.titleLength, aiReq.abstractLength)
       val wrap: ActorRef[AIResponse] = ctx.messageAdapter(m => AIResponseWrap(m))
       val pool = Routers
         .pool(Math.min(5, pmas.abstracts.size)) {
           Behaviors
-            .supervise(PubMedAISumOne(wrap))
+            .supervise(PubMedAISumOne(wrap, instructions))
             .onFailure[Exception](SupervisorStrategy.restart.withLimit(maxNrOfRetries = 3, withinTimeRange = 5.seconds))
         }
         .withRouteeProps(routeeProps = DispatcherSelector.blocking())
@@ -59,7 +64,7 @@ object PubmedAISumRouter {
 
   private def summarizing(
       toSummarize: Int,
-      originalAbstracts:PMAbstracts,
+      originalAbstracts: PMAbstracts,
       aiResponses: List[AIResponse],
       summarized: List[SummarizedAbstract],
       replyWhenDone: ActorRef[SummarizedAbstracts],
@@ -88,4 +93,18 @@ object PubmedAISumRouter {
     import spray.json._
     choice.message.content.replace("'", "\"").parseJson.convertTo[SummarizedAbstract]
   }
+
+  def goalInstructions(titleNbW: Int, absNbW: Int) =
+    s"""Your goal is to summarize scientific text.
+       |An item is provided as a json object with 4 elements: id, title, abstractText, date.
+       |The json part starts with #### as delimiter.
+       |Your goal is:
+       |1) to summarize title in maximum ${titleNbW} words which will be sumTitle,
+       |2) to summarize abstractText in maximum ${absNbW} words which will be sumAbstract,
+       |3) Keep the id
+       |4) Keep the date
+       |The users are very smart scientists, knowing the domain very well.
+       |Return the result as a json object in the following format: id, sumTitle, sumAbstract, date.
+       |""".stripMargin.replace("\n", " ")
+
 }

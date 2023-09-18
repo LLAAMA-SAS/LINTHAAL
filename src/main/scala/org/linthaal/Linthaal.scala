@@ -19,13 +19,11 @@ import org.slf4j.LoggerFactory
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
   */
-class Main {
+object Linthaal {
 
   val log = LoggerFactory.getLogger(getClass.toString)
 
-  def main(args: Array[String]) = {
-    val acts = ActorSystem(LinthalGuardianAct(), "Linthal_Guardian")
-  }
+  def main(args: Array[String]): Unit =
 
-
+    ActorSystem(LinthaalSupervisor(), "Linthaal-system")
 }

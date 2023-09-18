@@ -1,4 +1,4 @@
-package org.linthaal.helpers.chatgpt
+package org.linthaal.ai.services.chatgpt
 
 import PromptService.{ChatRequest, ChatResponse, Choice, Message, Usage}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}

@@ -32,7 +32,9 @@ object PMActor {
   case class PMFailed(reason: String) extends PMCommand
   case class PMAbstracts(abstracts: List[PMAbstract], msg: String = "") extends PMCommand
 
-  def apply(conf: EutilsCalls.EutilsConfig, search: String, replyToWhenDone: ActorRef[PMAbstracts]): Behavior[PMCommand] = {
+  def apply(conf: EutilsCalls.EutilsConfig, search: String,
+            pmIdsAlreadyDone: List[Int],
+            replyToWhenDone: ActorRef[PMAbstracts]): Behavior[PMCommand] = {
     Behaviors.setup[PMCommand] { ctx =>
       val eutilsCalls: EutilsCalls = new EutilsCalls(conf)(ctx.system)
       val futurResp: Future[NodeSeq] = eutilsCalls.searchPubmed(search)
@@ -46,16 +48,19 @@ object PMActor {
           ctx.log.error(r.getStackTrace.mkString("\n"))
           PMFailed(r.getMessage)
       }
-      queryingAbstracts(replyToWhenDone, eutilsCalls)
+      queryingAbstracts(replyToWhenDone, pmIdsAlreadyDone, eutilsCalls)
     }
   }
 
-  def queryingAbstracts(replyToWhenDone: ActorRef[PMAbstracts], eutilsCalls: EutilsCalls): Behavior[PMCommand] = {
+  def queryingAbstracts(replyToWhenDone: ActorRef[PMAbstracts],
+                        pmIdsAlreadyDone: List[Int],
+                        eutilsCalls: EutilsCalls): Behavior[PMCommand] = {
 
     Behaviors.receive { (ctx, msg) =>
       msg match {
         case PMIds(sr) =>
-          val futurResp: Future[NodeSeq] = eutilsCalls.eFetchPubmed(sr.ids)
+          val idsToFetch = sr.ids.filter(id => !pmIdsAlreadyDone.contains(id))
+          val futurResp: Future[NodeSeq] = eutilsCalls.eFetchPubmed(idsToFetch)
           ctx.pipeToSelf(futurResp) {
             case Success(ns) =>
               ctx.log.info(enoughButNotTooMuchInfo(ns.toString()))

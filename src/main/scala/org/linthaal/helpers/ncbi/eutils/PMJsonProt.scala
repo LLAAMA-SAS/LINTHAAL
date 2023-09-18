@@ -2,7 +2,7 @@ package org.linthaal.helpers.ncbi.eutils
 
 import EutilsADT.PMAbstract
 import org.linthaal.helpers.{dateToIsoString, parseIsoDateString}
-import org.linthaal.tot.pubmed.PMAbstractsSummarizationAct.SummarizedAbstract
+import org.linthaal.tot.pubmed.PubMedSummarizationAct.SummarizedAbstract
 import spray.json.DefaultJsonProtocol
 
 import java.util.Date

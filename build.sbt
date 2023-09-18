@@ -26,6 +26,10 @@ libraryDependencies ++= Seq(
 
   "io.lemonlabs" %% "scala-uri" % "4.0.3",
 
+  // Swagger API publication
+  "io.swagger" % "swagger-jaxrs" % "1.6.2",
+  "com.github.swagger-akka-http" %% "swagger-akka-http" % "2.10.0",
+
   "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
   "org.scalatest" %% "scalatest" % "3.2.16" % Test
 )

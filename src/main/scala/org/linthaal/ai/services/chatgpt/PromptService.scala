@@ -1,4 +1,4 @@
-package org.linthaal.helpers.chatgpt
+package org.linthaal.ai.services.chatgpt
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http

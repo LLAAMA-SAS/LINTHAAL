@@ -1,8 +1,7 @@
 package org.linthaal.helpers.chatgpt
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
-import org.linthaal.helpers.chatgpt.PromptService.Message
-import org.linthaal.helpers.chatgpt.SimpleChatAct.AIResponse
+import org.linthaal.ai.services.chatgpt.{PromptService, SimpleChatAct}
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.duration.DurationInt

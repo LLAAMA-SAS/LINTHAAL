@@ -1,14 +1,11 @@
-package org.linthaal
-
-import akka.actor.typed.Behavior
-import akka.actor.typed.scaladsl.Behaviors
+package org.linthaal.api.protocols
 
 /**
   *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
-  * (at your option) any later version. 
+  * (at your option) any later version.
   *
   * This program is distributed in the hope that it will be useful,
   * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -19,16 +16,14 @@ import akka.actor.typed.scaladsl.Behaviors
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
   */
+object APIMessages {
 
-object LinthalGuardianAct {
+  case class PubMedAISummarizationRequest(search: String, titleLength: Int = 5,
+                                          abstractLength: Int = 20, update: Int = 1800)
 
-  sealed trait GuardCommand
+  case class ForgetResults(id: String)
 
-  case class StartSummarization(search: String) extends GuardCommand
+  case class RetrieveResult(id: String)
 
-  def apply(): Behavior[GuardCommand] =
-    Behaviors.setup {ctx =>
-      ctx.log.info("Starting Actor System, User Guardian...")
-      Behaviors.stopped
-    }
+
 }
