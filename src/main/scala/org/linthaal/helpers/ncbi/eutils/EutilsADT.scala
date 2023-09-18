@@ -1,4 +1,4 @@
-package org.llaama.linthaal.helpers.ncbi.eutils
+package org.linthaal.helpers.ncbi.eutils
 
 import java.text.SimpleDateFormat
 import java.util.Date

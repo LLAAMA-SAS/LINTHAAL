@@ -1,7 +1,8 @@
-package org.llaama.linthaal.tot.pubmed
+package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors, Routers}
 import akka.actor.typed.{ActorRef, Behavior, DispatcherSelector, SupervisorStrategy}
+import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
 import org.llaama.linthaal.helpers.chatgpt.PromptService.Choice
 import org.llaama.linthaal.helpers.chatgpt.SimpleChatAct.AIResponse
 import org.llaama.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
@@ -84,7 +85,7 @@ object PubmedAISumRouter {
   }
 
   def parseChoice(choice: Choice): SummarizedAbstract = {
-    import org.llaama.linthaal.helpers.ncbi.eutils.PMJsonProt.jsonPMSummarizedAbstract
+    import org.linthaal.helpers.ncbi.eutils.PMJsonProt.jsonPMSummarizedAbstract
     import spray.json._
     choice.message.content.replace("'", "\"").parseJson.convertTo[SummarizedAbstract]
   }

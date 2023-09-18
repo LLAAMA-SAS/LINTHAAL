@@ -1,4 +1,4 @@
-package org.llaama.linthaal
+package org.linthaal
 
 import java.text.SimpleDateFormat
 import java.util.Date

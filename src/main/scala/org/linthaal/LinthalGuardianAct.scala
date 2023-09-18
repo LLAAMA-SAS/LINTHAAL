@@ -1,4 +1,4 @@
-package org.llaama.linthaal
+package org.linthaal
 
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors

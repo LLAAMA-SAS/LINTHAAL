@@ -1,11 +1,11 @@
-package org.llaama.linthaal.helpers.ncbi.eutils
+package org.linthaal.helpers.ncbi.eutils
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.scaladsl.{Flow, Sink, Source}
-import org.llaama.linthaal.helpers.ApiKeys
+import org.linthaal.helpers.ApiKeys
 
 import scala.concurrent.Future
 import scala.xml.NodeSeq

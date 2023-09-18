@@ -1,4 +1,4 @@
-package org.llaama.linthaal.helpers.chatgpt
+package org.linthaal.helpers.chatgpt
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}

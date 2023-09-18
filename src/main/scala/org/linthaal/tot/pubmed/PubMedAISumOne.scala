@@ -1,4 +1,4 @@
-package org.llaama.linthaal.tot.pubmed
+package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
@@ -60,7 +60,7 @@ object PubMedAISumOne {
   }
 
   private def prepareMsg(pmAb: PMAbstract): Seq[Message] = {
-    import org.llaama.linthaal.helpers.ncbi.eutils.PMJsonProt.jsonPMAbstract
+    import org.linthaal.helpers.ncbi.eutils.PMJsonProt.jsonPMAbstract
     import spray.json._
 
     val asJsonString =

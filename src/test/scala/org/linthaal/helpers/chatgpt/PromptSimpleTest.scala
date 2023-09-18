@@ -1,4 +1,4 @@
-package org.llaama.linthaal.helpers.chatgpt
+package org.linthaal.helpers.chatgpt
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import org.llaama.linthaal.helpers.chatgpt.PromptService.Message

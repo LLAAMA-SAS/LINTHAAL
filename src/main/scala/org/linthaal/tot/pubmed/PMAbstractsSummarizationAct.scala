@@ -1,7 +1,9 @@
-package org.llaama.linthaal.tot.pubmed
+package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
+import org.linthaal.helpers.ncbi.eutils.{EutilsCalls, PMActor}
+import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
 import org.llaama.linthaal.helpers
 import org.llaama.linthaal.helpers.chatgpt.SimpleChatAct.AIResponse
 import org.llaama.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts

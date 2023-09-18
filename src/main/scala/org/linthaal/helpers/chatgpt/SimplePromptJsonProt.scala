@@ -1,6 +1,6 @@
-package org.llaama.linthaal.helpers.chatgpt
+package org.linthaal.helpers.chatgpt
 
-import org.llaama.linthaal.helpers.chatgpt.PromptService.{ChatRequest, ChatResponse, Choice, Message, Usage}
+import PromptService.{ChatRequest, ChatResponse, Choice, Message, Usage}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 /**

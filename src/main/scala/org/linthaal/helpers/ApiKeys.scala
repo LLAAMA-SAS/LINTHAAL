@@ -1,4 +1,4 @@
-package org.llaama.linthaal.helpers
+package org.linthaal.helpers
 
 import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters._

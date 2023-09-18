@@ -1,4 +1,4 @@
-package org.llaama.linthaal.helpers.chatgpt
+package org.linthaal.helpers.chatgpt
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
@@ -7,7 +7,7 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.scaladsl.{Sink, Source}
-import org.llaama.linthaal.helpers.ApiKeys
+import org.linthaal.helpers.ApiKeys
 
 import scala.concurrent.Future
 

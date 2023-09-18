@@ -1,4 +1,4 @@
-package org.llaama.linthaal
+package org.linthaal
 
 import akka.actor.typed.ActorSystem
 import org.slf4j.LoggerFactory
@@ -26,4 +26,6 @@ class Main {
   def main(args: Array[String]) = {
     val acts = ActorSystem(LinthalGuardianAct(), "Linthal_Guardian")
   }
+
+
 }

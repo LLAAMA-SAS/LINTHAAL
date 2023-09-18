@@ -1,8 +1,8 @@
-package org.llaama.linthaal.helpers.ncbi.eutils
+package org.linthaal.helpers.ncbi.eutils
 
-import org.llaama.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
+import EutilsADT.PMAbstract
 import org.llaama.linthaal.helpers.{dateToIsoString, parseIsoDateString}
-import org.llaama.linthaal.tot.pubmed.PMAbstractsSummarizationAct.SummarizedAbstract
+import org.linthaal.tot.pubmed.PMAbstractsSummarizationAct.SummarizedAbstract
 import spray.json.DefaultJsonProtocol
 
 import java.util.Date
