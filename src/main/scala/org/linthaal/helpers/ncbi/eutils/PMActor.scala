@@ -2,7 +2,7 @@ package org.linthaal.helpers.ncbi.eutils
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import org.llaama.linthaal.helpers.enoughButNotTooMuchInfo
+import org.linthaal.helpers.enoughButNotTooMuchInfo
 import EutilsADT.{PMAbstract, PMidSearchResults}
 
 import scala.concurrent.Future

@@ -2,10 +2,10 @@ package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import org.llaama.linthaal.helpers.chatgpt.PromptService.Message
-import org.llaama.linthaal.helpers.chatgpt.SimpleChatAct.AIResponse
-import org.llaama.linthaal.helpers.chatgpt.{PromptService, SimpleChatAct}
-import org.llaama.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
+import org.linthaal.helpers.chatgpt.PromptService.Message
+import org.linthaal.helpers.chatgpt.SimpleChatAct.AIResponse
+import org.linthaal.helpers.chatgpt.{PromptService, SimpleChatAct}
+import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 
 import java.util.UUID
 

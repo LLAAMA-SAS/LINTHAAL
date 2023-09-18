@@ -2,11 +2,10 @@ package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors, Routers}
 import akka.actor.typed.{ActorRef, Behavior, DispatcherSelector, SupervisorStrategy}
+import org.linthaal.helpers.chatgpt.PromptService.Choice
+import org.linthaal.helpers.chatgpt.SimpleChatAct.AIResponse
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.llaama.linthaal.helpers.chatgpt.PromptService.Choice
-import org.llaama.linthaal.helpers.chatgpt.SimpleChatAct.AIResponse
-import org.llaama.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.llaama.linthaal.tot.pubmed.PMAbstractsSummarizationAct.{SummarizedAbstract, SummarizedAbstracts}
+import org.linthaal.tot.pubmed.PMAbstractsSummarizationAct.{SummarizedAbstract, SummarizedAbstracts}
 
 import scala.concurrent.duration.DurationInt
 
