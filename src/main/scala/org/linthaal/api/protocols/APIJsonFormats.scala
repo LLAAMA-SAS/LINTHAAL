@@ -1,7 +1,10 @@
 package org.linthaal.api.protocols
 
 import org.linthaal.api.protocols.APIMessages._
-import spray.json.RootJsonFormat
+import org.linthaal.api.routes.PubMedAISummarizationRequest
+import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
+import org.linthaal.tot.pubmed.PubMedSummarizationAct.SummarizedAbstract
+import org.linthaal.tot.pubmed.PubMedToTManager.{ActionPerformed, AllSummarizationRequests, Result, SummarizationResults}
 
 /**
   *
@@ -23,14 +26,26 @@ import spray.json.RootJsonFormat
 
 object APIJsonFormats {
   // import the default encoders for primitive types (Int, String, Lists etc)
+  import org.linthaal.helpers.JsonFormats._
   import spray.json.DefaultJsonProtocol._
+  import spray.json._
 
   implicit val pmAISumReqJsonFormat: RootJsonFormat[PubMedAISummarizationRequest] =
     jsonFormat4(PubMedAISummarizationRequest.apply)
 
-  implicit val forgetResultsJsonFormat: RootJsonFormat[ForgetResults] =
-    jsonFormat1(ForgetResults.apply)
+  implicit val actionPerformedJsonFormat: RootJsonFormat[ActionPerformed] =
+    jsonFormat1(ActionPerformed.apply)
 
-  implicit val JsonFormat: RootJsonFormat[RetrieveResult] =
-    jsonFormat1(RetrieveResult.apply)
+  implicit val pmAbstJsonFormat: RootJsonFormat[PMAbstract] = jsonFormat4(PMAbstract.apply)
+
+  implicit val summarizedAbstJsonFormat: RootJsonFormat[SummarizedAbstract] = jsonFormat4(SummarizedAbstract.apply)
+
+  implicit val resultJsonFormat: RootJsonFormat[Result] = jsonFormat2(Result.apply)
+
+  implicit val summarizationResultsJsonFormat: RootJsonFormat[SummarizationResults] =
+    jsonFormat3(SummarizationResults.apply)
+
+  implicit val allSummarizationRequestsJsonFormat: RootJsonFormat[AllSummarizationRequests] =
+    jsonFormat1(AllSummarizationRequests.apply)
+
 }

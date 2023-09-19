@@ -1,11 +1,16 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import org.linthaal.api.protocols.APIMessages.PubMedAISummarizationRequest
+import akka.actor.typed.{ActorRef, Behavior}
+import akka.util.Helpers
+import org.linthaal
+import org.linthaal.api.routes.PubMedAISummarizationRequest
+import org.linthaal.helpers
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
-import org.linthaal.tot.pubmed.PubMedSummarizationAct.SummarizedAbstract
-import org.linthaal.tot.pubmed.PubMedToTManager.{RemoveResultsForId, RetrieveResultsForId, StartAISummarization, SummarizationResults}
+import org.linthaal.tot.pubmed.PubMedSummarizationAct.{SummarizationFailed, SummarizationResponse, SummarizedAbstract, SummarizedAbstracts}
+import org.linthaal.tot.pubmed.PubMedToTManager._
+
+import java.util.UUID
 
 /**
   *
@@ -26,45 +31,72 @@ import org.linthaal.tot.pubmed.PubMedToTManager.{RemoveResultsForId, RetrieveRes
 object PubMedToTManager {
   sealed trait Command
 
-  final case class StartAISummarization(pmSumReq: PubMedAISummarizationRequest) extends Command
+  final case class StartAISummarization(pmSumReq: PubMedAISummarizationRequest, replyTo: ActorRef[ActionPerformed]) extends Command
 
-  final case class RemoveResultsForId(id: String) extends Command
+  final case class RemoveResultsForId(id: String, replyTo: ActorRef[ActionPerformed]) extends Command
 
-  final case class RetrieveResultsForId(id: String) extends Command
+  final case class RetrieveResultsForId(id: String, replyTo: ActorRef[GetSummarizationResults]) extends Command
 
-  case class Result(pmAbst: PMAbstract, sumAbst: SummarizedAbstract)
+  final case class WrapSummarizedResponse(sumResp: SummarizationResponse) extends Command
 
-  case class SummarizationResults(id: String, pmSumReq: PubMedAISummarizationRequest,
-                                  results: Map[Int, Result])
+  final case class RetrieveAllSummarizations(replyTo: ActorRef[AllSummarizationRequests]) extends Command
+
+  final case class AllSummarizationRequests(sumReqs: Map[String, PubMedAISummarizationRequest])
+
+  final case class Result(pmAbst: PMAbstract, sumAbst: SummarizedAbstract)
+
+  final case class SummarizationResults(id: String, pmSumReq: PubMedAISummarizationRequest, results: Map[Int, Result])
 
   final case class ActionPerformed(description: String)
-  final case class ActionCompleted(description: String)
-
+  final case class GetSummarizationResults(results: Option[SummarizationResults])
 
   def apply(): Behavior[Command] = {
     Behaviors.setup(context => new PubMedToTManager(context))
+  }
+
+  def fromResults(sumAbsts: SummarizedAbstracts): SummarizationResults = {
+    SummarizationResults(sumAbsts)
   }
 }
 
 class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command]) extends AbstractBehavior[PubMedToTManager.Command](ctx) {
 
-  var allResults: Map[String, SummarizationResults] = Map.empty
+  val wrapSumResp: ActorRef[SummarizationResponse] = context.messageAdapter(m => WrapSummarizedResponse(m))
+
+  var allResults: List[SummarizationResults] = List.empty
 
   override def onMessage(msg: PubMedToTManager.Command): Behavior[PubMedToTManager.Command] = {
     msg match {
-      case StartAISummarization(pmSR) =>
-        val
+      case StartAISummarization(pmSR, replyTo) =>
+        // find
+        val existing = allResults.find(sr => sr.pmSumReq.search.trim == pmSR.search.trim)
+        val pmIdsAlreadyDone: List[Int] = existing.fold(List[Int]())(_.results.keys.toList)
 
-        context.spawn(PubMedSummarizationAct(pmSR, ))
+        context.spawn(PubMedSummarizationAct(pmSR, pmIdsAlreadyDone, wrapSumResp),
+          s"summarizing_actor_${UUID.randomUUID().toString}")
+
+        replyTo ! ActionPerformed("Summarization started. ")
         this
 
-      case RemoveResultsForId(id) =>
-      this
+      case RemoveResultsForId(id, replyTo) =>
+        allResults = allResults.filterNot(sr => sr.id == id)
+        replyTo ! ActionPerformed("Removed Summarization Results. ")
+        this
 
-      case RetrieveResultsForId(id) =>
+      case RetrieveResultsForId(id, replyTo) =>
+        replyTo ! allResults.find(r => r.id == id).fold(GetSummarizationResults(None))(r => GetSummarizationResults(Some(r)))
+        this
 
-      this
+      case WrapSummarizedResponse(sresp) =>
+        sresp match {
+          case sr: SummarizedAbstracts => {
+            val id = linthaal.helpers.getDigest(sr.)
+            allResults = sr +: allResults
+          }
+          case SummarizationFailed(reason) =>
+            context.log.error(s"Summarization failed $reason")
+        }
+        this
     }
   }
-
 }

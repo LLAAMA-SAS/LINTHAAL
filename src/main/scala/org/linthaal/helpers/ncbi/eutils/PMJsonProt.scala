@@ -1,11 +1,7 @@
 package org.linthaal.helpers.ncbi.eutils
 
-import EutilsADT.PMAbstract
-import org.linthaal.helpers.{dateToIsoString, parseIsoDateString}
+import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.tot.pubmed.PubMedSummarizationAct.SummarizedAbstract
-import spray.json.DefaultJsonProtocol
-
-import java.util.Date
 
 /**
   *
@@ -24,20 +20,9 @@ import java.util.Date
   *
   */
 
-object PMJsonProt extends DefaultJsonProtocol {
+object PMJsonProt {
+  import org.linthaal.helpers.JsonFormats._
   import spray.json._
-
-  implicit object DateJsonFormat extends RootJsonFormat[Date] {
-
-    def write(date: Date) = JsString(dateToIsoString(date))
-
-    def read(json: JsValue) = json match {
-      case JsString(rawDate) =>
-        parseIsoDateString(rawDate)
-          .fold(deserializationError(s"Expected ISO Date format, got $rawDate"))(identity)
-      case error => deserializationError(s"Expected JsString, got $error")
-    }
-  }
 
   implicit val jsonPMAbstract: RootJsonFormat[PMAbstract] = jsonFormat4(PMAbstract.apply)
   implicit val jsonPMSummarizedAbstract: RootJsonFormat[SummarizedAbstract] = jsonFormat4(SummarizedAbstract.apply)

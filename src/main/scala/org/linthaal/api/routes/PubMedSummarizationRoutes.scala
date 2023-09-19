@@ -3,12 +3,11 @@ package org.linthaal.api.routes
 import akka.http.scaladsl.server.Directives._
 import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.model.Uri.Path.Segment
 import akka.http.scaladsl.server.Route
 import akka.actor.typed.scaladsl.AskPattern._
 import akka.util.Timeout
-
 import org.linthaal.tot.pubmed.PubMedToTManager
+import org.linthaal.tot.pubmed.PubMedToTManager._
 
 import scala.concurrent.Future
 
@@ -36,63 +35,58 @@ class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])
   import org.linthaal.api.protocols.APIJsonFormats._
 
   // If ask takes more time than this to complete the request is failed
-  private implicit val timeout: Timeout = Timeout.create(system.settings.config.getDuration("my-app.routes.ask-timeout"))
+  private implicit val timeout: Timeout = Timeout.create(system.settings
+    .config.getDuration("linthaal.routes.ask-timeout"))
 
-  def getUsers(): Future[Users] =
-    pmToT.ask(GetUsers)
+  def retrieveAllSummarizations(): Future[AllSummarizationRequests] =
+    pmToT.ask(RetrieveAllSummarizations(_))
 
-  def getUser(name: String): Future[GetUserResponse] =
-    pmToT.ask(GetUser(name, _))
+  def getSummarization(id: String): Future[GetSummarizationResults] =
+    pmToT.ask(RetrieveResultsForId(id, _))
 
-  def createUser(user: User): Future[ActionPerformed] =
-    pmToT.ask(CreateUser(user, _))
+  def summarize(sumReq: PubMedAISummarizationRequest): Future[ActionPerformed] =
+    pmToT.ask(StartAISummarization(sumReq, _))
 
-  def deleteUser(name: String): Future[ActionPerformed] =
-    pmToT.ask(DeleteUser(name, _))
+  def removeSummarization(id: String): Future[ActionPerformed] =
+    pmToT.ask(RemoveResultsForId(id, _))
 
-
-  //#all-routes
-  //#users-get-post
-  //#users-get-delete
-  val userRoutes: Route =
-  pathPrefix("users") {
+  val pmAISumAllRoutes: Route =
+  pathPrefix("pubmed_ai_summarization") {
     concat(
       //#users-get-delete
       pathEnd {
         concat(
           get {
-            complete(getUsers())
+            complete(retrieveAllSummarizations())
           },
           post {
-            entity(as[User]) { user =>
-              onSuccess(createUser(user)) { performed =>
+            entity(as[PubMedAISummarizationRequest]) { pmAIReq =>
+              onSuccess(summarize(pmAIReq)) { performed =>
                 complete((StatusCodes.Created, performed))
               }
             }
           })
       },
-      //#users-get-delete
-      //#users-get-post
-      path(Segment) { name =>
+      path(Segment) { id =>
         concat(
           get {
-            //#retrieve-user-info
             rejectEmptyResponse {
-              onSuccess(getUser(name)) { response =>
-                complete(response.maybeUser)
+              onSuccess(getSummarization(id)) { response =>
+                complete(response.results)
               }
             }
-            //#retrieve-user-info
           },
           delete {
-            //#users-delete-logic
-            onSuccess(deleteUser(name)) { performed =>
+            onSuccess(removeSummarization(id)) { performed =>
               complete((StatusCodes.OK, performed))
             }
-            //#users-delete-logic
           })
       })
-    //#users-get-delete
   }
-  //#all-routes
 }
+
+case class PubMedAISummarizationRequest(search: String, titleLength: Int = 5,
+                                        abstractLength: Int = 20, update: Int = 1800)
+
+
+

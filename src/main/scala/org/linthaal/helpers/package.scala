@@ -1,5 +1,6 @@
 package org.linthaal
 
+import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.Date
 import scala.util.Try
@@ -39,5 +40,10 @@ package object helpers {
   def parseIsoDateString(date: String): Option[Date] = Try { localIsoDateFormatter.get().parse(date) }.toOption
 
   def dateToIsoString(date: Date) = localIsoDateFormatter.get().format(date)
+
+  def getDigest(text: String): Array[Byte] = {
+    val md = java.security.MessageDigest.getInstance("SHA-256")
+    md.digest(text.getBytes(StandardCharsets.UTF_8))
+  }
 
 }

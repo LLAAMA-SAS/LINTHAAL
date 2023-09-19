@@ -1,12 +1,12 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, Routers }
-import akka.actor.typed.{ ActorRef, Behavior, DispatcherSelector, SupervisorStrategy }
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors, Routers}
+import akka.actor.typed.{ActorRef, Behavior, DispatcherSelector, SupervisorStrategy}
 import org.linthaal.ai.services.chatgpt.PromptService.Choice
 import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
-import org.linthaal.api.protocols.APIMessages.PubMedAISummarizationRequest
+import org.linthaal.api.routes.PubMedAISummarizationRequest
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.linthaal.tot.pubmed.PubMedSummarizationAct.{ SummarizedAbstract, SummarizedAbstracts }
+import org.linthaal.tot.pubmed.PubMedSummarizationAct.{SummarizedAbstract, SummarizedAbstracts}
 
 import scala.concurrent.duration.DurationInt
 
