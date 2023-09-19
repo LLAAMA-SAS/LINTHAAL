@@ -41,17 +41,17 @@ class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])
   def retrieveAllSummarizations(): Future[AllSummarizationRequests] =
     pmToT.ask(RetrieveAllSummarizations(_))
 
-  def getSummarization(id: String): Future[GetSummarizationResults] =
+  def getSummarization(id: String): Future[RetrieveResultsForId] =
     pmToT.ask(RetrieveResultsForId(id, _))
 
-  def summarize(sumReq: PubMedAISummarizationRequest): Future[ActionPerformed] =
+  def summarize(sumReq: PubMedAISumReq): Future[ActionPerformed] =
     pmToT.ask(StartAISummarization(sumReq, _))
 
   def removeSummarization(id: String): Future[ActionPerformed] =
     pmToT.ask(RemoveResultsForId(id, _))
 
   val pmAISumAllRoutes: Route =
-  pathPrefix("pubmed_ai_summarization") {
+  pathPrefix("tot_pubmed") {
     concat(
       //#users-get-delete
       pathEnd {
@@ -60,7 +60,7 @@ class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])
             complete(retrieveAllSummarizations())
           },
           post {
-            entity(as[PubMedAISummarizationRequest]) { pmAIReq =>
+            entity(as[PubMedAISumReq]) { pmAIReq =>
               onSuccess(summarize(pmAIReq)) { performed =>
                 complete((StatusCodes.Created, performed))
               }
@@ -85,8 +85,8 @@ class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])
   }
 }
 
-case class PubMedAISummarizationRequest(search: String, titleLength: Int = 5,
-                                        abstractLength: Int = 20, update: Int = 1800)
+case class PubMedAISumReq(search: String, titleLength: Int = 5,
+                          abstractLength: Int = 20, update: Int = 1800, maxAbstracts: Int = 20)
 
 
 

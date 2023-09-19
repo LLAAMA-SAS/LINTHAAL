@@ -4,9 +4,9 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors, Routers}
 import akka.actor.typed.{ActorRef, Behavior, DispatcherSelector, SupervisorStrategy}
 import org.linthaal.ai.services.chatgpt.PromptService.Choice
 import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
-import org.linthaal.api.routes.PubMedAISummarizationRequest
+import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.linthaal.tot.pubmed.PubMedSummarizationAct.{SummarizedAbstract, SummarizedAbstracts}
+import org.linthaal.tot.pubmed.PubMedSumAct.{SummarizedAbstract, SummarizedAbstracts}
 
 import scala.concurrent.duration.DurationInt
 
@@ -37,9 +37,9 @@ object PubmedAISumRouter {
   case class AIResponseWrap(aiR: AIResponse) extends SummarizationMsg
 
   def apply(
-      pmas: PMAbstracts,
-      aiReq: PubMedAISummarizationRequest,
-      replyWhenDone: ActorRef[SummarizedAbstracts]): Behavior[SummarizationMsg] =
+             pmas: PMAbstracts,
+             aiReq: PubMedAISumReq,
+             replyWhenDone: ActorRef[SummarizedAbstracts]): Behavior[SummarizationMsg] =
     Behaviors.setup { ctx =>
       ctx.log.info(s"Starting summarization router. ")
       val instructions = goalInstructions(aiReq.titleLength, aiReq.abstractLength)
@@ -106,5 +106,4 @@ object PubmedAISumRouter {
        |The users are very smart scientists, knowing the domain very well.
        |Return the result as a json object in the following format: id, sumTitle, sumAbstract, date.
        |""".stripMargin.replace("\n", " ")
-
 }

@@ -37,8 +37,8 @@ object PMActor {
             replyToWhenDone: ActorRef[PMAbstracts]): Behavior[PMCommand] = {
     Behaviors.setup[PMCommand] { ctx =>
       val eutilsCalls: EutilsCalls = new EutilsCalls(conf)(ctx.system)
-      val futurResp: Future[NodeSeq] = eutilsCalls.searchPubmed(search)
-      ctx.pipeToSelf(futurResp) {
+      val futureResp: Future[NodeSeq] = eutilsCalls.searchPubmed(search)
+      ctx.pipeToSelf(futureResp) {
         case Success(ns) =>
           ctx.log.info(enoughButNotTooMuchInfo(ns.toString()))
           val sr = EutilsADT.pmIdsfromXml(ns)

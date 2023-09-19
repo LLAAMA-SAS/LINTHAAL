@@ -1,6 +1,6 @@
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
-import org.linthaal.tot.pubmed.PubMedSummarizationAct
-import org.linthaal.tot.pubmed.PubMedSummarizationAct.SummarizationResponse
+import org.linthaal.tot.pubmed.PubMedSumAct
+import org.linthaal.tot.pubmed.PubMedSumAct.SummarizationResponse
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.duration.DurationInt

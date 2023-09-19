@@ -1,7 +1,7 @@
 package org.linthaal.helpers.ncbi.eutils
 
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
-import org.linthaal.tot.pubmed.PubMedSummarizationAct.SummarizedAbstract
+import org.linthaal.tot.pubmed.PubMedSumAct.SummarizedAbstract
 
 /**
   *

@@ -41,9 +41,9 @@ package object helpers {
 
   def dateToIsoString(date: Date) = localIsoDateFormatter.get().format(date)
 
-  def getDigest(text: String): Array[Byte] = {
+  def getDigest(text: String): String = {
     val md = java.security.MessageDigest.getInstance("SHA-256")
-    md.digest(text.getBytes(StandardCharsets.UTF_8))
+    Hex.encodeHexString(md.digest(text.getBytes(StandardCharsets.UTF_8)))
   }
 
 }

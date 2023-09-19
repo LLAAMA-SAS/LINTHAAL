@@ -1,10 +1,9 @@
 package org.linthaal.api.protocols
 
-import org.linthaal.api.protocols.APIMessages._
-import org.linthaal.api.routes.PubMedAISummarizationRequest
+import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
-import org.linthaal.tot.pubmed.PubMedSummarizationAct.SummarizedAbstract
-import org.linthaal.tot.pubmed.PubMedToTManager.{ActionPerformed, AllSummarizationRequests, Result, SummarizationResults}
+import org.linthaal.tot.pubmed.PubMedSumAct.SummarizedAbstract
+import org.linthaal.tot.pubmed.PubMedToTManager.{ActionPerformed, AllSummarizationRequests}
 
 /**
   *
@@ -27,11 +26,10 @@ import org.linthaal.tot.pubmed.PubMedToTManager.{ActionPerformed, AllSummarizati
 object APIJsonFormats {
   // import the default encoders for primitive types (Int, String, Lists etc)
   import org.linthaal.helpers.JsonFormats._
-  import spray.json.DefaultJsonProtocol._
   import spray.json._
 
-  implicit val pmAISumReqJsonFormat: RootJsonFormat[PubMedAISummarizationRequest] =
-    jsonFormat4(PubMedAISummarizationRequest.apply)
+  implicit val pmAISumReqJsonFormat: RootJsonFormat[PubMedAISumReq] =
+    jsonFormat4(PubMedAISumReq.apply)
 
   implicit val actionPerformedJsonFormat: RootJsonFormat[ActionPerformed] =
     jsonFormat1(ActionPerformed.apply)
