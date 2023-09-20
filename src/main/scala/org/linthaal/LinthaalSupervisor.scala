@@ -1,9 +1,11 @@
 package org.linthaal
 
-import akka.actor.typed.{ActorSystem, Behavior, PostStop, Signal}
-import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorSystem, Behavior}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Route
+import org.linthaal.api.routes.PubMedSummarizationRoutes
+import org.linthaal.tot.pubmed.PubMedToTManager
 
 import scala.util.{Failure, Success}
 
@@ -27,6 +29,14 @@ import scala.util.{Failure, Success}
 object LinthaalSupervisor {
   def apply(): Behavior[Nothing] =
     Behaviors.setup[Nothing] {ctx =>
+
+      // define all ToT top actors here
+
+    val pubmedToTMain = ctx.spawn(PubMedToTManager(), "pubmed_tot_main")
+      ctx.watch(pubmedToTMain)
+      val routes = new PubMedSummarizationRoutes(pubmedToTMain)(ctx.system)
+      startHttpServer(routes.pmAISumAllRoutes)(ctx.system)
+      Behaviors.empty
 }
 
   private def startHttpServer(routes: Route)(implicit system: ActorSystem[_]): Unit = {

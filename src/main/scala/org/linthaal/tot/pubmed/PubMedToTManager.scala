@@ -28,17 +28,15 @@ object PubMedToTManager {
 
   final case class StartAISummarization(pmSumReq: PubMedAISumReq, replyTo: ActorRef[ActionPerformed]) extends Command
 
-  final case class RemoveResultsForId(id: String, replyTo: ActorRef[ActionPerformed]) extends Command
+  final case class RemoveSummarizations(id: String, replyTo: ActorRef[ActionPerformed]) extends Command
 
-  final case class RetrieveResultsForId(id: String, replyTo: ActorRef[SummarizedAbstracts]) extends Command
+  final case class RetrieveSummarizations(id: String, replyTo: ActorRef[SummarizedAbstracts]) extends Command
 
-  final case class RetrieveAllSummarizations(replyTo: ActorRef[AllSummarizationRequests]) extends Command
+  final case class RetrieveAll(replyTo: ActorRef[AllSummarizationRequests]) extends Command
 
   final case class AllSummarizationRequests(sumReqs: Map[String, PubMedAISumReq])
 
-
   final case class ActionPerformed(description: String)
-
 
   def apply(): Behavior[Command] = {
     Behaviors.setup(context => new PubMedToTManager(context))
@@ -54,30 +52,29 @@ class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command]) extends Abst
     msg match {
       case StartAISummarization(pmSR, replyTo) =>
         val id = linthaal.helpers.getDigest(pmSR.toString)
-        val sAct = sumAIActors.get(id)
-        val sumAct =
-          if (sAct.isDefined) sAct.get
-          else {
-            val sac = context.spawn(PubMedSumAct(pmSR), s"summarizing_actor_${id}")
-            sumAIActors = sumAIActors + (id -> sac)
-            allReq = allReq + (id -> pmSR)
-            sac
-          }
-        sumAct ! Start
-        replyTo ! ActionPerformed("Summarization started. ")
+        if (!sumAIActors.contains(id)) {
+          val sac = context.spawn(PubMedSumAct(pmSR, id), s"summarizing_actor_${id}")
+          sumAIActors = sumAIActors + (id -> sac)
+          allReq = allReq + (id -> pmSR)
+          sac ! Start
+          replyTo ! ActionPerformed("Summarization started. ")
+        } else {
+          replyTo ! ActionPerformed("Living identical request already exists. ")
+        }
         this
 
-      case RemoveResultsForId(id, replyTo) =>
+      case RemoveSummarizations(id, replyTo) =>
+        sumAIActors.get(id).foreach(a => ctx.stop(a))
         sumAIActors = sumAIActors.filterNot(sai => sai._1 == id)
         allReq = allReq.filterNot(req => req._1 == id)
         replyTo ! ActionPerformed("Removed Summarization Results. ")
         this
 
-      case RetrieveAllSummarizations(replyTo) =>
+      case RetrieveAll(replyTo) =>
         replyTo ! AllSummarizationRequests(allReq)
         this
 
-      case RetrieveResultsForId(id, replyTo) =>
+      case RetrieveSummarizations(id, replyTo) =>
         if (sumAIActors.contains(id)) {
           val sumAct = sumAIActors(id)
           sumAct ! GetResults(replyTo)

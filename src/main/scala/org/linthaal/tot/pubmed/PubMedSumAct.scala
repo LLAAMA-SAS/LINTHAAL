@@ -2,6 +2,7 @@ package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
+import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
@@ -31,26 +32,30 @@ object PubMedSumAct {
   trait Command
   case object Start extends Command
 
-  case class GetResults(replyTo: ActorRef[SummarizedAbstracts]) extends Command
+  case class GetFullResults(replyTo: ActorRef[FullResponse]) extends Command // For debugging
+  case class GetResults(replyTo: ActorRef[SummarizedAbstracts]) extends Command // For debugging
   case class AbstractsWrap(pmAbsts: PMAbstracts) extends Command
-  case class AISummarizationWrap(summarizedAbstracts: SummarizedAbstracts) extends Command
+  case class AISummarizationWrap(summarizedAbstracts: FullResponse) extends Command
 
   case class SummarizedAbstract(id: Int, sumTitle: String, sumAbstract: String, date: Date)
 
+  case class SummarizedAbstracts(sumAbsts: List[SummarizedAbstract] = List.empty, msg: String = "")
 
-  case class SummarizedAbstracts(aiReq: Option[PubMedAISumReq] = None,
-                                 originalAbstracts: List[PMAbstract] = List.empty,
-                                 summarizedAbstracts: List[SummarizedAbstract] = List.empty,
-                                 msg : String = "")
+  case class FullResponse(aiReq: Option[PubMedAISumReq] = None,
+                          originalAbstracts: List[PMAbstract] = List.empty,
+                          summarizedAbstracts: List[SummarizedAbstract] = List.empty,
+                          aiResponses: List[AIResponse] = List.empty,
+                          msg : String = "")
 
-  def apply(aiReq: PubMedAISumReq): Behavior[Command] = {
+  def apply(aiReq: PubMedAISumReq, id: String): Behavior[Command] = {
     Behaviors.setup[Command] { ctx =>
-      new PubMedSumAct(aiReq, ctx)
+      new PubMedSumAct(aiReq, id, ctx)
     }
   }
 }
 
-class PubMedSumAct(aiReq: PubMedAISumReq, ctx: ActorContext[PubMedSumAct.Command]) extends AbstractBehavior[PubMedSumAct.Command](ctx) {
+class PubMedSumAct(aiReq: PubMedAISumReq, id: String,
+                   ctx: ActorContext[PubMedSumAct.Command]) extends AbstractBehavior[PubMedSumAct.Command](ctx) {
 
   private var originAbstracts: Map[Int, PMAbstract] = Map.empty
   private var summarizedAbstracts: Map[Int, SummarizedAbstract] = Map.empty
@@ -63,13 +68,13 @@ class PubMedSumAct(aiReq: PubMedAISumReq, ctx: ActorContext[PubMedSumAct.Command
         this
 
       case AbstractsWrap(pmAbst) =>
-        val w: ActorRef[SummarizedAbstracts] = ctx.messageAdapter(m => AISummarizationWrap(m))
+        val w: ActorRef[FullResponse] = ctx.messageAdapter(m => AISummarizationWrap(m))
         ctx.log.info(s"Limiting number of abstract to be processed by AI to: ${aiReq.maxAbstracts}")
 
         val pmas = PMAbstracts(pmAbst.abstracts.take(aiReq.maxAbstracts), pmAbst.msg)
         originAbstracts = originAbstracts ++ pmas.abstracts.map(pma => pma.id -> pma).toMap
 
-        ctx.spawn(PubmedAISumRouter.apply(pmas, aiReq, w), "ai_summarization_router_actor")
+        ctx.spawn(PubmedAISumRouter.apply(pmas, aiReq, w), s"ai_summarization_router_actor_$id")
         this
 
       case aiSumW: AISummarizationWrap =>
@@ -77,8 +82,12 @@ class PubMedSumAct(aiReq: PubMedAISumReq, ctx: ActorContext[PubMedSumAct.Command
         summarizedAbstracts = summarizedAbstracts ++ aiSumW.summarizedAbstracts.summarizedAbstracts.map(sa => sa.id -> sa).toMap
         this
 
+      case GetFullResults(replyTo) =>
+        replyTo ! FullResponse(Some(aiReq), originAbstracts.values.toList, summarizedAbstracts.values.toList)
+        this
+
       case GetResults(replyTo) =>
-        replyTo ! SummarizedAbstracts(Some(aiReq), originAbstracts.values.toList, summarizedAbstracts.values.toList)
+        replyTo ! SummarizedAbstracts(summarizedAbstracts.values.toList)
         this
     }
   }

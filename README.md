@@ -17,6 +17,12 @@ Linthaal is written in Scala basing on the Akka.io library for Actors, clusterin
 The library provides agents for common task related to Computational Biology and interacting with LLMs.  
 
 
+### Get all Pubmed Summarization ToT
+```shell
+ curl http://127.0.0.1:8080/tot_pubmed
+``` 
 
-
-
+### Start a new Pubmed Summarization ToT
+```shell
+ curl -XPOST -H "Content-Type: application/json" -d '{"search" : "obesity biomarkers", "titleLength" : 5 , "abstractLength" : 20, "update" : 240, "maxAbstracts" : 20 }' http://127.0.0.1:8080/tot_pubmed
+```

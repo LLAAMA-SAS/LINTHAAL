@@ -1,12 +1,12 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{ActorContext, Behaviors, Routers}
-import akka.actor.typed.{ActorRef, Behavior, DispatcherSelector, SupervisorStrategy}
+import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, Routers }
+import akka.actor.typed.{ ActorRef, Behavior, DispatcherSelector, SupervisorStrategy }
 import org.linthaal.ai.services.chatgpt.PromptService.Choice
 import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.linthaal.tot.pubmed.PubMedSumAct.{SummarizedAbstract, SummarizedAbstracts}
+import org.linthaal.tot.pubmed.PubMedSumAct.{ FullResponse, SummarizedAbstract }
 
 import scala.concurrent.duration.DurationInt
 
@@ -31,15 +31,13 @@ import scala.concurrent.duration.DurationInt
   * Sending one abstract to one prompt (each routee) to get it summarized and
   * compiling all results once finished.
   *
+ * todo refactor to hybrid approach Funct/oo
   */
 object PubmedAISumRouter {
   sealed trait SummarizationMsg
   case class AIResponseWrap(aiR: AIResponse) extends SummarizationMsg
 
-  def apply(
-             pmas: PMAbstracts,
-             aiReq: PubMedAISumReq,
-             replyWhenDone: ActorRef[SummarizedAbstracts]): Behavior[SummarizationMsg] =
+  def apply(pmas: PMAbstracts, aiReq: PubMedAISumReq, replyWhenDone: ActorRef[FullResponse]): Behavior[SummarizationMsg] =
     Behaviors.setup { ctx =>
       ctx.log.info(s"Starting summarization router. ")
       val instructions = goalInstructions(aiReq.titleLength, aiReq.abstractLength)
@@ -59,15 +57,16 @@ object PubmedAISumRouter {
         router ! PubMedAISumOne.DoSummarize(oneObj)
       }
 
-      summarizing(pmas.abstracts.size, pmas, List.empty, List.empty, replyWhenDone, ctx)
+      summarizing(aiReq, pmas.abstracts.size, pmas, List.empty, List.empty, replyWhenDone, ctx)
     }
 
   private def summarizing(
+      aiReq: PubMedAISumReq,
       toSummarize: Int,
       originalAbstracts: PMAbstracts,
       aiResponses: List[AIResponse],
       summarized: List[SummarizedAbstract],
-      replyWhenDone: ActorRef[SummarizedAbstracts],
+      replyWhenDone: ActorRef[FullResponse],
       ctx: ActorContext[SummarizationMsg]): Behavior[SummarizationMsg] = {
 
     Behaviors.receiveMessage {
@@ -80,10 +79,10 @@ object PubmedAISumRouter {
 
         ctx.log.info(s"total summarized done= ${newSummarized.size})")
         if (toSummarize <= 1) {
-          replyWhenDone ! SummarizedAbstracts(originalAbstracts, newSummarized, newAIResponses)
+          replyWhenDone ! FullResponse(Some(aiReq), originalAbstracts.abstracts, newSummarized, newAIResponses)
           Behaviors.stopped
         } else {
-          summarizing(toSummarize - 1, originalAbstracts, newAIResponses, newSummarized, replyWhenDone, ctx)
+          summarizing(aiReq, toSummarize - 1, originalAbstracts, newAIResponses, newSummarized, replyWhenDone, ctx)
         }
     }
   }
@@ -91,7 +90,8 @@ object PubmedAISumRouter {
   def parseChoice(choice: Choice): SummarizedAbstract = {
     import org.linthaal.helpers.ncbi.eutils.PMJsonProt.jsonPMSummarizedAbstract
     import spray.json._
-    choice.message.content.replace("'", "\"").parseJson.convertTo[SummarizedAbstract]
+    choice.message.content.parseJson.convertTo[SummarizedAbstract]
+//    choice.message.content.replace("'", "\"").parseJson.convertTo[SummarizedAbstract]
   }
 
   def goalInstructions(titleNbW: Int, absNbW: Int) =

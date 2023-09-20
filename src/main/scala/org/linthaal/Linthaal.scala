@@ -25,5 +25,5 @@ object Linthaal {
 
   def main(args: Array[String]): Unit =
 
-    ActorSystem(LinthaalSupervisor(), "Linthaal-system")
+    ActorSystem[Nothing](LinthaalSupervisor(), "Linthaal-system")
 }

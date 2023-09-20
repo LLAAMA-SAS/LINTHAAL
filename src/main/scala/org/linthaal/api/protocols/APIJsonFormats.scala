@@ -2,7 +2,7 @@ package org.linthaal.api.protocols
 
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
-import org.linthaal.tot.pubmed.PubMedSumAct.SummarizedAbstract
+import org.linthaal.tot.pubmed.PubMedSumAct.{SummarizedAbstract, SummarizedAbstracts}
 import org.linthaal.tot.pubmed.PubMedToTManager.{ActionPerformed, AllSummarizationRequests}
 
 /**
@@ -29,7 +29,7 @@ object APIJsonFormats {
   import spray.json._
 
   implicit val pmAISumReqJsonFormat: RootJsonFormat[PubMedAISumReq] =
-    jsonFormat4(PubMedAISumReq.apply)
+    jsonFormat5(PubMedAISumReq.apply)
 
   implicit val actionPerformedJsonFormat: RootJsonFormat[ActionPerformed] =
     jsonFormat1(ActionPerformed.apply)
@@ -38,10 +38,7 @@ object APIJsonFormats {
 
   implicit val summarizedAbstJsonFormat: RootJsonFormat[SummarizedAbstract] = jsonFormat4(SummarizedAbstract.apply)
 
-  implicit val resultJsonFormat: RootJsonFormat[Result] = jsonFormat2(Result.apply)
-
-  implicit val summarizationResultsJsonFormat: RootJsonFormat[SummarizationResults] =
-    jsonFormat3(SummarizationResults.apply)
+  implicit val summarizedAbstsJsonFormat: RootJsonFormat[SummarizedAbstracts] = jsonFormat2(SummarizedAbstracts.apply)
 
   implicit val allSummarizationRequestsJsonFormat: RootJsonFormat[AllSummarizationRequests] =
     jsonFormat1(AllSummarizationRequests.apply)

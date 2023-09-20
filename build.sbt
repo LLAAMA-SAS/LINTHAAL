@@ -22,11 +22,12 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpVersion,
   "com.typesafe.akka" %% "akka-http-xml" % akkaHttpVersion,
 
-  "ch.qos.logback" % "logback-classic" % "1.2.11",
+  "ch.qos.logback" % "logback-classic" % "1.4.7",
 
   "io.lemonlabs" %% "scala-uri" % "4.0.3",
 
-  "commons-codec" % "commons-codec" % "1.15",
+  // apache common codec (hex, base64, etc.)
+  "commons-codec" % "commons-codec" % "1.16.0",
 
   // Swagger API publication
 //  "io.swagger" % "swagger-jaxrs" % "1.6.2",

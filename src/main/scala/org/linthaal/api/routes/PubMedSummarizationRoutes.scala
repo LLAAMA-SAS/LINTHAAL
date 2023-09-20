@@ -1,11 +1,12 @@
 package org.linthaal.api.routes
 
-import akka.http.scaladsl.server.Directives._
-import akka.actor.typed.{ActorRef, ActorSystem}
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Route
 import akka.actor.typed.scaladsl.AskPattern._
+import akka.actor.typed.{ ActorRef, ActorSystem }
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import akka.util.Timeout
+import org.linthaal.tot.pubmed.PubMedSumAct.SummarizedAbstracts
 import org.linthaal.tot.pubmed.PubMedToTManager
 import org.linthaal.tot.pubmed.PubMedToTManager._
 
@@ -27,66 +28,53 @@ import scala.concurrent.Future
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
   */
-class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])
-                               (implicit val system: ActorSystem[_]) {
-
+class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])(implicit val system: ActorSystem[_]) {
 
   import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
   import org.linthaal.api.protocols.APIJsonFormats._
 
   // If ask takes more time than this to complete the request is failed
-  private implicit val timeout: Timeout = Timeout.create(system.settings
-    .config.getDuration("linthaal.routes.ask-timeout"))
+  private implicit val timeout: Timeout = Timeout.create(system.settings.config.getDuration("linthaal.routes.ask-timeout"))
 
   def retrieveAllSummarizations(): Future[AllSummarizationRequests] =
-    pmToT.ask(RetrieveAllSummarizations(_))
+    pmToT.ask(RetrieveAll)
 
-  def getSummarization(id: String): Future[RetrieveResultsForId] =
-    pmToT.ask(RetrieveResultsForId(id, _))
+  def getSummarization(id: String): Future[SummarizedAbstracts] =
+    pmToT.ask(RetrieveSummarizations(id, _))
 
   def summarize(sumReq: PubMedAISumReq): Future[ActionPerformed] =
     pmToT.ask(StartAISummarization(sumReq, _))
 
   def removeSummarization(id: String): Future[ActionPerformed] =
-    pmToT.ask(RemoveResultsForId(id, _))
+    pmToT.ask(RemoveSummarizations(id, _))
 
   val pmAISumAllRoutes: Route =
-  pathPrefix("tot_pubmed") {
-    concat(
-      //#users-get-delete
-      pathEnd {
-        concat(
-          get {
+    pathPrefix("tot_pubmed") {
+      concat(
+        //#users-get-delete
+        pathEnd {
+          concat(get {
             complete(retrieveAllSummarizations())
-          },
-          post {
+          }, post {
             entity(as[PubMedAISumReq]) { pmAIReq =>
               onSuccess(summarize(pmAIReq)) { performed =>
                 complete((StatusCodes.Created, performed))
               }
             }
           })
-      },
-      path(Segment) { id =>
-        concat(
-          get {
-            rejectEmptyResponse {
-              onSuccess(getSummarization(id)) { response =>
-                complete(response.results)
-              }
+        },
+        path(Segment) { id =>
+          concat(get {
+            onSuccess(getSummarization(id)) { response =>
+              complete(response)
             }
-          },
-          delete {
+          }, delete {
             onSuccess(removeSummarization(id)) { performed =>
               complete((StatusCodes.OK, performed))
             }
           })
-      })
-  }
+        })
+    }
 }
 
-case class PubMedAISumReq(search: String, titleLength: Int = 5,
-                          abstractLength: Int = 20, update: Int = 1800, maxAbstracts: Int = 20)
-
-
-
+case class PubMedAISumReq(search: String, titleLength: Int = 5, abstractLength: Int = 20, update: Int = 1800, maxAbstracts: Int = 20)
