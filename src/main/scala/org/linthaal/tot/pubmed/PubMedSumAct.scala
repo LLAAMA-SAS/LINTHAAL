@@ -1,6 +1,6 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
+import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
 import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
 import org.linthaal.api.routes.PubMedAISumReq
@@ -10,6 +10,8 @@ import org.linthaal.helpers.ncbi.eutils.{EutilsCalls, PMActor}
 import org.linthaal.tot.pubmed.PubMedSumAct._
 
 import java.util.Date
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.FiniteDuration
 
 /**
   *
@@ -41,30 +43,40 @@ object PubMedSumAct {
 
   case class SummarizedAbstracts(sumAbsts: List[SummarizedAbstract] = List.empty, msg: String = "")
 
-  case class FullResponse(aiReq: Option[PubMedAISumReq] = None,
-                          originalAbstracts: List[PMAbstract] = List.empty,
-                          summarizedAbstracts: List[SummarizedAbstract] = List.empty,
-                          aiResponses: List[AIResponse] = List.empty,
-                          msg : String = "")
+  case class FullResponse(
+      aiReq: Option[PubMedAISumReq] = None,
+      originalAbstracts: List[PMAbstract] = List.empty,
+      summarizedAbstracts: List[SummarizedAbstract] = List.empty,
+      aiResponses: List[AIResponse] = List.empty,
+      msg: String = "")
 
   def apply(aiReq: PubMedAISumReq, id: String): Behavior[Command] = {
-    Behaviors.setup[Command] { ctx =>
-      new PubMedSumAct(aiReq, id, ctx)
+    Behaviors.withTimers { timers =>
+      Behaviors.setup[Command] { ctx =>
+        new PubMedSumAct(aiReq, id, ctx, timers)
+      }
     }
   }
 }
 
-class PubMedSumAct(aiReq: PubMedAISumReq, id: String,
-                   ctx: ActorContext[PubMedSumAct.Command]) extends AbstractBehavior[PubMedSumAct.Command](ctx) {
+class PubMedSumAct(aiReq: PubMedAISumReq, id: String, ctx: ActorContext[PubMedSumAct.Command],
+                   timers: TimerScheduler[PubMedSumAct.Command])
+    extends AbstractBehavior[PubMedSumAct.Command](ctx) {
 
   private var originAbstracts: Map[Int, PMAbstract] = Map.empty
   private var summarizedAbstracts: Map[Int, SummarizedAbstract] = Map.empty
+
+  private var runs: Int = 0
+
+  timers.startTimerWithFixedDelay("timer_$id", Start, new FiniteDuration(aiReq.update, TimeUnit.SECONDS))
 
   override def onMessage(msg: PubMedSumAct.Command): Behavior[PubMedSumAct.Command] = {
     msg match {
       case Start =>
         val wrap: ActorRef[PMAbstracts] = ctx.messageAdapter(m => AbstractsWrap(m))
         ctx.spawn(PMActor.apply(EutilsCalls.eutilsDefaultConf, aiReq.search, originAbstracts.keys.toList, wrap), "pubmed_query_actor")
+        runs = runs + 1
+        ctx.log.info(s"running query [${aiReq.search}] for the ${runs} time.")
         this
 
       case AbstractsWrap(pmAbst) =>
