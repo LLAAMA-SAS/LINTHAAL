@@ -31,19 +31,19 @@ import scala.concurrent.duration.DurationInt
   * Sending one abstract to one prompt (each routee) to get it summarized and
   * compiling all results once finished.
   *
- * todo refactor to hybrid approach Funct/oo
+  * todo refactor to hybrid approach Funct/oo
   */
-object PubmedAISumRouter {
+object PubMedAISumRouter {
   sealed trait SummarizationMsg
   case class AIResponseWrap(aiR: AIResponse) extends SummarizationMsg
 
   def apply(pmas: PMAbstracts, aiReq: PubMedAISumReq, replyWhenDone: ActorRef[FullResponse]): Behavior[SummarizationMsg] =
     Behaviors.setup { ctx =>
       ctx.log.info(s"Starting summarization router. ")
-      val instructions = goalInstructions(aiReq.titleLength, aiReq.abstractLength)
+      val instructions = goalInstructions(aiReq.titleLength, aiReq.abstractLength, Some(aiReq.search))
       val wrap: ActorRef[AIResponse] = ctx.messageAdapter(m => AIResponseWrap(m))
       val pool = Routers
-        .pool(Math.min(5, pmas.abstracts.size)) {
+        .pool(Math.max(5, pmas.abstracts.size)) {
           Behaviors
             .supervise(PubMedAISumOne(wrap, instructions))
             .onFailure[Exception](SupervisorStrategy.restart.withLimit(maxNrOfRetries = 3, withinTimeRange = 5.seconds))
@@ -90,11 +90,14 @@ object PubmedAISumRouter {
   def parseChoice(choice: Choice): SummarizedAbstract = {
     import org.linthaal.helpers.ncbi.eutils.PMJsonProt.jsonPMSummarizedAbstract
     import spray.json._
-    choice.message.content.parseJson.convertTo[SummarizedAbstract]
+    choice.message.content.parseJson.convertTo[SummarizedAbstract]  //todo still a problem here sometimes (json parsing with quotes)
 //    choice.message.content.replace("'", "\"").parseJson.convertTo[SummarizedAbstract]
   }
 
-  def goalInstructions(titleNbW: Int, absNbW: Int) =
+  def goalInstructions(titleNbW: Int, absNbW: Int, searchString: Option[String]) = {
+    val topics =
+      if (searchString.isDefined) s"The users are particularly interested in: ${searchString.get}"
+      else ""
     s"""Your goal is to summarize scientific text.
        |An item is provided as a json object with 4 elements: id, title, abstractText, date.
        |The json part starts with #### as delimiter.
@@ -104,6 +107,8 @@ object PubmedAISumRouter {
        |3) Keep the id
        |4) Keep the date
        |The users are very smart scientists, knowing the domain very well.
+       |$topics
        |Return the result as a json object in the following format: id, sumTitle, sumAbstract, date.
        |""".stripMargin.replace("\n", " ")
+  }
 }

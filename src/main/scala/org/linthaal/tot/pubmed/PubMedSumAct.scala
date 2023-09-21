@@ -86,7 +86,7 @@ class PubMedSumAct(aiReq: PubMedAISumReq, id: String, ctx: ActorContext[PubMedSu
         val pmas = PMAbstracts(pmAbst.abstracts.take(aiReq.maxAbstracts), pmAbst.msg)
         originAbstracts = originAbstracts ++ pmas.abstracts.map(pma => pma.id -> pma).toMap
 
-        ctx.spawn(PubmedAISumRouter.apply(pmas, aiReq, w), s"ai_summarization_router_actor_$id")
+        ctx.spawn(PubMedAISumRouter.apply(pmas, aiReq, w), s"ai_summarization_router_actor_$id") //todo fix multiple instance with same name
         this
 
       case aiSumW: AISummarizationWrap =>

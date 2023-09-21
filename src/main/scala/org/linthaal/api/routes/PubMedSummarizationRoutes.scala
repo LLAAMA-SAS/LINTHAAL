@@ -37,7 +37,7 @@ class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])(impli
   private implicit val timeout: Timeout = Timeout.create(system.settings.config.getDuration("linthaal.routes.ask-timeout"))
 
   def retrieveAllSummarizations(): Future[AllSummarizationRequests] =
-    pmToT.ask(RetrieveAll)
+    pmToT.ask(RetrieveAll.apply)
 
   def getSummarization(id: String): Future[SummarizedAbstracts] =
     pmToT.ask(RetrieveSummarizations(id, _))

@@ -24,6 +24,6 @@ object Linthaal {
   val log = LoggerFactory.getLogger(getClass.toString)
 
   def main(args: Array[String]): Unit =
-
+    println("Starting Linthaal...")
     ActorSystem[Nothing](LinthaalSupervisor(), "Linthaal-system")
 }
