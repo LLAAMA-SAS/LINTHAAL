@@ -3,8 +3,8 @@ import com.typesafe.sbt.SbtNativePackager.autoImport.NativePackagerHelper.*
 
 enablePlugins(JavaAppPackaging, DockerPlugin, DockerSpotifyClientPlugin)
 
-organization := "io.linthaal"
-name := "linthaal"
+organization := "org.linthaal"
+name := "Linthaal"
 
 version := "1.0.0"
 
@@ -73,7 +73,7 @@ dockerBaseImage := "docker.io/library/adoptopenjdk:12-jre-hotspot"
 
 dockerUpdateLatest := true
 
-dockerExposedPorts := Seq(9000)
+dockerExposedPorts := Seq(8080)
 
 dockerBuildCommand := {
   if (sys.props("os.arch") != "amd64") {
