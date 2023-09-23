@@ -1,8 +1,4 @@
-package org.linthaal
-
-import akka.actor.typed.ActorSystem
-import org.linthaal.helpers.Parameters
-import org.slf4j.LoggerFactory
+package org.linthaal.helpers
 
 /**
   *
@@ -20,16 +16,28 @@ import org.slf4j.LoggerFactory
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
   */
-object Linthaal {
 
-  val log = LoggerFactory.getLogger(getClass.toString)
+object Parameters {
 
-  var appArgs: Map[String, String] = Map.empty
+  def parseArgs(args: Array[String],
+                defaults: Map[String, String] = Map.empty): Map[String, String] = {
 
-  def main(args: Array[String]): Unit =
-    println("Starting Linthaal...")
-    appArgs = Parameters.parseArgs(args)
-    log.info(s"""Args: ${appArgs.keys.mkString(" , ")}""")
-    ActorSystem[Nothing](LinthaalSupervisor(), "Linthaal-system")
+    val l = args.toList
+
+    val Opt = """(\S+)=(\S+)""".r
+
+    def pm(s: String): Option[(String, String)] = s match {
+      case Opt(k, v) => Some((k, v))
+      case s: String => Some((s, ""))
+      case _ => None
+    }
+
+    def pA(l: List[String]): List[Option[(String, String)]] = l match {
+      case Nil => List()
+      case h :: q => pm(h) :: pA(q)
+    }
+
+    if (args.isEmpty) defaults else defaults ++ pA(l).filter(_.isDefined).map(_.get).toMap
+  }
 }
 
