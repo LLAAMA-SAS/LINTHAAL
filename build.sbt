@@ -69,7 +69,8 @@ Universal / javaOptions ++= Seq(
   //  s"-version=${version.value}"
 )
 
-dockerBaseImage := "docker.io/library/adoptopenjdk:12-jre-hotspot"
+//dockerBaseImage := "docker.io/library/adoptopenjdk:12-jre-hotspot"
+dockerBaseImage := "docker.io/library/eclipse-temurin:17-jre-alpine"
 
 dockerUpdateLatest := true
 
