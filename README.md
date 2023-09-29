@@ -1,6 +1,6 @@
 # Linthaal 
-## 
-Linthaal is a graph of thoughts multi-agents library for Computational Biology, Bioinformatics & Biopharma.
+
+### Linthaal is a graph of thoughts multi-agents library for Computational Biology, Bioinformatics & Biopharma.
 
 It's based on the Actor paradigm. Each agent or node in the graph is represented by an autonomous software actor.
 
@@ -25,5 +25,3 @@ Linthaal can easily be tested with docker:
 ```shell
  docker run -it --mount type=bind,source={pathToYourConfigFilesLikeApiKeys},target=/home/linthaal -p 8080:8080 llaamasas/linthaal:1.0.0 apk1_api_key=/home/linthaal/{keyName1} apk2_api_key=/home/linthaal/{keyName2}
 ``` 
-
-

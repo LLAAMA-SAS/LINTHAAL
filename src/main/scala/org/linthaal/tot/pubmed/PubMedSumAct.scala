@@ -84,9 +84,10 @@ class PubMedSumAct(aiReq: PubMedAISumReq, id: String, ctx: ActorContext[PubMedSu
         ctx.log.info(s"Limiting number of abstract to be processed by AI to: ${aiReq.maxAbstracts}")
 
         val pmas = PMAbstracts(pmAbst.abstracts.take(aiReq.maxAbstracts), pmAbst.msg)
-        originAbstracts = originAbstracts ++ pmas.abstracts.map(pma => pma.id -> pma).toMap
-
-        ctx.spawn(PubMedAISumRouter.apply(pmas, aiReq, w), s"ai_summarization_router_actor_$id") //todo fix multiple instance with same name
+        if (pmas.abstracts.nonEmpty) {
+          originAbstracts = originAbstracts ++ pmas.abstracts.map(pma => pma.id -> pma).toMap
+          ctx.spawn(PubMedAISumRouter.apply(pmas, aiReq, w), s"ai_summarization_router_actor_$id")
+        }
         this
 
       case aiSumW: AISummarizationWrap =>

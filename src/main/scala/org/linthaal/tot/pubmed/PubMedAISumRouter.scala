@@ -39,6 +39,7 @@ object PubMedAISumRouter {
 
   def apply(pmas: PMAbstracts, aiReq: PubMedAISumReq, replyWhenDone: ActorRef[FullResponse]): Behavior[SummarizationMsg] =
     Behaviors.setup { ctx =>
+      require(pmas.abstracts.nonEmpty)
       ctx.log.info(s"Starting summarization router. ")
       val instructions = goalInstructions(aiReq.titleLength, aiReq.abstractLength, Some(aiReq.search))
       val wrap: ActorRef[AIResponse] = ctx.messageAdapter(m => AIResponseWrap(m))
