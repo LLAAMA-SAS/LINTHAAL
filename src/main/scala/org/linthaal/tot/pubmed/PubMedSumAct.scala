@@ -1,12 +1,12 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors, TimerScheduler }
+import akka.actor.typed.{ ActorRef, Behavior }
 import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.linthaal.helpers.ncbi.eutils.{EutilsCalls, PMActor}
+import org.linthaal.helpers.ncbi.eutils.{ EutilsCalls, PMActor }
 import org.linthaal.tot.pubmed.PubMedSumAct._
 
 import java.util.Date
@@ -34,16 +34,16 @@ object PubMedSumAct {
   trait Command
   case object Start extends Command
 
-  case class GetFullResults(replyTo: ActorRef[FullResponse]) extends Command // For debugging
-  case class GetResults(replyTo: ActorRef[SummarizedAbstracts]) extends Command // For debugging
-  case class AbstractsWrap(pmAbsts: PMAbstracts) extends Command
-  case class AISummarizationWrap(summarizedAbstracts: FullResponse) extends Command
+  final case class GetFullResults(replyTo: ActorRef[FullResponse]) extends Command // For debugging
+  final case class GetResults(replyTo: ActorRef[SummarizedAbstracts]) extends Command // For debugging
+  final case class AbstractsWrap(pmAbsts: PMAbstracts) extends Command
+  final case class AISummarizationWrap(summarizedAbstracts: FullResponse) extends Command
 
-  case class SummarizedAbstract(id: Int, sumTitle: String, sumAbstract: String, date: Date)
+  final case class SummarizedAbstract(id: Int, sumTitle: String, sumAbstract: String, date: Date)
 
-  case class SummarizedAbstracts(sumAbsts: List[SummarizedAbstract] = List.empty, msg: String = "")
+  final case class SummarizedAbstracts(sumAbsts: List[SummarizedAbstract] = List.empty, msg: String = "")
 
-  case class FullResponse(
+  final case class FullResponse(
       aiReq: Option[PubMedAISumReq] = None,
       originalAbstracts: List[PMAbstract] = List.empty,
       summarizedAbstracts: List[SummarizedAbstract] = List.empty,
@@ -59,8 +59,7 @@ object PubMedSumAct {
   }
 }
 
-class PubMedSumAct(aiReq: PubMedAISumReq, id: String, ctx: ActorContext[PubMedSumAct.Command],
-                   timers: TimerScheduler[PubMedSumAct.Command])
+class PubMedSumAct(aiReq: PubMedAISumReq, id: String, ctx: ActorContext[PubMedSumAct.Command], timers: TimerScheduler[PubMedSumAct.Command])
     extends AbstractBehavior[PubMedSumAct.Command](ctx) {
 
   private var originAbstracts: Map[Int, PMAbstract] = Map.empty
@@ -76,7 +75,7 @@ class PubMedSumAct(aiReq: PubMedAISumReq, id: String, ctx: ActorContext[PubMedSu
         val wrap: ActorRef[PMAbstracts] = ctx.messageAdapter(m => AbstractsWrap(m))
         ctx.spawn(PMActor.apply(EutilsCalls.eutilsDefaultConf, aiReq.search, originAbstracts.keys.toList, wrap), "pubmed_query_actor")
         runs = runs + 1
-        ctx.log.info(s"running query [${aiReq.search}] for the ${runs} time.")
+        ctx.log.info(s"running query [${aiReq.search}] for the $runs time.")
         this
 
       case AbstractsWrap(pmAbst) =>

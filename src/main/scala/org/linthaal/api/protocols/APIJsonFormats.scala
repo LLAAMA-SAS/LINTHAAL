@@ -2,8 +2,8 @@ package org.linthaal.api.protocols
 
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
-import org.linthaal.tot.pubmed.PubMedSumAct.{SummarizedAbstract, SummarizedAbstracts}
-import org.linthaal.tot.pubmed.PubMedToTManager.{ActionPerformed, AllSummarizationRequests}
+import org.linthaal.tot.pubmed.PubMedSumAct.{ SummarizedAbstract, SummarizedAbstracts }
+import org.linthaal.tot.pubmed.PubMedToTManager.{ ActionPerformed, AllSummarizationRequests }
 
 /**
   *

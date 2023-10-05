@@ -1,7 +1,9 @@
 package org.linthaal.helpers.chatgpt
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
-import org.linthaal.ai.services.chatgpt.{PromptService, SimpleChatAct}
+import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
+import org.linthaal.ai.services.chatgpt.{ PromptService, SimpleChatAct }
+import org.linthaal.ai.services.chatgpt.PromptService.Message
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.duration.DurationInt
@@ -53,7 +55,7 @@ class PromptSimpleTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
 }
 
 object TestAIPromptQuestions {
-  val test1 =
+  val test1: String =
     s"""
        |Your goal is to summarize text.
        |Each item is provided as a json objects with 4 elements each: id, title, abstractText, date.
@@ -91,7 +93,7 @@ object TestAIPromptQuestions {
        |}]
        |""".stripMargin
 
-  val test2 =
+  val test2: String =
     s"""
        |Your goal is to summarize a text in 6 words and a maximum of 50 characters.
        |The readers are very smart scientists, knowing the domain very well.

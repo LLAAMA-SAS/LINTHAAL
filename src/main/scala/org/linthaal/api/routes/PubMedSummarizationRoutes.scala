@@ -36,16 +36,16 @@ class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])(impli
   // If ask takes more time than this to complete the request is failed
   private implicit val timeout: Timeout = Timeout.create(system.settings.config.getDuration("linthaal.routes.ask-timeout"))
 
-  def retrieveAllSummarizations(): Future[AllSummarizationRequests] =
+  private def retrieveAllSummarizations(): Future[AllSummarizationRequests] =
     pmToT.ask(RetrieveAll.apply)
 
-  def getSummarization(id: String): Future[SummarizedAbstracts] =
+  private def getSummarization(id: String): Future[SummarizedAbstracts] =
     pmToT.ask(RetrieveSummarizations(id, _))
 
-  def summarize(sumReq: PubMedAISumReq): Future[ActionPerformed] =
+  private def summarize(sumReq: PubMedAISumReq): Future[ActionPerformed] =
     pmToT.ask(StartAISummarization(sumReq, _))
 
-  def removeSummarization(id: String): Future[ActionPerformed] =
+  private def removeSummarization(id: String): Future[ActionPerformed] =
     pmToT.ask(RemoveSummarizations(id, _))
 
   val pmAISumAllRoutes: Route =

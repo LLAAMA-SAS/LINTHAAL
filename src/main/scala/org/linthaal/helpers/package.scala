@@ -41,7 +41,7 @@ package object helpers {
 
   def parseIsoDateString(date: String): Option[Date] = Try { localIsoDateFormatter.get().parse(date) }.toOption
 
-  def dateToIsoString(date: Date) = localIsoDateFormatter.get().format(date)
+  def dateToIsoString(date: Date): String = localIsoDateFormatter.get().format(date)
 
   def getDigest(text: String): String = {
     val md = java.security.MessageDigest.getInstance("SHA-256")
