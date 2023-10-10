@@ -101,8 +101,6 @@ object PubMedAISumRouter {
     val dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     val date = dateFormat.parse(dateText)
 
-    println(choice.message.content)
-
     SummarizedAbstract(id = id, sumTitle = sumTitle, sumAbstract = sumAbstract, date = date)
   }
 
@@ -114,8 +112,8 @@ object PubMedAISumRouter {
        |An item is provided as a json object with 4 elements: id, title, abstractText, date.
        |The json part starts with #### as delimiter.
        |Your goal is:
-       |1) to summarize title in maximum $titleNbW words which will be sumTitle,
-       |2) to summarize abstractText in maximum $absNbW words which will be sumAbstract,
+       |1) to summarize title in maximum $titleNbW words which will be sumTitle
+       |2) to summarize abstractText in maximum $absNbW words which will be sumAbstract
        |3) Keep the id
        |4) Keep the date
        |The users are very smart scientists, knowing the domain very well.
