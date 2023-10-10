@@ -8,6 +8,7 @@ import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
 import org.linthaal.tot.pubmed.PubMedSumAct.{ FullResponse, SummarizedAbstract }
 
+import java.text.SimpleDateFormat
 import scala.concurrent.duration.DurationInt
 
 /**
@@ -90,7 +91,6 @@ object PubMedAISumRouter {
 
   private def parseChoice(choice: Choice): SummarizedAbstract = {
     import scala.xml.XML
-    import java.text.SimpleDateFormat
 
     val xml = XML.loadString(choice.message.content)
 
@@ -98,7 +98,6 @@ object PubMedAISumRouter {
     val sumTitle = (xml \ "sumTitle").text
     val sumAbstract = (xml \ "sumAbstract").text
     val dateText = (xml \ "date").text
-    val dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     val date = dateFormat.parse(dateText)
 
     SummarizedAbstract(id = id, sumTitle = sumTitle, sumAbstract = sumAbstract, date = date)
@@ -118,7 +117,9 @@ object PubMedAISumRouter {
        |4) Keep the date
        |The users are very smart scientists, knowing the domain very well.
        |$topics
-       |Return the result as a xml object in the following format: id, sumTitle, sumAbstract, date.
+       |Return the result as an XML object in the following format: id, sumTitle, sumAbstract, date.
        |""".stripMargin.replace("\n", " ")
   }
+
+  private val dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
 }
