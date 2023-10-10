@@ -27,10 +27,10 @@ object SimpleChatAct {
   import PromptService._
 
   sealed trait ChatMsg
-  private[linthaal] final case class Response(chatRes: ChatResponse) extends ChatMsg
-  private[linthaal] final case class ChatFailed(reason: String) extends ChatMsg
+  final case class Response(chatRes: ChatResponse) extends ChatMsg
+  final case class ChatFailed(reason: String) extends ChatMsg
 
-  private[linthaal] case class AIResponse(
+  final case class AIResponse(
       id: String,
       chatObject: String,
       created: Long,
@@ -40,13 +40,13 @@ object SimpleChatAct {
       model: String)
 
   def apply(
-      promtConf: PromptConfig,
+      promptConf: PromptConfig,
       messages: Seq[Message],
       replyTo: ActorRef[AIResponse],
       temperature: Double = 0.0): Behavior[ChatMsg] = {
 
     Behaviors.setup[ChatMsg] { ctx =>
-      val prtServ: PromptService = new PromptService(promtConf)(ctx.system)
+      val prtServ: PromptService = new PromptService(promptConf)(ctx.system)
       ctx.log.info("sent question... ")
       val time1 = System.currentTimeMillis()
 
@@ -56,7 +56,7 @@ object SimpleChatAct {
         case Success(rq) => Response(rq)
         case Failure(rf) => ChatFailed(rf.getMessage)
       }
-      asking(replyTo, promtConf.model, temperature, messages, time1)
+      asking(replyTo = replyTo, model = promptConf.model, temperature = temperature, messages = messages, time = time1)
     }
   }
 

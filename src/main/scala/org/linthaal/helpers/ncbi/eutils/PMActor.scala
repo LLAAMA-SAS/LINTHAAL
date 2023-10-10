@@ -28,9 +28,9 @@ import scala.xml.NodeSeq
 object PMActor {
   sealed trait PMCommand
 
-  private[linthaal] final case class PMIds(sr: PMIdSearchResults) extends PMCommand
-  private[linthaal] final case class PMFailed(reason: String) extends PMCommand
-  private[linthaal] final case class PMAbstracts(abstracts: List[PMAbstract], msg: String = "") extends PMCommand
+  final case class PMIds(sr: PMIdSearchResults) extends PMCommand
+  final case class PMFailed(reason: String) extends PMCommand
+  final case class PMAbstracts(abstracts: List[PMAbstract], msg: String = "") extends PMCommand
 
   def apply(
       conf: EutilsCalls.EutilsConfig,
