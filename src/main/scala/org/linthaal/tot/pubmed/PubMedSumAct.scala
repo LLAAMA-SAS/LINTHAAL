@@ -39,7 +39,6 @@ object PubMedSumAct {
   case class AbstractsWrap(pmAbsts: PMAbstracts) extends Command
   case class AISummarizationWrap(summarizedAbstracts: FullResponse) extends Command
 
-
   case class SummarizedAbstract(id: Int, sumTitle: String, sumAbstract: String, date: Date)
 
   case class SummarizedAbstracts(sumAbsts: List[SummarizedAbstract] = List.empty, msg: String = "")
