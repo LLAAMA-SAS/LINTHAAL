@@ -8,6 +8,7 @@ import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
 import org.linthaal.tot.pubmed.PubMedSumAct.{ FullResponse, SummarizedAbstract }
 
+import java.text.SimpleDateFormat
 import scala.concurrent.duration.DurationInt
 
 /**
@@ -88,14 +89,21 @@ object PubMedAISumRouter {
     }
   }
 
-  def parseChoice(choice: Choice): SummarizedAbstract = {
-    import org.linthaal.helpers.ncbi.eutils.PMJsonProt.jsonPMSummarizedAbstract
-    import spray.json._
-    choice.message.content.parseJson.convertTo[SummarizedAbstract]  //todo still a problem here sometimes (json parsing with quotes)
-//    choice.message.content.replace("'", "\"").parseJson.convertTo[SummarizedAbstract]
+  private def parseChoice(choice: Choice): SummarizedAbstract = {
+    import scala.xml.XML
+
+    val xml = XML.loadString(choice.message.content)
+
+    val id = (xml \ "id").text.toInt
+    val sumTitle = (xml \ "sumTitle").text
+    val sumAbstract = (xml \ "sumAbstract").text
+    val dateText = (xml \ "date").text
+    val date = dateFormat.parse(dateText)
+
+    SummarizedAbstract(id = id, sumTitle = sumTitle, sumAbstract = sumAbstract, date = date)
   }
 
-  def goalInstructions(titleNbW: Int, absNbW: Int, searchString: Option[String]) = {
+  private def goalInstructions(titleNbW: Int, absNbW: Int, searchString: Option[String]) = {
     val topics =
       if (searchString.isDefined) s"The users are particularly interested in: ${searchString.get}"
       else ""
@@ -103,13 +111,15 @@ object PubMedAISumRouter {
        |An item is provided as a json object with 4 elements: id, title, abstractText, date.
        |The json part starts with #### as delimiter.
        |Your goal is:
-       |1) to summarize title in maximum ${titleNbW} words which will be sumTitle,
-       |2) to summarize abstractText in maximum ${absNbW} words which will be sumAbstract,
+       |1) to summarize title in maximum $titleNbW words which will be sumTitle
+       |2) to summarize abstractText in maximum $absNbW words which will be sumAbstract
        |3) Keep the id
        |4) Keep the date
        |The users are very smart scientists, knowing the domain very well.
        |$topics
-       |Return the result as a json object in the following format: id, sumTitle, sumAbstract, date.
+       |Return the result as an XML object in the following format: id, sumTitle, sumAbstract, date.
        |""".stripMargin.replace("\n", " ")
   }
+
+  private val dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
 }
