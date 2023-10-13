@@ -23,52 +23,54 @@ import scala.xml.NodeSeq
   */
 object EutilsADT {
 
-  case class QueryTranslation(from: String, to: String)
-  case class PMidSearchResults(count: Int, retMax: Int, RetStart: Int, ids: List[Int], queryTranslations: List[QueryTranslation])
+  final case class QueryTranslation(from: String, to: String)
+  final case class PMIdSearchResults(count: Int, retMax: Int, RetStart: Int, ids: List[Int], queryTranslations: List[QueryTranslation])
+  final case class PMAbstract(id: Int, title: String, abstractText: String, date: Date)
 
-  case class PMAbstract(id: Int, title: String, abstractText: String, date: Date)
-
-  def pmIdsfromXml(ns: NodeSeq): PMidSearchResults = {
-    val count = (ns \\ "eSearchResult" \\ "Count").text.toInt
-    val retMax = (ns \\ "eSearchResult" \\ "RetMax").text.toInt
-    val retStart = (ns \\ "eSearchResult" \\ "RetStart").text.toInt
-    val ids: List[Int] =
-      (ns \\ "eSearchResult" \\ "IdList" \ "Id").map(id => id.text.toInt).toList
+  def pmIdsFromXml(ns: NodeSeq): PMIdSearchResults = {
+    val count: Int = (ns \\ "eSearchResult" \\ "Count").text.toInt
+    val retMax: Int = (ns \\ "eSearchResult" \\ "RetMax").text.toInt
+    val retStart: Int = (ns \\ "eSearchResult" \\ "RetStart").text.toInt
+    val ids: List[Int] = (ns \\ "eSearchResult" \\ "IdList" \ "Id").map(id => id.text.toInt).toList
 
     val trans: List[QueryTranslation] =
       (ns \\ "eSearchResult" \\ "TranslationSet" \ "Translation")
-        .map(n => (((n \\ "From").text, (n \\ "To").text)))
+        .map(n => ((n \\ "From").text, (n \\ "To").text))
         .map(t => QueryTranslation(t._1, t._2))
         .toList
 
-    PMidSearchResults(count, retMax, retStart, ids, trans)
+    PMIdSearchResults(count, retMax, retStart, ids, trans)
   }
 
   def pmAbstractsFromXml(ns: NodeSeq): List[PMAbstract] = {
-    val absts = (ns \\"PubmedArticleSet" \\ "PubmedArticle" \\ "MedlineCitation")
-      .map(ar => PMAbstract( id = (ar \ "PMID").text.toInt,
-      title = (ar \\ "Article" \\ "ArticleTitle").text,
-        abstractText = (pmXmlAbstToText(ar \\ "Article" \\ "Abstract")),
-          stringToDate(pmXmlDate(ar \\ "Article" \\ "ArticleDate")))).toList
+    val absts = (ns \\ "PubmedArticleSet" \\ "PubmedArticle" \\ "MedlineCitation")
+      .map(ar =>
+        PMAbstract(
+          id = (ar \ "PMID").text.toInt,
+          title = (ar \\ "Article" \\ "ArticleTitle").text,
+          abstractText = pmXmlAbstToText(ar \\ "Article" \\ "Abstract"),
+          stringToDate(pmXmlDate(ar \\ "Article" \\ "ArticleDate"))))
+      .toList
 
 //    println(helpers.getEnoughButNotTooMuchInfo("abstracts= " + absts.headOption))
     absts
   }
 
   // Helpers
-  val localDateFormatter = new ThreadLocal[SimpleDateFormat] {
+  private val localDateFormatter = new ThreadLocal[SimpleDateFormat] {
     override def initialValue() = new SimpleDateFormat("yyyy-MM-dd")
   }
 
-  def stringToDateOption(date: String): Option[Date] = Try {
-    localDateFormatter.get().parse(date)
-  }.toOption
+  private def stringToDateOption(date: String): Option[Date] =
+    Try {
+      localDateFormatter.get().parse(date)
+    }.toOption
 
-  def stringToDate(date: String): Date = stringToDateOption(date).getOrElse(new Date(0))
+  private def stringToDate(date: String): Date = stringToDateOption(date).getOrElse(new Date(0))
 
   def dateToString(date: Date): String = localDateFormatter.get().format(date)
 
-  def pmXmlDate(n: NodeSeq): String = {
+  private def pmXmlDate(n: NodeSeq): String = {
     val y = (n \ "Year").text
     val m = (n \ "Month").text
     val d = (n \ "Day").text
@@ -76,9 +78,10 @@ object EutilsADT {
     s"$y-$m-$d"
   }
 
-  def pmXmlAbstToText(n: NodeSeq): String  = {
-    (n \\ "AbstractText").map (n => ((n \@ "Label", n.text)))
-      .map(n => if(n._1.nonEmpty && n._1 == "CONCLUSIONS") n._1 + ": " + n._2 else n._2) // for now, only keep conclusions if there are many fields
+  private def pmXmlAbstToText(n: NodeSeq): String = {
+    (n \\ "AbstractText")
+      .map(n => (n \@ "Label", n.text))
+      .map(n => if (n._1.nonEmpty && n._1 == "CONCLUSIONS") n._1 + ": " + n._2 else n._2) // for now, only keep conclusions if there are many fields
       .mkString("\n")
   }
 }

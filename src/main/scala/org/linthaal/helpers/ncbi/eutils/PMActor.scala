@@ -1,12 +1,12 @@
 package org.linthaal.helpers.ncbi.eutils
 
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.{ ActorRef, Behavior }
 import org.linthaal.helpers.enoughButNotTooMuchInfo
-import EutilsADT.{PMAbstract, PMidSearchResults}
+import EutilsADT.{ PMAbstract, PMIdSearchResults }
 
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
+import scala.util.{ Failure, Success }
 import scala.xml.NodeSeq
 
 /**
@@ -28,20 +28,22 @@ import scala.xml.NodeSeq
 object PMActor {
   sealed trait PMCommand
 
-  case class PMIds(sr: PMidSearchResults) extends PMCommand
-  case class PMFailed(reason: String) extends PMCommand
-  case class PMAbstracts(abstracts: List[PMAbstract], msg: String = "") extends PMCommand
+  final case class PMIds(sr: PMIdSearchResults) extends PMCommand
+  final case class PMFailed(reason: String) extends PMCommand
+  final case class PMAbstracts(abstracts: List[PMAbstract], msg: String = "") extends PMCommand
 
-  def apply(conf: EutilsCalls.EutilsConfig, search: String,
-            pmIdsAlreadyDone: List[Int],
-            replyToWhenDone: ActorRef[PMAbstracts]): Behavior[PMCommand] = {
+  def apply(
+      conf: EutilsCalls.EutilsConfig,
+      search: String,
+      pmIdsAlreadyDone: List[Int],
+      replyToWhenDone: ActorRef[PMAbstracts]): Behavior[PMCommand] = {
     Behaviors.setup[PMCommand] { ctx =>
       val eutilsCalls: EutilsCalls = new EutilsCalls(conf)(ctx.system)
       val futureResp: Future[NodeSeq] = eutilsCalls.searchPubmed(search)
       ctx.pipeToSelf(futureResp) {
         case Success(ns) =>
           ctx.log.info(enoughButNotTooMuchInfo(ns.toString()))
-          val sr = EutilsADT.pmIdsfromXml(ns)
+          val sr = EutilsADT.pmIdsFromXml(ns)
           ctx.log.info(s"found ${sr.ids.size} pmids")
           PMIds(sr)
         case Failure(r) =>
@@ -52,16 +54,17 @@ object PMActor {
     }
   }
 
-  def queryingAbstracts(replyToWhenDone: ActorRef[PMAbstracts],
-                        pmIdsAlreadyDone: List[Int],
-                        eutilsCalls: EutilsCalls): Behavior[PMCommand] = {
+  private def queryingAbstracts(
+      replyToWhenDone: ActorRef[PMAbstracts],
+      pmIdsAlreadyDone: List[Int],
+      eutilsCalls: EutilsCalls): Behavior[PMCommand] = {
 
     Behaviors.receive { (ctx, msg) =>
       msg match {
         case PMIds(sr) =>
           val idsToFetch = sr.ids.filter(id => !pmIdsAlreadyDone.contains(id))
-          val futurResp: Future[NodeSeq] = eutilsCalls.eFetchPubmed(idsToFetch)
-          ctx.pipeToSelf(futurResp) {
+          val futureResp: Future[NodeSeq] = eutilsCalls.eFetchPubmed(idsToFetch)
+          ctx.pipeToSelf(futureResp) {
             case Success(ns) =>
               ctx.log.info(enoughButNotTooMuchInfo(ns.toString()))
               val sr = EutilsADT.pmAbstractsFromXml(ns)
@@ -81,7 +84,7 @@ object PMActor {
     }
   }
 
-  def returningAbstracts(replyToWhenDone: ActorRef[PMAbstracts]): Behavior[PMCommand] = {
+  private def returningAbstracts(replyToWhenDone: ActorRef[PMAbstracts]): Behavior[PMCommand] = {
     Behaviors.receive { (ctx, msg) =>
       msg match {
         case pmr: PMAbstracts =>

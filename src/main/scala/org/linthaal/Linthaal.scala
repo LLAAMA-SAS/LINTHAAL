@@ -2,14 +2,14 @@ package org.linthaal
 
 import akka.actor.typed.ActorSystem
 import org.linthaal.helpers.Parameters
-import org.slf4j.LoggerFactory
+import org.slf4j.{ Logger, LoggerFactory }
 
 /**
   *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
-  * (at your option) any later version. 
+  * (at your option) any later version.
   *
   * This program is distributed in the hope that it will be useful,
   * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,14 +22,14 @@ import org.slf4j.LoggerFactory
   */
 object Linthaal {
 
-  val log = LoggerFactory.getLogger(getClass.toString)
+  val log: Logger = LoggerFactory.getLogger(getClass.toString)
 
   var appArgs: Map[String, String] = Map.empty
 
-  def main(args: Array[String]): Unit =
+  def main(args: Array[String]): Unit = {
     println("Starting Linthaal...")
     appArgs = Parameters.parseArgs(args)
     log.info(s"""Args: ${appArgs.keys.mkString(" , ")}""")
     ActorSystem[Nothing](LinthaalSupervisor(), "Linthaal-system")
+  }
 }
-

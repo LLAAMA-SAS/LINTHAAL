@@ -1,10 +1,10 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors }
+import akka.actor.typed.{ ActorRef, Behavior }
 import org.linthaal
 import org.linthaal.api.routes.PubMedAISumReq
-import org.linthaal.tot.pubmed.PubMedSumAct.{GetResults, Start, SummarizedAbstracts}
+import org.linthaal.tot.pubmed.PubMedSumAct.{ GetResults, Start, SummarizedAbstracts }
 import org.linthaal.tot.pubmed.PubMedToTManager._
 
 /**
@@ -53,7 +53,7 @@ class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command]) extends Abst
       case StartAISummarization(pmSR, replyTo) =>
         val id = linthaal.helpers.getDigest(pmSR.toString)
         if (!sumAIActors.contains(id)) {
-          val sac = context.spawn(PubMedSumAct(pmSR, id), s"summarizing_actor_${id}")
+          val sac = context.spawn(PubMedSumAct(pmSR, id), s"summarizing_actor_$id")
           sumAIActors = sumAIActors + (id -> sac)
           allReq = allReq + (id -> pmSR)
           sac ! Start

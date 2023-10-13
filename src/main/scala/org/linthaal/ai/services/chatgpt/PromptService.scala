@@ -4,12 +4,12 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
+import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.scaladsl.{ Sink, Source }
 import org.linthaal.helpers.ApiKeys
 
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContextExecutor, Future }
 
 /**
   *
@@ -34,7 +34,7 @@ class PromptService(promptConf: PromptService.PromptConfig)(implicit as: ActorSy
 
   def openAIPromptCall(messages: Seq[Message], temperature: Double = 0.0): Future[ChatResponse] = {
 
-    implicit val exeContext = as.executionContext
+    implicit val exeContext: ExecutionContextExecutor = as.executionContext
 
     val authorization = Authorization(OAuth2BearerToken(promptConf.apiKey))
 
@@ -62,7 +62,6 @@ class PromptService(promptConf: PromptService.PromptConfig)(implicit as: ActorSy
       response.status match {
         case StatusCodes.OK =>
           Unmarshal(response).to[ChatResponse]
-
         case _ =>
           response.discardEntityBytes()
           Future.failed(new RuntimeException(s"Unexpected status code ${response.status}"))
@@ -72,20 +71,20 @@ class PromptService(promptConf: PromptService.PromptConfig)(implicit as: ActorSy
 }
 
 object PromptService {
-  case class Message(role: String = "user", content: String)
+  final case class Message(role: String = "user", content: String)
 
-  case class ChatRequest(model: String = "gpt-3.5-turbo", messages: Seq[Message], temperature: Double = 0.0)
+  final case class ChatRequest(model: String = "gpt-3.5-turbo", messages: Seq[Message], temperature: Double = 0.0)
 //  case class ChatRequest(model: String = "gpt-4", messages: Seq[Message], temperature: Double = 0.0)
 
-  case class Choice(index: Int, message: Message, finishReason: String)
+  final case class Choice(index: Int, message: Message, finishReason: String)
 
   //response
-  case class Usage(promptTokens: Int, completionTokens: Int, totalTokens: Int)
+  final case class Usage(promptTokens: Int, completionTokens: Int, totalTokens: Int)
 
-  case class ChatResponse(id: String, chatObject: String, created: Long, model: String, usage: Usage, choices: Seq[Choice])
+  final case class ChatResponse(id: String, chatObject: String, created: Long, model: String, usage: Usage, choices: Seq[Choice])
 
-  case class PromptConfig(apiKey: String, uri: String = "https://api.openai.com/v1/chat/completions", model: String = "gpt-3.5-turbo")
+  final case class PromptConfig(apiKey: String, uri: String = "https://api.openai.com/v1/chat/completions", model: String = "gpt-3.5-turbo")
 //  case class PromptConfig(apiKey: String, uri: String = "https://api.openai.com/v1/chat/completions", model: String = "gpt-4")
 
-  val promptDefaultConf = PromptConfig(ApiKeys.getKey("openai.api_key"))
+  val promptDefaultConf: PromptConfig = PromptConfig(ApiKeys.getKey("openai.api_key"))
 }

@@ -5,7 +5,7 @@ package org.linthaal.helpers.ncbi.eutils
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
-  * (at your option) any later version. 
+  * (at your option) any later version.
   *
   * This program is distributed in the hope that it will be useful,
   * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,20 +16,17 @@ package org.linthaal.helpers.ncbi.eutils
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
   */
-
-
 /*
  * Copyright (C) 2009-2023 Lightbend Inc. <https://www.lightbend.com>
  */
 
 /**
- * Copyied from original ScalaXmlSupport because DTD issue
- */
-
-import java.io.{ByteArrayInputStream, InputStreamReader}
-import javax.xml.parsers.{SAXParser, SAXParserFactory}
+  * Copied from original ScalaXmlSupport because DTD issue
+  */
+import java.io.{ ByteArrayInputStream, InputStreamReader }
+import javax.xml.parsers.{ SAXParser, SAXParserFactory }
 import scala.collection.immutable
-import scala.xml.{NodeSeq, XML}
+import scala.xml.{ NodeSeq, XML }
 import akka.http.scaladsl.unmarshalling._
 import akka.http.scaladsl.marshalling._
 import akka.http.scaladsl.model._
@@ -54,9 +51,9 @@ trait ScalaXmlSupport2 {
     }
 
   /**
-   * Provides a SAXParser for the NodeSeqUnmarshaller to use. Override to provide a custom SAXParser implementation.
-   * Will be called once for for every request to be unmarshalled. The default implementation calls `ScalaXmlSupport2.createSaferSAXParser`.
-   */
+    * Provides a SAXParser for the NodeSeqUnmarshaller to use. Override to provide a custom SAXParser implementation.
+    * Will be called once for for every request to be unmarshalled. The default implementation calls `ScalaXmlSupport2.createSaferSAXParser`.
+    */
   protected def createSAXParser(): SAXParser = ScalaXmlSupport2.createSaferSAXParser()
 }
 object ScalaXmlSupport2 extends ScalaXmlSupport2 {
@@ -89,4 +86,3 @@ object ScalaXmlSupport2 extends ScalaXmlSupport2 {
     parser
   }
 }
-
