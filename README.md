@@ -23,5 +23,12 @@ To use openAI or ncbi api, you need api keys which can be passed as arguments wh
 Linthaal can easily be tested with docker:
 
 ```shell
- docker run -it --mount type=bind,source={pathToYourConfigFilesLikeApiKeys},target=/home/linthaal -p 8080:8080 llaamasas/linthaal:1.0.0 apk1_api_key=/home/linthaal/{keyName1} apk2_api_key=/home/linthaal/{keyName2}
+ docker run -it --mount type=bind,source={pathToYourConfigFilesLikeApiKeys},target=/home/linthaal -p 8080:8080 llaamasas/linthaal:1.0.0 apk1_api_key=/home/linthaal/{keyFile1} apk2_api_key=/home/linthaal/{keyFile2}
 ``` 
+
+KeyFile should be a line like that:
+ncbi.api_key=xxxxxxxxxxxxxxxx
+or
+openai.api_key=xxxxxxx
+
+
