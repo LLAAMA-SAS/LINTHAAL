@@ -68,7 +68,7 @@ class PubMedSumAct(aiReq: PubMedAISumReq, id: String, ctx: ActorContext[PubMedSu
 
   private var runs: Int = 0
 
-  timers.startTimerWithFixedDelay("timer_$id", Start, new FiniteDuration(aiReq.update, TimeUnit.SECONDS))
+  timers.startTimerWithFixedDelay(s"timer_$id", Start, new FiniteDuration(aiReq.update, TimeUnit.SECONDS))
 
   override def onMessage(msg: PubMedSumAct.Command): Behavior[PubMedSumAct.Command] = {
     msg match {
