@@ -2,12 +2,12 @@ package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors, TimerScheduler }
 import akka.actor.typed.{ ActorRef, Behavior }
-import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
 import org.linthaal.helpers.ncbi.eutils.{ EutilsCalls, PMActor }
 import org.linthaal.tot.pubmed.PubMedSumAct._
+import org.linthaal.ai.services.AIResponse
 
 import java.util.Date
 import java.util.concurrent.TimeUnit

@@ -1,4 +1,4 @@
-package org.linthaal.ai.services.chatgpt
+package org.linthaal.ai.services.openai
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
@@ -27,9 +27,9 @@ import scala.concurrent.{ ExecutionContextExecutor, Future }
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
   */
-class PromptService(promptConf: PromptService.PromptConfig)(implicit as: ActorSystem[_]) {
+class OpenAIPromptService(promptConf: OpenAIPromptService.PromptConfig)(implicit as: ActorSystem[_]) {
 
-  import PromptService._
+  import OpenAIPromptService._
   import SimplePromptJsonProt._
 
   def openAIPromptCall(messages: Seq[Message], temperature: Double = 0.0): Future[ChatResponse] = {
@@ -70,11 +70,11 @@ class PromptService(promptConf: PromptService.PromptConfig)(implicit as: ActorSy
   }
 }
 
-object PromptService {
-  final case class Message(role: String = "user", content: String)
+object OpenAIPromptService {
+  case class Message(role: String = "user", content: String)
 
-  final case class ChatRequest(model: String = "gpt-3.5-turbo", messages: Seq[Message], temperature: Double = 0.0)
-//  case class ChatRequest(model: String = "gpt-4", messages: Seq[Message], temperature: Double = 0.0)
+  case class ChatRequest(model: String = "gpt-3.5-turbo", messages: Seq[Message], temperature: Double = 0.0)
+//  case class TextGenerationRequest(model: String = "gpt-4", messages: Seq[Message], temperature: Double = 0.0)
 
   final case class Choice(index: Int, message: Message, finishReason: String)
 
@@ -87,4 +87,7 @@ object PromptService {
 //  case class PromptConfig(apiKey: String, uri: String = "https://api.openai.com/v1/chat/completions", model: String = "gpt-4")
 
   val promptDefaultConf: PromptConfig = PromptConfig(ApiKeys.getKey("openai.api_key"))
+
+  def createPromptConfig(model: String): PromptConfig =
+    PromptConfig(ApiKeys.getKey("openai.api_key"), model)
 }

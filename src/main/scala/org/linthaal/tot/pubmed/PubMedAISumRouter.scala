@@ -1,12 +1,14 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, Routers }
-import akka.actor.typed.{ ActorRef, Behavior, DispatcherSelector, SupervisorStrategy }
-import org.linthaal.ai.services.chatgpt.PromptService.Choice
-import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors, Routers}
+import akka.actor.typed.{ActorRef, Behavior, DispatcherSelector, SupervisorStrategy}
+import org.linthaal.ai.services.openai.OpenAIPromptService.Choice
+import org.linthaal.ai.services.openai.OpenAIChatAct
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.linthaal.tot.pubmed.PubMedSumAct.{ FullResponse, SummarizedAbstract }
+import org.linthaal.tot.pubmed.PubMedSumAct.{FullResponse, SummarizedAbstract}
+import org.linthaal.ai.services.AIResponse
+import org.linthaal.ai.services.huggingface.HuggingFaceTextGenAct
 
 import java.text.SimpleDateFormat
 import scala.concurrent.duration.DurationInt
@@ -36,6 +38,7 @@ import scala.concurrent.duration.DurationInt
   */
 object PubMedAISumRouter {
   sealed trait SummarizationMsg
+
   case class AIResponseWrap(aiR: AIResponse) extends SummarizationMsg
 
   def apply(pmas: PMAbstracts, aiReq: PubMedAISumReq, replyWhenDone: ActorRef[FullResponse]): Behavior[SummarizationMsg] =
@@ -56,28 +59,26 @@ object PubMedAISumRouter {
       val router = ctx.spawn(pool, "talk2ai-pool", DispatcherSelector.sameAsParent())
 
       pmas.abstracts.foreach { oneObj =>
-        router ! PubMedAISumOne.DoSummarize(oneObj)
+        router ! PubMedAISumOne.DoSummarize(oneObj, aiReq.service)
       }
 
       summarizing(aiReq, pmas.abstracts.size, pmas, List.empty, List.empty, replyWhenDone, ctx)
     }
 
   private def summarizing(
-      aiReq: PubMedAISumReq,
-      toSummarize: Int,
-      originalAbstracts: PMAbstracts,
-      aiResponses: List[AIResponse],
-      summarized: List[SummarizedAbstract],
-      replyWhenDone: ActorRef[FullResponse],
-      ctx: ActorContext[SummarizationMsg]): Behavior[SummarizationMsg] = {
+                           aiReq: PubMedAISumReq,
+                           toSummarize: Int,
+                           originalAbstracts: PMAbstracts,
+                           aiResponses: List[AIResponse],
+                           summarized: List[SummarizedAbstract],
+                           replyWhenDone: ActorRef[FullResponse],
+                           ctx: ActorContext[SummarizationMsg]): Behavior[SummarizationMsg] = {
 
     Behaviors.receiveMessage {
-      case aiResp: AIResponseWrap =>
-        val newSummarized = if (aiResp.aiR.choices.nonEmpty) {
-          parseChoice(aiResp.aiR.choices.head) +: summarized
-        } else summarized
+      case AIResponseWrap(aiR) =>
+        val newSummarized = parseResponse(aiR) ++: summarized
 
-        val newAIResponses: List[AIResponse] = aiResp.aiR +: aiResponses
+        val newAIResponses: List[AIResponse] = aiR +: aiResponses
 
         ctx.log.info(s"total summarized done= ${newSummarized.size})")
         if (toSummarize <= 1) {
@@ -89,10 +90,23 @@ object PubMedAISumRouter {
     }
   }
 
-  private def parseChoice(choice: Choice): SummarizedAbstract = {
+  def parseResponse(response: AIResponse): Option[SummarizedAbstract] =
+    response match {
+      case response: OpenAIChatAct.AIResponseMessage =>
+        val newSummarized = if (response.choices.nonEmpty) Some(parseXML(response.choices.head.message.content)) else None
+
+        newSummarized
+
+      case response: HuggingFaceTextGenAct.AIResponseMessage =>
+        val newSummarized = if (response.result.nonEmpty) Some(parseXML(response.result.head)) else None
+
+        newSummarized
+    }
+
+  private def parseXML(summarizedAbstractXml: String): SummarizedAbstract = {
     import scala.xml.XML
 
-    val xml = XML.loadString(choice.message.content)
+    val xml = XML.loadString(summarizedAbstractXml)
 
     val id = (xml \ "id").text.toInt
     val sumTitle = (xml \ "sumTitle").text

@@ -1,6 +1,6 @@
-package org.linthaal.ai.services.chatgpt
+package org.linthaal.ai.services.openai
 
-import PromptService.{ ChatRequest, ChatResponse, Choice, Message, Usage }
+import OpenAIPromptService.{ ChatRequest, ChatResponse, Choice, Message, Usage }
 import spray.json.{ DefaultJsonProtocol, RootJsonFormat }
 
 /**
@@ -73,7 +73,7 @@ object SimplePromptJsonProt extends DefaultJsonProtocol {
         case Seq(choices, JsNumber(created), JsString(id), JsString(model), JsString(obj), usage) =>
           ChatResponse(id, chatObject = obj, created.toLong, model, usage.convertTo[Usage], choices = choices.convertTo[Seq[Choice]])
 
-        case _ => deserializationError(s"ChatResponse expected, got $json")
+        case _ => deserializationError(s"TextGenerationResponse expected, got $json")
       }
     }
   }

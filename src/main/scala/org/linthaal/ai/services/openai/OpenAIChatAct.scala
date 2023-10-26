@@ -1,10 +1,11 @@
-package org.linthaal.ai.services.chatgpt
+package org.linthaal.ai.services.openai
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ ActorRef, Behavior }
 
 import scala.concurrent.Future
 import scala.util.{ Failure, Success }
+import org.linthaal.ai.services.AIResponse
 
 /**
   *
@@ -22,31 +23,23 @@ import scala.util.{ Failure, Success }
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
   */
-object SimpleChatAct {
+object OpenAIChatAct {
 
-  import PromptService._
+  import OpenAIPromptService._
 
   sealed trait ChatMsg
   final case class Response(chatRes: ChatResponse) extends ChatMsg
   final case class ChatFailed(reason: String) extends ChatMsg
 
-  final case class AIResponse(
-      id: String,
-      chatObject: String,
-      created: Long,
-      choices: Seq[Choice],
-      messages: Seq[Message],
-      temperature: Double = 0.0,
-      model: String)
+  case class AIResponseMessage(id: String, chatObject: String,
+                               created: Long, choices: Seq[Choice],
+                               messages: Seq[Message], temperature: Double = 0.0, model: String) extends AIResponse
 
-  def apply(
-      promptConf: PromptConfig,
-      messages: Seq[Message],
-      replyTo: ActorRef[AIResponse],
-      temperature: Double = 0.0): Behavior[ChatMsg] = {
+  def apply(promptConf: PromptConfig, messages:Seq[Message], replyTo: ActorRef[AIResponseMessage],
+            temperature: Double = 0.0): Behavior[ChatMsg]= {
 
     Behaviors.setup[ChatMsg] { ctx =>
-      val prtServ: PromptService = new PromptService(promptConf)(ctx.system)
+      val prtServ: OpenAIPromptService = new OpenAIPromptService(promptConf)(ctx.system)
       ctx.log.info("sent question... ")
       val time1 = System.currentTimeMillis()
 
@@ -60,29 +53,20 @@ object SimpleChatAct {
     }
   }
 
-  private def asking(
-      replyTo: ActorRef[AIResponse],
-      model: String,
-      temperature: Double,
-      messages: Seq[Message],
-      time: Long): Behavior[ChatMsg] =
+  def asking(replyTo: ActorRef[AIResponseMessage], model: String, temperature: Double,
+             messages : Seq[Message], time: Long): Behavior[ChatMsg] =
+
     Behaviors.receive { (ctx, msg) =>
       msg match {
         case msg: Response =>
-          replyTo ! AIResponse(
-            msg.chatRes.id,
-            msg.chatRes.chatObject,
-            msg.chatRes.created,
-            msg.chatRes.choices,
-            messages,
-            temperature,
-            model)
+          replyTo ! AIResponseMessage(msg.chatRes.id, msg.chatRes.chatObject, msg.chatRes.created,
+            msg.chatRes.choices, messages, temperature, model)
           val t = System.currentTimeMillis() - time
           ctx.log.info(s"[took $t ms] SUCCESSFUL response: $msg")
           Behaviors.stopped
 
         case msg: ChatFailed =>
-          replyTo ! AIResponse("Failed!!", msg.reason, System.currentTimeMillis(), Seq.empty, messages, temperature, model)
+          replyTo ! AIResponseMessage("Failed!!", msg.reason, System.currentTimeMillis(), Seq.empty, messages, temperature, model)
           val t = System.currentTimeMillis() - time
           ctx.log.error(s"[took $t ms] FAILED response: $msg")
           Behaviors.stopped

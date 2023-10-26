@@ -1,14 +1,16 @@
 package org.linthaal.api.routes
 
-import akka.actor.typed.scaladsl.AskPattern._
-import akka.actor.typed.{ ActorRef, ActorSystem }
+import akka.actor.typed.scaladsl.AskPattern.*
+import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
+import org.linthaal.ai.services.OpenAIService
 import org.linthaal.tot.pubmed.PubMedSumAct.SummarizedAbstracts
 import org.linthaal.tot.pubmed.PubMedToTManager
-import org.linthaal.tot.pubmed.PubMedToTManager._
+import org.linthaal.tot.pubmed.PubMedToTManager.*
+import org.linthaal.ai.services.Service
 
 import scala.concurrent.Future
 
@@ -77,4 +79,4 @@ class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])(impli
     }
 }
 
-case class PubMedAISumReq(search: String, titleLength: Int = 5, abstractLength: Int = 20, update: Int = 1800, maxAbstracts: Int = 20)
+case class PubMedAISumReq(search: String, service: Service = OpenAIService("gpt-3.5-turbo"), titleLength: Int = 5, abstractLength: Int = 20, update: Int = 1800, maxAbstracts: Int = 20)
