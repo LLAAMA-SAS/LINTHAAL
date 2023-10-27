@@ -44,14 +44,20 @@ object PubMedAISumOne {
             case OpenAIService(model) =>
               ctx.log.info(s"summarizing pmID=${pmAbst.id} with $model")
               ctx.spawn(
-                OpenAIChatAct.apply(OpenAIPromptService.createPromptConfig(model),
-                  Seq(prepareMsg(instructions, pmAbst)).map(m => Message(content = m)), replyWhenDone), s"talking-to-ai-${UUID.randomUUID().toString}")
+                OpenAIChatAct.apply(
+                  OpenAIPromptService.createPromptConfig(model),
+                  Seq(prepareMsg(instructions, pmAbst)).map(m => Message(content = m)),
+                  replyWhenDone),
+                s"talking-to-ai-${UUID.randomUUID().toString}")
 
             case HuggingFaceInferenceEndpointsService(model) =>
               ctx.log.info(s"summarizing pmID=${pmAbst.id} with $model")
               ctx.spawn(
-                HuggingFaceTextGenAct(HuggingFaceInferencePromptService.createPromptConfig(model),
-                  prepareMsg(instructions, pmAbst), replyWhenDone), s"talking-to-ai-${UUID.randomUUID().toString}")
+                HuggingFaceTextGenAct(
+                  HuggingFaceInferencePromptService.createPromptConfig(model),
+                  prepareMsg(instructions, pmAbst),
+                  replyWhenDone),
+                s"talking-to-ai-${UUID.randomUUID().toString}")
           }
           Behaviors.same
       }

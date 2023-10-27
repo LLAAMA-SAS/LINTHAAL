@@ -40,11 +40,11 @@ object SimplePromptJsonProt extends DefaultJsonProtocol {
   }
 
   implicit object JsonUsage extends RootJsonFormat[Usage] {
-    def write(u: Usage): JsObject = JsObject(
-      "prompt_tokens" -> JsNumber(u.promptTokens),
-      "completion_tokens" -> JsNumber(u.completionTokens),
-      "total_tokens" -> JsNumber(u.totalTokens),
-    )
+    def write(u: Usage): JsObject =
+      JsObject(
+        "prompt_tokens" -> JsNumber(u.promptTokens),
+        "completion_tokens" -> JsNumber(u.completionTokens),
+        "total_tokens" -> JsNumber(u.totalTokens))
 
     def read(value: JsValue): Usage = {
       value.asJsObject.getFields("prompt_tokens", "completion_tokens", "total_tokens") match {

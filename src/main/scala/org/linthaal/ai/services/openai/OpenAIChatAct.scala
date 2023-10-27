@@ -39,8 +39,11 @@ object OpenAIChatAct {
       model: String)
       extends AIResponse
 
-  def apply(promptConf: PromptConfig, messages:Seq[Message], replyTo: ActorRef[AIResponseMessage],
-            temperature: Double = 0.0): Behavior[ChatMsg]= {
+  def apply(
+      promptConf: PromptConfig,
+      messages: Seq[Message],
+      replyTo: ActorRef[AIResponseMessage],
+      temperature: Double = 0.0): Behavior[ChatMsg] = {
 
     Behaviors.setup[ChatMsg] { ctx =>
       val prtServ: OpenAIPromptService = new OpenAIPromptService(promptConf)(ctx.system)

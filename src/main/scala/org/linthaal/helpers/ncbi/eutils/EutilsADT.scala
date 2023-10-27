@@ -79,7 +79,8 @@ object EutilsADT {
   private def pmXmlAbstToText(n: NodeSeq): String = {
     (n \\ "AbstractText")
       .map(n => (n \@ "Label", n.text))
-      .map(n => if (n._1.nonEmpty && n._1 == "CONCLUSIONS") n._1 + ": " + n._2 else n._2) // for now, only keep conclusions if there are many fields
+      .map(n =>
+        if (n._1.nonEmpty && n._1 == "CONCLUSIONS") n._1 + ": " + n._2 else n._2) // for now, only keep conclusions if there are many fields
       .mkString("\n")
   }
 }

@@ -22,16 +22,18 @@ object Parameters {
 
     val Opt = """(\S+)=(\S+)""".r
 
-    def pm(s: String): Option[(String, String)] = s match {
-      case Opt(k, v) => Some((k, v))
-      case s: String => Some((s, ""))
-      case null      => None
-    }
+    def pm(s: String): Option[(String, String)] =
+      s match {
+        case Opt(k, v) => Some((k, v))
+        case s: String => Some((s, ""))
+        case null      => None
+      }
 
-    def pA(l: List[String]): List[Option[(String, String)]] = l match {
-      case Nil    => List()
-      case h :: q => pm(h) :: pA(q)
-    }
+    def pA(l: List[String]): List[Option[(String, String)]] =
+      l match {
+        case Nil    => List()
+        case h :: q => pm(h) :: pA(q)
+      }
 
     if (args.isEmpty) defaults else defaults ++ pA(l).filter(_.isDefined).map(_.get).toMap
   }

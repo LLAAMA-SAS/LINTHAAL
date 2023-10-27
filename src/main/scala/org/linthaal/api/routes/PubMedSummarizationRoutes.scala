@@ -81,4 +81,10 @@ class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])(impli
     }
 }
 
-case class PubMedAISumReq(search: String, service: Service = OpenAIService("gpt-3.5-turbo"), titleLength: Int = 5, abstractLength: Int = 20, update: Int = 1800, maxAbstracts: Int = 20)
+case class PubMedAISumReq(
+    search: String,
+    service: Service = OpenAIService("gpt-3.5-turbo"),
+    titleLength: Int = 5,
+    abstractLength: Int = 20,
+    update: Int = 1800,
+    maxAbstracts: Int = 20)
