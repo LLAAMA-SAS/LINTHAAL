@@ -5,7 +5,7 @@ import akka.actor.typed.{ ActorRef, Behavior }
 import org.linthaal.ai.services.openai.OpenAIPromptService.Message
 import org.linthaal.ai.services.huggingface.{ HuggingFaceInferencePromptService, HuggingFaceTextGenAct }
 import org.linthaal.ai.services.openai.OpenAIChatAct.AIResponseMessage
-import org.linthaal.ai.services.openai.{ OpenAIPromptService, OpenAIChatAct }
+import org.linthaal.ai.services.openai.{ OpenAIChatAct, OpenAIPromptService }
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.ai.services.Service
 import org.linthaal.ai.services.huggingface
@@ -15,7 +15,6 @@ import org.linthaal.ai.services._
 import java.util.UUID
 
 /**
-  *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
@@ -28,7 +27,6 @@ import java.util.UUID
   *
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
-  *
   */
 object PubMedAISumOne {
 

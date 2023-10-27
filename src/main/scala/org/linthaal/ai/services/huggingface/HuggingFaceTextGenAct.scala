@@ -1,27 +1,26 @@
 package org.linthaal.ai.services.huggingface
 
 import scala.concurrent.Future
-import scala.util.{Success, Failure}
+import scala.util.{ Failure, Success }
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.{ ActorRef, Behavior }
 
 import org.linthaal.ai.services.AIResponse
+
 /**
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- *
- */
+  * This program is free software: you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+  * the Free Software Foundation, either version 3 of the License, or
+  * (at your option) any later version.
+  *
+  * This program is distributed in the hope that it will be useful,
+  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  * GNU General Public License for more details.
+  *
+  * You should have received a copy of the GNU General Public License
+  * along with this program. If not, see <http://www.gnu.org/licenses/>.
+  */
 object HuggingFaceTextGenAct {
 
   import HuggingFaceInferencePromptService._
@@ -32,8 +31,11 @@ object HuggingFaceTextGenAct {
 
   case class AIResponseMessage(message: String, result: Seq[String], temperature: Double = 0.0) extends AIResponse
 
-  def apply(promtConf: PromptConfig, message: String, replyTo: ActorRef[AIResponseMessage],
-            temperature: Double = 0.0): Behavior[ChatMsg] = {
+  def apply(
+      promtConf: PromptConfig,
+      message: String,
+      replyTo: ActorRef[AIResponseMessage],
+      temperature: Double = 0.0): Behavior[ChatMsg] = {
 
     Behaviors.setup[ChatMsg] { ctx =>
       val prtServ: HuggingFaceInferencePromptService = new HuggingFaceInferencePromptService(promtConf)(ctx.system)
@@ -50,9 +52,7 @@ object HuggingFaceTextGenAct {
     }
   }
 
-  def asking(replyTo: ActorRef[AIResponseMessage], temperature: Double,
-             message: String, time: Long): Behavior[ChatMsg] =
-
+  def asking(replyTo: ActorRef[AIResponseMessage], temperature: Double, message: String, time: Long): Behavior[ChatMsg] =
     Behaviors.receive { (ctx, msg) =>
       msg match {
         case msg: Response =>

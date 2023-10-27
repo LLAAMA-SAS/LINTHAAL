@@ -8,7 +8,6 @@ import scala.util.{ Failure, Success }
 import org.linthaal.ai.services.AIResponse
 
 /**
-  *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
@@ -21,7 +20,6 @@ import org.linthaal.ai.services.AIResponse
   *
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
-  *
   */
 object OpenAIChatAct {
 
@@ -31,9 +29,15 @@ object OpenAIChatAct {
   final case class Response(chatRes: ChatResponse) extends ChatMsg
   final case class ChatFailed(reason: String) extends ChatMsg
 
-  case class AIResponseMessage(id: String, chatObject: String,
-                               created: Long, choices: Seq[Choice],
-                               messages: Seq[Message], temperature: Double = 0.0, model: String) extends AIResponse
+  case class AIResponseMessage(
+      id: String,
+      chatObject: String,
+      created: Long,
+      choices: Seq[Choice],
+      messages: Seq[Message],
+      temperature: Double = 0.0,
+      model: String)
+      extends AIResponse
 
   def apply(promptConf: PromptConfig, messages:Seq[Message], replyTo: ActorRef[AIResponseMessage],
             temperature: Double = 0.0): Behavior[ChatMsg]= {
@@ -53,14 +57,23 @@ object OpenAIChatAct {
     }
   }
 
-  def asking(replyTo: ActorRef[AIResponseMessage], model: String, temperature: Double,
-             messages : Seq[Message], time: Long): Behavior[ChatMsg] =
-
+  def asking(
+      replyTo: ActorRef[AIResponseMessage],
+      model: String,
+      temperature: Double,
+      messages: Seq[Message],
+      time: Long): Behavior[ChatMsg] =
     Behaviors.receive { (ctx, msg) =>
       msg match {
         case msg: Response =>
-          replyTo ! AIResponseMessage(msg.chatRes.id, msg.chatRes.chatObject, msg.chatRes.created,
-            msg.chatRes.choices, messages, temperature, model)
+          replyTo ! AIResponseMessage(
+            msg.chatRes.id,
+            msg.chatRes.chatObject,
+            msg.chatRes.created,
+            msg.chatRes.choices,
+            messages,
+            temperature,
+            model)
           val t = System.currentTimeMillis() - time
           ctx.log.info(s"[took $t ms] SUCCESSFUL response: $msg")
           Behaviors.stopped

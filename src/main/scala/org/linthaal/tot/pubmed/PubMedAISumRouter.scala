@@ -1,12 +1,12 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{ActorContext, Behaviors, Routers}
-import akka.actor.typed.{ActorRef, Behavior, DispatcherSelector, SupervisorStrategy}
+import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, Routers }
+import akka.actor.typed.{ ActorRef, Behavior, DispatcherSelector, SupervisorStrategy }
 import org.linthaal.ai.services.openai.OpenAIPromptService.Choice
 import org.linthaal.ai.services.openai.OpenAIChatAct
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.linthaal.tot.pubmed.PubMedSumAct.{FullResponse, SummarizedAbstract}
+import org.linthaal.tot.pubmed.PubMedSumAct.{ FullResponse, SummarizedAbstract }
 import org.linthaal.ai.services.AIResponse
 import org.linthaal.ai.services.huggingface.HuggingFaceTextGenAct
 
@@ -14,7 +14,6 @@ import java.text.SimpleDateFormat
 import scala.concurrent.duration.DurationInt
 
 /**
-  *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
@@ -27,7 +26,6 @@ import scala.concurrent.duration.DurationInt
   *
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
-  *
   */
 /**
   * Talking to AI.
@@ -66,13 +64,13 @@ object PubMedAISumRouter {
     }
 
   private def summarizing(
-                           aiReq: PubMedAISumReq,
-                           toSummarize: Int,
-                           originalAbstracts: PMAbstracts,
-                           aiResponses: List[AIResponse],
-                           summarized: List[SummarizedAbstract],
-                           replyWhenDone: ActorRef[FullResponse],
-                           ctx: ActorContext[SummarizationMsg]): Behavior[SummarizationMsg] = {
+      aiReq: PubMedAISumReq,
+      toSummarize: Int,
+      originalAbstracts: PMAbstracts,
+      aiResponses: List[AIResponse],
+      summarized: List[SummarizedAbstract],
+      replyWhenDone: ActorRef[FullResponse],
+      ctx: ActorContext[SummarizationMsg]): Behavior[SummarizationMsg] = {
 
     Behaviors.receiveMessage {
       case AIResponseWrap(aiR) =>

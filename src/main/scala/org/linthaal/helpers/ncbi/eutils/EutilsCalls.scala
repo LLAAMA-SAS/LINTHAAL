@@ -11,7 +11,6 @@ import scala.concurrent.{ ExecutionContextExecutor, Future }
 import scala.xml.NodeSeq
 
 /**
-  *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
@@ -24,7 +23,6 @@ import scala.xml.NodeSeq
   *
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
-  *
   */
 class EutilsCalls(config: EutilsCalls.EutilsConfig)(implicit as: ActorSystem[_]) {
 
@@ -102,8 +100,6 @@ object EutilsCalls {
 
 /**
   * The current E-utilities end-points, mostly copied from https://www.ncbi.nlm.nih.gov/books/NBK25497/
-  *
-  *
   *
   * EInfo (database statistics)
   * utils.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi
