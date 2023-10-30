@@ -24,7 +24,7 @@ import scala.xml.NodeSeq
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   */
-class EutilsCalls(config: EutilsCalls.EutilsConfig)(implicit as: ActorSystem[_]) {
+final class EutilsCalls(config: EutilsCalls.EutilsConfig)(implicit as: ActorSystem[_]) {
 
   import EutilsCalls._
 

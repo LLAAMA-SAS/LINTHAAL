@@ -41,7 +41,7 @@ object PubMedToTManager {
   }
 }
 
-class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command]) extends AbstractBehavior[PubMedToTManager.Command](ctx) {
+final class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command]) extends AbstractBehavior[PubMedToTManager.Command](ctx) {
 
   private var sumAIActors: Map[String, ActorRef[PubMedSumAct.Command]] = Map.empty
   private var allReq: Map[String, PubMedAISumReq] = Map.empty

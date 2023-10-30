@@ -46,21 +46,21 @@ object OpenAIChatAct {
       temperature: Double = 0.0): Behavior[ChatMessage] = {
 
     Behaviors.setup[ChatMessage] { ctx =>
-      val prtServ: OpenAIPromptService = new OpenAIPromptService(promptConf)(ctx.system)
+      val promptService: OpenAIPromptService = new OpenAIPromptService(promptConf)(ctx.system)
       ctx.log.info("sent question... ")
-      val time1 = System.currentTimeMillis()
+      val time = System.currentTimeMillis()
 
-      val futRes: Future[ChatResponse] = prtServ.openAIPromptCall(messages, temperature)
+      val futRes: Future[ChatResponse] = promptService.openAIPromptCall(messages, temperature)
 
       ctx.pipeToSelf(futRes) {
         case Success(rq) => Response(rq)
         case Failure(rf) => ChatFailed(rf.getMessage)
       }
-      asking(replyTo = replyTo, model = promptConf.model, temperature = temperature, messages = messages, time = time1)
+      asking(replyTo = replyTo, model = promptConf.model, temperature = temperature, messages = messages, time = time)
     }
   }
 
-  def asking(
+  private def asking(
       replyTo: ActorRef[AIResponseMessage],
       model: String,
       temperature: Double,

@@ -25,7 +25,7 @@ import scala.concurrent.{ ExecutionContextExecutor, Future }
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   */
-class OpenAIPromptService(promptConf: OpenAIPromptService.PromptConfig)(implicit as: ActorSystem[_]) {
+final class OpenAIPromptService(promptConf: OpenAIPromptService.PromptConfig)(implicit as: ActorSystem[_]) {
 
   import OpenAIPromptService._
   import SimplePromptJsonProt._

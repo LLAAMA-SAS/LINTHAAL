@@ -38,21 +38,21 @@ object HuggingFaceTextGenAct {
       temperature: Double = 1.0): Behavior[ChatMessage] = {
 
     Behaviors.setup[ChatMessage] { ctx =>
-      val prtServ: HuggingFaceInferencePromptService = new HuggingFaceInferencePromptService(promtConf)(ctx.system)
+      val promptService: HuggingFaceInferencePromptService = new HuggingFaceInferencePromptService(promtConf)(ctx.system)
       ctx.log.info("sent question... ")
-      val time1 = System.currentTimeMillis()
+      val time = System.currentTimeMillis()
 
-      val futRes: Future[Seq[TextGenerationResponse]] = prtServ.promptCall(message, temperature)
+      val futRes: Future[Seq[TextGenerationResponse]] = promptService.promptCall(message, temperature)
 
       ctx.pipeToSelf(futRes) {
         case Success(rq) => Response(rq)
         case Failure(rf) => ChatFailed(rf.getMessage)
       }
-      asking(replyTo, temperature, message, time1)
+      asking(replyTo = replyTo, temperature = temperature, message = message, time = time)
     }
   }
 
-  def asking(replyTo: ActorRef[AIResponseMessage], temperature: Double, message: String, time: Long): Behavior[ChatMessage] =
+  private def asking(replyTo: ActorRef[AIResponseMessage], temperature: Double, message: String, time: Long): Behavior[ChatMessage] =
     Behaviors.receive { (ctx, msg) =>
       msg match {
         case msg: Response =>
