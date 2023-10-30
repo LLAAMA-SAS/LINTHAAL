@@ -25,7 +25,7 @@ object Linthaal {
   var appArgs: Map[String, String] = Map.empty
 
   def main(args: Array[String]): Unit = {
-    println("Starting Linthaal...")
+    log.info("Starting Linthaal...")
     appArgs = Parameters.parseArgs(args)
     log.info(s"""Args: ${appArgs.keys.mkString(" , ")}""")
     ActorSystem[Nothing](LinthaalSupervisor(), "Linthaal-system")

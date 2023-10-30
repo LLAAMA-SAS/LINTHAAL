@@ -46,8 +46,6 @@ class EutilsCalls(config: EutilsCalls.EutilsConfig)(implicit as: ActorSystem[_])
   private def getRemote(queryUri: String): Future[NodeSeq] = {
     implicit val exeContext: ExecutionContextExecutor = as.executionContext
 
-    println(queryUri)
-
     val httpReq = HttpRequest(
       method = HttpMethods.GET,
       queryUri,

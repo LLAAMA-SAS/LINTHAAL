@@ -42,16 +42,12 @@ class HuggingFaceInferencePromptService(promptConf: PromptConfig)(implicit as: A
 
     val formatedRequest = chatRequest.toJson.compactPrint
 
-    println(formatedRequest)
-
     val httpReq = HttpRequest(
       method = HttpMethods.POST,
       promptConf.uri,
       headers = Seq(authorization),
       entity = HttpEntity(ContentTypes.`application/json`, formatedRequest),
       HttpProtocols.`HTTP/2.0`)
-
-    println(httpReq.entity)
 
     val connFlow = Http().connectionTo("api-inference.huggingface.co").http2()
 

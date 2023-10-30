@@ -41,16 +41,12 @@ class OpenAIPromptService(promptConf: OpenAIPromptService.PromptConfig)(implicit
     import spray.json._
     val formatedRequest = chatRequest.toJson.compactPrint
 
-    println(formatedRequest)
-
     val httpReq = HttpRequest(
       method = HttpMethods.POST,
       promptConf.uri,
       headers = Seq(authorization),
       entity = HttpEntity(ContentTypes.`application/json`, formatedRequest),
-      HttpProtocols.`HTTP/2.0`)
-
-    println(httpReq.entity)
+      protocol = HttpProtocols.`HTTP/2.0`)
 
     val connFlow = Http().connectionTo("api.openai.com").http2()
 
