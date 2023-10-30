@@ -33,7 +33,7 @@ class HuggingFaceInferencePromptService(promptConf: PromptConfig)(implicit as: A
 
   import SimplePromptJsonProt._
 
-  def promptCall(message: String, temperature: Double = 0.01): Future[Seq[TextGenerationResponse]] = {
+  def promptCall(message: String, temperature: Double = 1.0): Future[Seq[TextGenerationResponse]] = {
     implicit val ec = as.executionContext
 
     val authorization = Authorization(OAuth2BearerToken(promptConf.apiKey))

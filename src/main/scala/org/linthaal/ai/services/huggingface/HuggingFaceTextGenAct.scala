@@ -35,7 +35,7 @@ object HuggingFaceTextGenAct {
       promtConf: PromptConfig,
       message: String,
       replyTo: ActorRef[AIResponseMessage],
-      temperature: Double = 0.0): Behavior[ChatMessage] = {
+      temperature: Double = 1.0): Behavior[ChatMessage] = {
 
     Behaviors.setup[ChatMessage] { ctx =>
       val prtServ: HuggingFaceInferencePromptService = new HuggingFaceInferencePromptService(promtConf)(ctx.system)
