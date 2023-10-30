@@ -57,7 +57,11 @@ object PubMedSumAct {
   }
 }
 
-final class PubMedSumAct(aiReq: PubMedAISumReq, id: String, ctx: ActorContext[PubMedSumAct.Command], timers: TimerScheduler[PubMedSumAct.Command])
+final class PubMedSumAct(
+    aiReq: PubMedAISumReq,
+    id: String,
+    ctx: ActorContext[PubMedSumAct.Command],
+    timers: TimerScheduler[PubMedSumAct.Command])
     extends AbstractBehavior[PubMedSumAct.Command](ctx) {
 
   private var originAbstracts: Map[Int, PMAbstract] = Map.empty
