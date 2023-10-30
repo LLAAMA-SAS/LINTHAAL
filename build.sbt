@@ -10,7 +10,7 @@ inThisBuild(
     name := "Linthaal",
     startYear := Some(2023),
     version := "1.0.0",
-    scalaVersion := "3.3.0",
+    scalaVersion := "3.3.1",
     fork := true,
     dynverSeparator := "-"))
 
@@ -18,7 +18,7 @@ lazy val root =
   project
     .in(file("."))
     .enablePlugins(JavaAppPackaging, DockerPlugin, DockerSpotifyClientPlugin)
-    .settings(scalaVersion := "3.3.0")
+    .settings(scalaVersion := "3.3.1")
     .settings(scalacOptions := stdOptions)
     .settings(libraryDependencies ++= List(
       "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
