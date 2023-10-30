@@ -36,7 +36,7 @@ class HuggingFaceInferencePromptService(promptConf: PromptConfig)(implicit as: A
   def promptCall(message: String, temperature: Double = 0.01): Future[Seq[TextGenerationResponse]] = {
     implicit val ec = as.executionContext
 
-    val authorization = Authorization(OAuth2BearerToken("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"))
+    val authorization = Authorization(OAuth2BearerToken(promptConf.apiKey))
 
     val chatRequest = TextGenerationRequest(message, Parameters(temperature), Options(waitForModel = true))
 
