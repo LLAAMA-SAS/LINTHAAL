@@ -25,9 +25,9 @@ object HuggingFaceTextGenAct {
 
   import HuggingFaceInferencePromptService._
 
-  sealed trait ChatMsg
-  case class Response(textGenRes: Seq[TextGenerationResponse]) extends ChatMsg
-  case class ChatFailed(reason: String) extends ChatMsg
+  sealed trait ChatMessage
+  case class Response(textGenRes: Seq[TextGenerationResponse]) extends ChatMessage
+  case class ChatFailed(reason: String) extends ChatMessage
 
   case class AIResponseMessage(message: String, result: Seq[String], temperature: Double = 0.0) extends AIResponse
 
@@ -35,9 +35,9 @@ object HuggingFaceTextGenAct {
       promtConf: PromptConfig,
       message: String,
       replyTo: ActorRef[AIResponseMessage],
-      temperature: Double = 0.0): Behavior[ChatMsg] = {
+      temperature: Double = 0.0): Behavior[ChatMessage] = {
 
-    Behaviors.setup[ChatMsg] { ctx =>
+    Behaviors.setup[ChatMessage] { ctx =>
       val prtServ: HuggingFaceInferencePromptService = new HuggingFaceInferencePromptService(promtConf)(ctx.system)
       ctx.log.info("sent question... ")
       val time1 = System.currentTimeMillis()
@@ -52,7 +52,7 @@ object HuggingFaceTextGenAct {
     }
   }
 
-  def asking(replyTo: ActorRef[AIResponseMessage], temperature: Double, message: String, time: Long): Behavior[ChatMsg] =
+  def asking(replyTo: ActorRef[AIResponseMessage], temperature: Double, message: String, time: Long): Behavior[ChatMessage] =
     Behaviors.receive { (ctx, msg) =>
       msg match {
         case msg: Response =>

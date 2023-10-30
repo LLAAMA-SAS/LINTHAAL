@@ -25,9 +25,9 @@ object OpenAIChatAct {
 
   import OpenAIPromptService._
 
-  sealed trait ChatMsg
-  final case class Response(chatRes: ChatResponse) extends ChatMsg
-  final case class ChatFailed(reason: String) extends ChatMsg
+  sealed trait ChatMessage
+  final case class Response(chatRes: ChatResponse) extends ChatMessage
+  final case class ChatFailed(reason: String) extends ChatMessage
 
   case class AIResponseMessage(
       id: String,
@@ -43,9 +43,9 @@ object OpenAIChatAct {
       promptConf: PromptConfig,
       messages: Seq[Message],
       replyTo: ActorRef[AIResponseMessage],
-      temperature: Double = 0.0): Behavior[ChatMsg] = {
+      temperature: Double = 0.0): Behavior[ChatMessage] = {
 
-    Behaviors.setup[ChatMsg] { ctx =>
+    Behaviors.setup[ChatMessage] { ctx =>
       val prtServ: OpenAIPromptService = new OpenAIPromptService(promptConf)(ctx.system)
       ctx.log.info("sent question... ")
       val time1 = System.currentTimeMillis()
@@ -65,7 +65,7 @@ object OpenAIChatAct {
       model: String,
       temperature: Double,
       messages: Seq[Message],
-      time: Long): Behavior[ChatMsg] =
+      time: Long): Behavior[ChatMessage] =
     Behaviors.receive { (ctx, msg) =>
       msg match {
         case msg: Response =>
