@@ -48,7 +48,7 @@ class OpenAIPromptService(promptConf: OpenAIPromptService.PromptConfig)(implicit
       entity = HttpEntity(ContentTypes.`application/json`, formatedRequest),
       protocol = HttpProtocols.`HTTP/2.0`)
 
-    val connFlow = Http().connectionTo("api.openai.com").http2()
+    val connFlow = Http().connectionTo(host).http2()
 
     val responseFuture: Future[HttpResponse] = Source.single(httpReq).via(connFlow).runWith(Sink.head)
 
@@ -79,6 +79,8 @@ object OpenAIPromptService {
 
   final case class PromptConfig(apiKey: String, uri: String = "https://api.openai.com/v1/chat/completions", model: String = "gpt-3.5-turbo")
 //  case class PromptConfig(apiKey: String, uri: String = "https://api.openai.com/v1/chat/completions", model: String = "gpt-4")
+
+  private val host = "api.openai.com"
 
   val promptDefaultConf: PromptConfig = PromptConfig(ApiKeys.getKey("openai.api_key"))
 

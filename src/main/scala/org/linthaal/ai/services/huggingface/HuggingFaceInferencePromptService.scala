@@ -49,7 +49,7 @@ class HuggingFaceInferencePromptService(promptConf: PromptConfig)(implicit as: A
       entity = HttpEntity(ContentTypes.`application/json`, formatedRequest),
       HttpProtocols.`HTTP/2.0`)
 
-    val connFlow = Http().connectionTo("api-inference.huggingface.co").http2()
+    val connFlow = Http().connectionTo(host).http2()
 
     val responseFuture: Future[HttpResponse] = Source.single(httpReq).via(connFlow).runWith(Sink.head)
 
@@ -76,6 +76,8 @@ object HuggingFaceInferencePromptService {
   case class TextGenerationResponse(generatedText: String)
 
   case class PromptConfig(apiKey: String, uri: String)
+
+  private val host = "api-inference.huggingface.co"
 
   def createPromptConfig(model: String): PromptConfig =
     PromptConfig(ApiKeys.getKey("huggingface.api_key"), model)
