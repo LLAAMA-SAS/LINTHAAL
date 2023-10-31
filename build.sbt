@@ -1,6 +1,6 @@
 import BuildHelper.*
-import BuildHelper.Versions.*
 import com.typesafe.sbt.SbtNativePackager.autoImport.NativePackagerHelper.*
+import Dependencies.*
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
@@ -20,17 +20,18 @@ lazy val root =
     .enablePlugins(JavaAppPackaging, DockerPlugin, DockerSpotifyClientPlugin)
     .settings(scalaVersion := "3.3.1")
     .settings(scalacOptions := stdOptions)
-    .settings(libraryDependencies ++= List(
-      "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
-      "com.typesafe.akka" %% "akka-stream" % akkaVersion,
-      "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
-      "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpVersion,
-      "com.typesafe.akka" %% "akka-http-xml" % akkaHttpVersion,
-      "ch.qos.logback" % "logback-classic" % "1.4.7",
-      "io.lemonlabs" %% "scala-uri" % "4.0.3",
-      "commons-codec" % "commons-codec" % "1.16.0",
-      "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
-      "org.scalatest" %% "scalatest" % "3.2.16" % Test))
+    .settings(
+      libraryDependencies ++= Seq(
+        akkaActor,
+        akkaStream,
+        akkaHttp,
+        akkaSprayJson,
+        akkaHttpXml,
+        logbackClassic,
+        scalaUri,
+        commonsCodec,
+        akkaActorTestkit,
+        scalaTest))
     .settings(run / fork := true)
     .settings(Compile / mainClass := Some("org.linthaal.Linthaal"))
     .settings(Universal / mappings ++= directory("user"))

@@ -4,11 +4,6 @@ import sbt.Keys.version
 
 object BuildHelper {
 
-  object Versions {
-    lazy val akkaVersion = "2.8.2"
-    lazy val akkaHttpVersion = "10.5.2"
-  }
-
   val stdOptions: List[String] = List("-deprecation", "-feature", "-unchecked")
 
   val dockerSettings = List(
