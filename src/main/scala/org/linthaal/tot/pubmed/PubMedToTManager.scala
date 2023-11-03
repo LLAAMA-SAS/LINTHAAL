@@ -1,11 +1,12 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors }
-import akka.actor.typed.{ ActorRef, Behavior }
-import org.linthaal
+import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
+import akka.actor.typed.{ActorRef, Behavior}
 import org.linthaal.api.routes.PubMedAISumReq
-import org.linthaal.tot.pubmed.PubMedSumAct.{ GetResults, Start, SummarizedAbstracts }
-import org.linthaal.tot.pubmed.PubMedToTManager._
+import org.linthaal.helpers
+import org.linthaal.tot.pubmed.PubMedSumAct.{AISumOfSums, GetResults, SummarizedAbstracts}
+import org.linthaal.tot.pubmed.PubMedToTManager.*
+import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum.SumOfSums
 
 /**
   *
@@ -22,6 +23,9 @@ import org.linthaal.tot.pubmed.PubMedToTManager._
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
+ *
+ * The Graph of Thoughts manager for pubmed summarization requests.
+ *
   */
 object PubMedToTManager {
   sealed trait Command
@@ -34,6 +38,11 @@ object PubMedToTManager {
 
   final case class RetrieveAll(replyTo: ActorRef[AllSummarizationRequests]) extends Command
 
+  final case class SummarizeSummarizations(id: String, contextInfo: Seq[String] = Seq.empty, replyTo: ActorRef[ActionPerformed])
+      extends Command
+
+  final case class RetrieveSumOfSums(id: String, replyTo: ActorRef[SumOfSums]) extends Command
+
   final case class AllSummarizationRequests(sumReqs: Map[String, PubMedAISumReq])
 
   final case class ActionPerformed(description: String)
@@ -45,21 +54,23 @@ object PubMedToTManager {
 
 class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command]) extends AbstractBehavior[PubMedToTManager.Command](ctx) {
 
-  private var sumAIActors: Map[String, ActorRef[PubMedSumAct.Command]] = Map.empty
+  import akka.actor.typed.scaladsl.AskPattern.*
+
+  private var sumAIActors: Map[String, ActorRef[PubMedSumAct.PMSumCmd]] = Map.empty
   private var allReq: Map[String, PubMedAISumReq] = Map.empty
 
   override def onMessage(msg: PubMedToTManager.Command): Behavior[PubMedToTManager.Command] = {
     msg match {
       case StartAISummarization(pmSR, replyTo) =>
-        val id = linthaal.helpers.getDigest(pmSR.toString)
+        val id = helpers.getDigest(pmSR.toString)
         if (!sumAIActors.contains(id)) {
           val sac = context.spawn(PubMedSumAct(pmSR, id), s"summarizing_actor_$id")
           sumAIActors = sumAIActors + (id -> sac)
           allReq = allReq + (id -> pmSR)
-          sac ! Start
+          sac ! PMSumCmd.Start
           replyTo ! ActionPerformed("Summarization started. ")
         } else {
-          replyTo ! ActionPerformed("Living identical request already exists. ")
+          replyTo ! ActionPerformed("Identical request already exists. Remove first if you want to rerun. ")
         }
         this
 
@@ -80,6 +91,16 @@ class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command]) extends Abst
           sumAct ! GetResults(replyTo)
         } else {
           replyTo ! SummarizedAbstracts(msg = "Failed.")
+        }
+        this
+
+      case SummarizeSummarizations(id, contextInfo, replyTo) =>
+        if (sumAIActors.contains(id)) {
+          val sumAct = sumAIActors(id)
+          sumAct ! AISumOfSums(contextInfo)
+          replyTo ! ActionPerformed("Removed Summarization Results. ")
+        } else {
+          replyTo ! ActionPerformed("no corresponding id. ")
         }
         this
     }

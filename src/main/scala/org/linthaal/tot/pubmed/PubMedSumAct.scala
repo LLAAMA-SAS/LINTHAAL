@@ -7,7 +7,9 @@ import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
 import org.linthaal.helpers.ncbi.eutils.{ EutilsCalls, PMActor }
-import org.linthaal.tot.pubmed.PubMedSumAct._
+import org.linthaal.tot.pubmed.PubMedSumAct.*
+import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum
+import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum.SumOfSums
 
 import java.util.Date
 import java.util.concurrent.TimeUnit
@@ -28,20 +30,18 @@ import scala.concurrent.duration.FiniteDuration
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
+  *
+  * Manages the AI summarization for one defined request.
+  * It keeps the list of abstracts and builds the list of summarized versions.
+  *
+  * It can also ask the AI to produce a contextual Summary of summaries.
+  *
   */
 object PubMedSumAct {
 
-  trait Command
-  case object Start extends Command
-
-  final case class GetFullResults(replyTo: ActorRef[FullResponse]) extends Command // For debugging
-  final case class GetResults(replyTo: ActorRef[SummarizedAbstracts]) extends Command // For debugging
-  final case class AbstractsWrap(pmAbsts: PMAbstracts) extends Command
-  final case class AISummarizationWrap(summarizedAbstracts: FullResponse) extends Command
-
   final case class SummarizedAbstract(id: Int, sumTitle: String, sumAbstract: String, date: Date)
-
   final case class SummarizedAbstracts(sumAbsts: List[SummarizedAbstract] = List.empty, msg: String = "")
+  final case class SummaryOfSummaries(sumOfSum: String)
 
   final case class FullResponse(
       aiReq: Option[PubMedAISumReq] = None,
@@ -50,26 +50,49 @@ object PubMedSumAct {
       aiResponses: List[AIResponse] = List.empty,
       msg: String = "")
 
-  def apply(aiReq: PubMedAISumReq, id: String): Behavior[Command] = {
+  trait PMSumCmd
+
+  case object Start extends PMSumCmd
+
+  final case class GetFullResults(replyTo: ActorRef[FullResponse]) extends PMSumCmd
+  final case class GetResults(replyTo: ActorRef[SummarizedAbstracts]) extends PMSumCmd
+
+  final case class AbstractsWrap(pmAbsts: PMAbstracts) extends PMSumCmd
+  final case class AISummarizationWrap(summarizedAbstracts: FullResponse) extends PMSumCmd
+
+  final case class AISumOfSums(contextInfo: Seq[String] = Seq.empty) extends PMSumCmd
+
+  final case class SumOfSumsWrap(sumOfSums: SumOfSums) extends PMSumCmd
+
+  final case class GetSummaryOfSummaries(replyTo: ActorRef[SummaryOfSummaries]) extends PMSumCmd
+
+
+  def apply(aiReq: PubMedAISumReq, id: String): Behavior[PMSumCmd] = {
     Behaviors.withTimers { timers =>
-      Behaviors.setup[Command] { ctx =>
+      Behaviors.setup[PMSumCmd] { ctx =>
         new PubMedSumAct(aiReq, id, ctx, timers)
       }
     }
   }
 }
 
-class PubMedSumAct(aiReq: PubMedAISumReq, id: String, ctx: ActorContext[PubMedSumAct.Command], timers: TimerScheduler[PubMedSumAct.Command])
-    extends AbstractBehavior[PubMedSumAct.Command](ctx) {
+class PubMedSumAct(
+    aiReq: PubMedAISumReq,
+    id: String,
+    ctx: ActorContext[PubMedSumAct.PMSumCmd],
+    timers: TimerScheduler[PubMedSumAct.PMSumCmd])
+    extends AbstractBehavior[PubMedSumAct.PMSumCmd](ctx) {
 
   private var originAbstracts: Map[Int, PMAbstract] = Map.empty
   private var summarizedAbstracts: Map[Int, SummarizedAbstract] = Map.empty
 
   private var runs: Int = 0
 
+  private var sumOfSums: Option[SumOfSums] = None
+
   timers.startTimerWithFixedDelay(s"timer_$id", Start, new FiniteDuration(aiReq.update, TimeUnit.SECONDS))
 
-  override def onMessage(msg: PubMedSumAct.Command): Behavior[PubMedSumAct.Command] = {
+  override def onMessage(msg: PubMedSumAct.PMSumCmd): Behavior[PubMedSumAct.PMSumCmd] = {
     msg match {
       case Start =>
         val wrap: ActorRef[PMAbstracts] = ctx.messageAdapter(m => AbstractsWrap(m))
@@ -100,6 +123,19 @@ class PubMedSumAct(aiReq: PubMedAISumReq, id: String, ctx: ActorContext[PubMedSu
 
       case GetResults(replyTo) =>
         replyTo ! SummarizedAbstracts(summarizedAbstracts.values.toList)
+        this
+
+      case AISumOfSums(contextInfo) =>
+        val mw: ActorRef[SumOfSums] = ctx.messageAdapter(m => SumOfSumsWrap(m))
+        context.spawn(GeneralSumOfSum(summarizedAbstracts.values.toList, contextInfo, mw), s"sum_of_sums_$id")
+        this
+
+      case SumOfSumsWrap(sos) =>
+        sumOfSums = Some(sos)
+        this
+
+      case GetSummaryOfSummaries(replyTo) =>
+        replyTo ! SummaryOfSummaries(sumOfSums.fold("not processed.")(_.summarization))
         this
     }
   }
