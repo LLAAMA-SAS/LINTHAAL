@@ -6,10 +6,10 @@ import org.linthaal.ai.services.chatgpt.PromptService.Message
 import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
 import org.linthaal.ai.services.chatgpt.{PromptService, SimpleChatAct}
 import org.linthaal.tot.pubmed
-import org.linthaal.tot.pubmed.PubMedSumAct.{GetResults, SummarizedAbstract, SummarizedAbstracts}
-import org.linthaal.tot.pubmed.PubMedToTManager
+import org.linthaal.tot.pubmed.PubMedSumAct.SummarizedAbstract
 
 import java.util.UUID
+import scala.util.Try
 
 /**
   *
@@ -34,18 +34,18 @@ import java.util.UUID
   * We enable to add meta information like context (type of disease, interest in special treatment approaches, etc.)
   *
   */
-
 /**
- * This actor prepares the prompt requests for the AI and sends it to the API.
- * 
- * It will reply with the results once completed to the replyWhenFinished actor. 
- */
+  * This actor prepares the prompt requests for the AI and sends it to the API.
+  *
+  * It will reply with the results once completed to the replyWhenFinished actor.
+  *
+  */
 object GeneralSumOfSum {
 
   trait SumOfSumsCmd
 
   final case class AIResponseWrap(aiR: AIResponse) extends SumOfSumsCmd
-  
+
   final case class SumOfSums(summarization: String)
 
   def apply(
@@ -56,34 +56,43 @@ object GeneralSumOfSum {
     Behaviors.setup { ctx =>
       ctx.log.info("starting Sum of Sums actor.")
       val wrap: ActorRef[AIResponse] = ctx.messageAdapter(m => AIResponseWrap(m))
-      val p = Seq(Message(content = buildPrompt(sumAbsts, contextInfo)))
+      val prompt = buildPrompt(sumAbsts, contextInfo)
+      ctx.log.info(s"Prompt: $prompt")
+      val p = Seq(Message(content = prompt))
       ctx.spawn(SimpleChatAct.apply(PromptService.promptDefaultConf, p, wrap), s"talking-to-ai-${UUID.randomUUID().toString}")
       talkingToAI(replyWhenFinished)
     }
   }
-  
+
   private def talkingToAI(replyWhenFinished: ActorRef[SumOfSums]): Behavior[SumOfSumsCmd] = {
-    Behaviors.receiveMessage {
-      case AIResponseWrap(air: AIResponse) => 
-        replyWhenFinished ! SumOfSums(air.choices.head.message.content)  
-        Behaviors.stopped
+    Behaviors.receive { (ctx, msg) =>
+      msg match {
+        case AIResponseWrap(air: AIResponse) =>
+          ctx.log.debug(s"""AIResponse: ${air.toString}""")
+          val ch = Try {air.choices.head.message.content}.getOrElse("Empty.")
+          replyWhenFinished ! SumOfSums(ch)
+          Behaviors.stopped
+      }
     }
   }
 
   private def buildPrompt(sas: List[SummarizedAbstract], contextInfo: Seq[String]): String = {
-    val abst = sas.mkString("####", "\n###\n", "####")
+    val abst = sas.map(a => s"${a.sumTitle}.\n${a.sumAbstract}.\n").mkString("####\n", "###", "\n####")
     val cont = if (contextInfo.nonEmpty) {
       val ci = contextInfo.zipWithIndex.map(c => s"${c._2}) ${c._1}").mkString("\n")
-      s"""I provide you ${ci.size} context information which are very important for your work:"""
+      s"""I provide you context information which are very important for your work:\n${ci}\n"""
     } else "\n"
 
     s"""
-       |I ask you to extract the most important information of the following texts.
+       |$cont
+       |I ask you to extract the most important information of all the following texts.
        |The set of texts starts and ends with ####.
        |Each text is separated from the next one by ###.
-       |The first line of each text is a sort of title.
-       |$cont
-       |Think in steps. Favor logical relationships between the results you deliver.
+       |For each text, the first line is a title.
+       |You should produce one coherent text in a maximum of 5 sentences.
+       |Think in steps.
+       |1. Find the 1 to 3 most important ideas or concepts from the texts.
+       |2. Favor logical relationships between the results you deliver.
        |$abst
        |""".stripMargin
   }

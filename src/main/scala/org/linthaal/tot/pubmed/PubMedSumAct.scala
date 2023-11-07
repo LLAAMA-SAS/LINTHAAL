@@ -1,17 +1,17 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors, TimerScheduler }
-import akka.actor.typed.{ ActorRef, Behavior }
+import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
+import akka.actor.typed.{ActorRef, Behavior}
 import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.linthaal.helpers.ncbi.eutils.{ EutilsCalls, PMActor }
+import org.linthaal.helpers.ncbi.eutils.{EutilsCalls, PMActor}
 import org.linthaal.tot.pubmed.PubMedSumAct.*
 import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum
 import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum.SumOfSums
 
-import java.util.Date
+import java.util.{Date, UUID}
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
 
@@ -32,9 +32,11 @@ import scala.concurrent.duration.FiniteDuration
   *
   *
   * Manages the AI summarization for one defined request.
+  *
   * It keeps the list of abstracts and builds the list of summarized versions.
   *
-  * It can also ask the AI to produce a contextual Summary of summaries.
+  * It can also ask the AI to produce a contextual Summary of summaries
+  * (taking all summaries and producing a top summary in a given context).
   *
   */
 object PubMedSumAct {
@@ -66,7 +68,6 @@ object PubMedSumAct {
 
   final case class GetSummaryOfSummaries(replyTo: ActorRef[SummaryOfSummaries]) extends PMSumCmd
 
-
   def apply(aiReq: PubMedAISumReq, id: String): Behavior[PMSumCmd] = {
     Behaviors.withTimers { timers =>
       Behaviors.setup[PMSumCmd] { ctx =>
@@ -88,15 +89,18 @@ class PubMedSumAct(
 
   private var runs: Int = 0
 
-  private var sumOfSums: Option[SumOfSums] = None
+  private var sumOfSums: Option[SummaryOfSummaries] = None
 
-  timers.startTimerWithFixedDelay(s"timer_$id", Start, new FiniteDuration(aiReq.update, TimeUnit.SECONDS))
+  if (aiReq.update > 5) {
+    timers.startTimerWithFixedDelay(s"timer_$id", Start, new FiniteDuration(aiReq.update, TimeUnit.SECONDS))
+  }                                                                                                             
 
   override def onMessage(msg: PubMedSumAct.PMSumCmd): Behavior[PubMedSumAct.PMSumCmd] = {
     msg match {
       case Start =>
         val wrap: ActorRef[PMAbstracts] = ctx.messageAdapter(m => AbstractsWrap(m))
-        ctx.spawn(PMActor.apply(EutilsCalls.eutilsDefaultConf, aiReq.search, originAbstracts.keys.toList, wrap), "pubmed_query_actor")
+        ctx.spawn(PMActor.apply(EutilsCalls.eutilsDefaultConf, aiReq.search,
+          originAbstracts.keys.toList, wrap), s"pubmed_query_actor${UUID.randomUUID().toString}")
         runs = runs + 1
         ctx.log.info(s"running query [${aiReq.search}] for the $runs time.")
         this
@@ -131,11 +135,11 @@ class PubMedSumAct(
         this
 
       case SumOfSumsWrap(sos) =>
-        sumOfSums = Some(sos)
+        sumOfSums = Some(SummaryOfSummaries(sos.summarization))
         this
 
       case GetSummaryOfSummaries(replyTo) =>
-        replyTo ! SummaryOfSummaries(sumOfSums.fold("not processed.")(_.summarization))
+        replyTo ! SummaryOfSummaries(sumOfSums.fold("not processed.")(_.sumOfSum))
         this
     }
   }

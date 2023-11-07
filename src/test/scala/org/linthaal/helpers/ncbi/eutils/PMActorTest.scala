@@ -32,7 +32,7 @@ class PMActorTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
       val conf = EutilsCalls.eutilsDefaultConf
       val replyProbe = createTestProbe[PMAbstracts]()
 
-      val underTest = spawn(PMActor(conf, "pancreatic cancer", replyProbe.ref), "retrieve_abstracts")
+      val underTest = spawn(PMActor(conf, "pancreatic cancer",List.empty, replyProbe.ref), "retrieve_abstracts")
 
       replyProbe.expectMessageType[PMAbstracts](timeout)
     }

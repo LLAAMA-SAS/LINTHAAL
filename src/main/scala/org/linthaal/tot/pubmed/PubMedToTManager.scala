@@ -4,7 +4,7 @@ import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers
-import org.linthaal.tot.pubmed.PubMedSumAct.{AISumOfSums, GetResults, SummarizedAbstracts}
+import org.linthaal.tot.pubmed.PubMedSumAct.{AISumOfSums, GetResults, GetSummaryOfSummaries, SummarizedAbstracts, SummaryOfSummaries}
 import org.linthaal.tot.pubmed.PubMedToTManager.*
 import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum.SumOfSums
 
@@ -41,7 +41,7 @@ object PubMedToTManager {
   final case class SummarizeSummarizations(id: String, contextInfo: Seq[String] = Seq.empty, replyTo: ActorRef[ActionPerformed])
       extends Command
 
-  final case class RetrieveSumOfSums(id: String, replyTo: ActorRef[SumOfSums]) extends Command
+  final case class RetrieveSumOfSums(id: String, replyTo: ActorRef[SummaryOfSummaries]) extends Command
 
   final case class AllSummarizationRequests(sumReqs: Map[String, PubMedAISumReq])
 
@@ -67,7 +67,7 @@ class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command]) extends Abst
           val sac = context.spawn(PubMedSumAct(pmSR, id), s"summarizing_actor_$id")
           sumAIActors = sumAIActors + (id -> sac)
           allReq = allReq + (id -> pmSR)
-          sac ! PMSumCmd.Start
+          sac ! PubMedSumAct.Start
           replyTo ! ActionPerformed("Summarization started. ")
         } else {
           replyTo ! ActionPerformed("Identical request already exists. Remove first if you want to rerun. ")
@@ -98,11 +98,21 @@ class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command]) extends Abst
         if (sumAIActors.contains(id)) {
           val sumAct = sumAIActors(id)
           sumAct ! AISumOfSums(contextInfo)
-          replyTo ! ActionPerformed("Removed Summarization Results. ")
+          replyTo ! ActionPerformed("Processing with Summarization of summaries. ")
         } else {
           replyTo ! ActionPerformed("no corresponding id. ")
         }
         this
+
+      case RetrieveSumOfSums(id, replyTo) =>
+        if (sumAIActors.contains(id)) {
+          val sumAct = sumAIActors(id)
+          sumAct ! GetSummaryOfSummaries(replyTo)
+        } else {
+          replyTo ! SummaryOfSummaries("Failed.")
+        }
+        this
+
     }
   }
 }

@@ -1,6 +1,7 @@
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
-import org.linthaal.tot.pubmed.PubMedSumAct
-import org.linthaal.tot.pubmed.PubMedSumAct.SummarizationResponse
+import org.linthaal.api.routes.PubMedAISumReq
+import org.linthaal.tot.pubmed.{PubMedSumAct, PubMedToTManager}
+import org.linthaal.tot.pubmed.PubMedToTManager.{ActionPerformed, AllSummarizationRequests, RetrieveAll, StartAISummarization}
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.duration.DurationInt
@@ -29,9 +30,14 @@ class SummarizePMAbstractsTest extends ScalaTestWithActorTestKit with AnyWordSpe
     val timeout = 30.seconds
     //#test
     " reply with a list of summarized abstracts. " in {
-      val replyProbe = createTestProbe[SummarizationResponse]()
-      val underTest = spawn(PubMedSummarizationAct("pancreatic cancer biomarkers", replyTo = replyProbe.ref))
-      replyProbe.expectMessageType[SummarizationResponse](timeout)
+    val replyAP = createTestProbe[ActionPerformed]()
+    val replyRes = createTestProbe[AllSummarizationRequests]()
+      val underTest = spawn(PubMedToTManager())
+      val passumReq = PubMedAISumReq("pancreatic cancer biomarkers",4, 20, 0, 5)
+      underTest.tell(StartAISummarization(passumReq, replyAP.ref))
+      replyAP.expectMessageType[ActionPerformed](timeout)
+      underTest.tell(RetrieveAll(replyRes.ref))
+      replyRes.expectMessageType[AllSummarizationRequests](timeout)
     }
   }
 }
