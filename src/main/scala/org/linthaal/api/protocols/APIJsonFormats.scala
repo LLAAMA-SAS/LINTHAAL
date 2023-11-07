@@ -1,11 +1,10 @@
 package org.linthaal.api.protocols
 
-import org.linthaal.ai.services.{ HuggingFaceInferenceEndpointsService, OpenAIService, Service }
-import org.linthaal.api.routes.{ PubMedAISumReq, SumOfSumsReq }
+import org.linthaal.ai.services.{HuggingFaceInferenceEndpointsService, OpenAIService, Service}
+import org.linthaal.api.routes.{PubMedAISumReq, SumOfSumsReq}
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
-import org.linthaal.tot.pubmed.PubMedSumAct.{ SummarizedAbstract, SummarizedAbstracts, SummaryOfSummaries }
-import org.linthaal.tot.pubmed.PubMedToTManager.{ ActionPerformed, AllSummarizationRequests }
-import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum.SumOfSums
+import org.linthaal.tot.pubmed.PubMedSumAct.{SummarizedAbstract, SummarizedAbstracts, SummaryOfSummaries}
+import org.linthaal.tot.pubmed.PubMedToTManager.{ActionPerformed, AllSummarizationRequests}
 
 /**
   * This program is free software: you can redistribute it and/or modify
@@ -40,7 +39,7 @@ object APIJsonFormats {
 
     def read(value: JsValue) = {
       if (value.asJsObject.fields.size == 1) {
-        value.asJsObject.getFields("open_ai_model") match {
+        value.asJsObject.getFields("openai_model") match {
           case Seq(JsString(_)) => value.convertTo[OpenAIService]
           case _ =>
             value.asJsObject.getFields("hugging_face_model") match {
