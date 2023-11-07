@@ -2,19 +2,18 @@ package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors, TimerScheduler }
 import akka.actor.typed.{ ActorRef, Behavior }
-import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
 import org.linthaal.helpers.ncbi.eutils.{ EutilsCalls, PMActor }
 import org.linthaal.tot.pubmed.PubMedSumAct._
+import org.linthaal.ai.services.AIResponse
 
 import java.util.Date
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
 
 /**
-  *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
@@ -27,7 +26,6 @@ import scala.concurrent.duration.FiniteDuration
   *
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
-  *
   */
 object PubMedSumAct {
 
@@ -59,7 +57,11 @@ object PubMedSumAct {
   }
 }
 
-class PubMedSumAct(aiReq: PubMedAISumReq, id: String, ctx: ActorContext[PubMedSumAct.Command], timers: TimerScheduler[PubMedSumAct.Command])
+final class PubMedSumAct(
+    aiReq: PubMedAISumReq,
+    id: String,
+    ctx: ActorContext[PubMedSumAct.Command],
+    timers: TimerScheduler[PubMedSumAct.Command])
     extends AbstractBehavior[PubMedSumAct.Command](ctx) {
 
   private var originAbstracts: Map[Int, PMAbstract] = Map.empty

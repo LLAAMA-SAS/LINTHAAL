@@ -11,7 +11,6 @@ import scala.concurrent.{ ExecutionContextExecutor, Future }
 import scala.xml.NodeSeq
 
 /**
-  *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
@@ -24,9 +23,8 @@ import scala.xml.NodeSeq
   *
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
-  *
   */
-class EutilsCalls(config: EutilsCalls.EutilsConfig)(implicit as: ActorSystem[_]) {
+final class EutilsCalls(config: EutilsCalls.EutilsConfig)(implicit as: ActorSystem[_]) {
 
   import EutilsCalls._
 
@@ -47,8 +45,6 @@ class EutilsCalls(config: EutilsCalls.EutilsConfig)(implicit as: ActorSystem[_])
 
   private def getRemote(queryUri: String): Future[NodeSeq] = {
     implicit val exeContext: ExecutionContextExecutor = as.executionContext
-
-    println(queryUri)
 
     val httpReq = HttpRequest(
       method = HttpMethods.GET,
@@ -103,14 +99,11 @@ object EutilsCalls {
 /**
   * The current E-utilities end-points, mostly copied from https://www.ncbi.nlm.nih.gov/books/NBK25497/
   *
-  *
-  *
   * EInfo (database statistics)
   * utils.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi
   *
   * Provides the number of records indexed in each field of a given database, the date of the last update of the database,
   * and the available links from the database to other Entrez databases.
-  *
   *
   * ESearch (text searches)
   * eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi
@@ -118,25 +111,21 @@ object EutilsCalls {
   * Responds to a text query with the list of matching UIDs in a given database (for later use in ESummary,
   * EFetch or ELink), along with the term translations of the query.
   *
-  *
   * EPost (UID uploads)
   * eutils.ncbi.nlm.nih.gov/entrez/eutils/epost.fcgi
   *
   * Accepts a list of UIDs from a given database, stores the set on the History Server, and responds with a query
   * key and web environment for the uploaded dataset.
   *
-  *
   * ESummary (document summary downloads)
   * eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi
   *
   * Responds to a list of UIDs from a given database with the corresponding document summaries.
   *
-  *
   * EFetch (data record downloads)
   * eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi
   *
   * Responds to a list of UIDs in a given database with the corresponding data records in a specified format.
-  *
   *
   * ELink (Entrez links)
   * eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi
@@ -146,24 +135,20 @@ object EutilsCalls {
   * specified link from a list of one or more UIDs; creates a hyperlink to the primary LinkOut provider for a
   * specific UID and database, or lists LinkOut URLs and attributes for multiple UIDs.
   *
-  *
   * EGQuery (global query)
   * eutils.ncbi.nlm.nih.gov/entrez/eutils/egquery.fcgi
   *
   * Responds to a text query with the number of records matching the query in each Entrez database.
-  *
   *
   * ESpell (spelling suggestions)
   * eutils.ncbi.nlm.nih.gov/entrez/eutils/espell.fcgi
   *
   * Retrieves spelling suggestions for a text query in a given database.
   *
-  *
   * ECitMatch (batch citation searching in PubMed)
   * eutils.ncbi.nlm.nih.gov/entrez/eutils/ecitmatch.cgi
   *
   * Retrieves PubMed IDs (PMIDs) corresponding to a set of input citation strings.
-  *
   *
   * NCBI Entrez Databases
   * Entrez Database	UID common name	E-utility Database Name

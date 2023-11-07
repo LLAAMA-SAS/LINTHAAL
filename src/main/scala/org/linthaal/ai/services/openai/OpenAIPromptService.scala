@@ -1,4 +1,4 @@
-package org.linthaal.ai.services.chatgpt
+package org.linthaal.ai.services.openai
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
@@ -12,7 +12,6 @@ import org.linthaal.helpers.ApiKeys
 import scala.concurrent.{ ExecutionContextExecutor, Future }
 
 /**
-  *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
@@ -25,11 +24,10 @@ import scala.concurrent.{ ExecutionContextExecutor, Future }
   *
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
-  *
   */
-class PromptService(promptConf: PromptService.PromptConfig)(implicit as: ActorSystem[_]) {
+final class OpenAIPromptService(promptConf: OpenAIPromptService.PromptConfig)(implicit as: ActorSystem[_]) {
 
-  import PromptService._
+  import OpenAIPromptService._
   import SimplePromptJsonProt._
 
   def openAIPromptCall(messages: Seq[Message], temperature: Double = 0.0): Future[ChatResponse] = {
@@ -43,18 +41,14 @@ class PromptService(promptConf: PromptService.PromptConfig)(implicit as: ActorSy
     import spray.json._
     val formatedRequest = chatRequest.toJson.compactPrint
 
-    println(formatedRequest)
-
     val httpReq = HttpRequest(
       method = HttpMethods.POST,
       promptConf.uri,
       headers = Seq(authorization),
       entity = HttpEntity(ContentTypes.`application/json`, formatedRequest),
-      HttpProtocols.`HTTP/2.0`)
+      protocol = HttpProtocols.`HTTP/2.0`)
 
-    println(httpReq.entity)
-
-    val connFlow = Http().connectionTo("api.openai.com").http2()
+    val connFlow = Http().connectionTo(host).http2()
 
     val responseFuture: Future[HttpResponse] = Source.single(httpReq).via(connFlow).runWith(Sink.head)
 
@@ -70,11 +64,11 @@ class PromptService(promptConf: PromptService.PromptConfig)(implicit as: ActorSy
   }
 }
 
-object PromptService {
-  final case class Message(role: String = "user", content: String)
+object OpenAIPromptService {
+  case class Message(role: String = "user", content: String)
 
-  final case class ChatRequest(model: String = "gpt-3.5-turbo", messages: Seq[Message], temperature: Double = 0.0)
-//  case class ChatRequest(model: String = "gpt-4", messages: Seq[Message], temperature: Double = 0.0)
+  case class ChatRequest(model: String = "gpt-3.5-turbo", messages: Seq[Message], temperature: Double = 0.0)
+//  case class TextGenerationRequest(model: String = "gpt-4", messages: Seq[Message], temperature: Double = 0.0)
 
   final case class Choice(index: Int, message: Message, finishReason: String)
 
@@ -86,5 +80,10 @@ object PromptService {
   final case class PromptConfig(apiKey: String, uri: String = "https://api.openai.com/v1/chat/completions", model: String = "gpt-3.5-turbo")
 //  case class PromptConfig(apiKey: String, uri: String = "https://api.openai.com/v1/chat/completions", model: String = "gpt-4")
 
+  private val host = "api.openai.com"
+
   val promptDefaultConf: PromptConfig = PromptConfig(ApiKeys.getKey("openai.api_key"))
+
+  def createPromptConfig(model: String): PromptConfig =
+    PromptConfig(ApiKeys.getKey("openai.api_key"), model)
 }

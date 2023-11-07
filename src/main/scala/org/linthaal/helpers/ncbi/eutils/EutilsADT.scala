@@ -6,7 +6,6 @@ import scala.util.Try
 import scala.xml.NodeSeq
 
 /**
-  *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
@@ -19,7 +18,6 @@ import scala.xml.NodeSeq
   *
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
-  *
   */
 object EutilsADT {
 
@@ -81,7 +79,8 @@ object EutilsADT {
   private def pmXmlAbstToText(n: NodeSeq): String = {
     (n \\ "AbstractText")
       .map(n => (n \@ "Label", n.text))
-      .map(n => if (n._1.nonEmpty && n._1 == "CONCLUSIONS") n._1 + ": " + n._2 else n._2) // for now, only keep conclusions if there are many fields
+      .map(n =>
+        if (n._1.nonEmpty && n._1 == "CONCLUSIONS") n._1 + ": " + n._2 else n._2) // for now, only keep conclusions if there are many fields
       .mkString("\n")
   }
 }

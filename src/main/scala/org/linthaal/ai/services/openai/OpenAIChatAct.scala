@@ -1,13 +1,13 @@
-package org.linthaal.ai.services.chatgpt
+package org.linthaal.ai.services.openai
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ ActorRef, Behavior }
 
 import scala.concurrent.Future
 import scala.util.{ Failure, Success }
+import org.linthaal.ai.services.AIResponse
 
 /**
-  *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
@@ -20,17 +20,16 @@ import scala.util.{ Failure, Success }
   *
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
-  *
   */
-object SimpleChatAct {
+object OpenAIChatAct {
 
-  import PromptService._
+  import OpenAIPromptService._
 
-  sealed trait ChatMsg
-  final case class Response(chatRes: ChatResponse) extends ChatMsg
-  final case class ChatFailed(reason: String) extends ChatMsg
+  sealed trait ChatMessage
+  final case class Response(chatRes: ChatResponse) extends ChatMessage
+  final case class ChatFailed(reason: String) extends ChatMessage
 
-  final case class AIResponse(
+  case class AIResponseMessage(
       id: String,
       chatObject: String,
       created: Long,
@@ -38,38 +37,39 @@ object SimpleChatAct {
       messages: Seq[Message],
       temperature: Double = 0.0,
       model: String)
+      extends AIResponse
 
   def apply(
       promptConf: PromptConfig,
       messages: Seq[Message],
-      replyTo: ActorRef[AIResponse],
-      temperature: Double = 0.0): Behavior[ChatMsg] = {
+      replyTo: ActorRef[AIResponseMessage],
+      temperature: Double = 0.0): Behavior[ChatMessage] = {
 
-    Behaviors.setup[ChatMsg] { ctx =>
-      val prtServ: PromptService = new PromptService(promptConf)(ctx.system)
+    Behaviors.setup[ChatMessage] { ctx =>
+      val promptService: OpenAIPromptService = new OpenAIPromptService(promptConf)(ctx.system)
       ctx.log.info("sent question... ")
-      val time1 = System.currentTimeMillis()
+      val time = System.currentTimeMillis()
 
-      val futRes: Future[ChatResponse] = prtServ.openAIPromptCall(messages, temperature)
+      val futRes: Future[ChatResponse] = promptService.openAIPromptCall(messages, temperature)
 
       ctx.pipeToSelf(futRes) {
         case Success(rq) => Response(rq)
         case Failure(rf) => ChatFailed(rf.getMessage)
       }
-      asking(replyTo = replyTo, model = promptConf.model, temperature = temperature, messages = messages, time = time1)
+      asking(replyTo = replyTo, model = promptConf.model, temperature = temperature, messages = messages, time = time)
     }
   }
 
   private def asking(
-      replyTo: ActorRef[AIResponse],
+      replyTo: ActorRef[AIResponseMessage],
       model: String,
       temperature: Double,
       messages: Seq[Message],
-      time: Long): Behavior[ChatMsg] =
+      time: Long): Behavior[ChatMessage] =
     Behaviors.receive { (ctx, msg) =>
       msg match {
         case msg: Response =>
-          replyTo ! AIResponse(
+          replyTo ! AIResponseMessage(
             msg.chatRes.id,
             msg.chatRes.chatObject,
             msg.chatRes.created,
@@ -82,7 +82,7 @@ object SimpleChatAct {
           Behaviors.stopped
 
         case msg: ChatFailed =>
-          replyTo ! AIResponse("Failed!!", msg.reason, System.currentTimeMillis(), Seq.empty, messages, temperature, model)
+          replyTo ! AIResponseMessage("Failed!!", msg.reason, System.currentTimeMillis(), Seq.empty, messages, temperature, model)
           val t = System.currentTimeMillis() - time
           ctx.log.error(s"[took $t ms] FAILED response: $msg")
           Behaviors.stopped

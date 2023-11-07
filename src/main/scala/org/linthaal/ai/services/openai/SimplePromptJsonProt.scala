@@ -1,10 +1,9 @@
-package org.linthaal.ai.services.chatgpt
+package org.linthaal.ai.services.openai
 
-import PromptService.{ ChatRequest, ChatResponse, Choice, Message, Usage }
+import OpenAIPromptService.{ ChatRequest, ChatResponse, Choice, Message, Usage }
 import spray.json.{ DefaultJsonProtocol, RootJsonFormat }
 
 /**
-  *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
@@ -17,7 +16,6 @@ import spray.json.{ DefaultJsonProtocol, RootJsonFormat }
   *
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
-  *
   */
 object SimplePromptJsonProt extends DefaultJsonProtocol {
 
@@ -42,11 +40,11 @@ object SimplePromptJsonProt extends DefaultJsonProtocol {
   }
 
   implicit object JsonUsage extends RootJsonFormat[Usage] {
-    def write(u: Usage): JsObject = JsObject(
-      "prompt_tokens" -> JsNumber(u.promptTokens),
-      "completion_tokens" -> JsNumber(u.completionTokens),
-      "total_tokens" -> JsNumber(u.totalTokens),
-    )
+    def write(u: Usage): JsObject =
+      JsObject(
+        "prompt_tokens" -> JsNumber(u.promptTokens),
+        "completion_tokens" -> JsNumber(u.completionTokens),
+        "total_tokens" -> JsNumber(u.totalTokens))
 
     def read(value: JsValue): Usage = {
       value.asJsObject.getFields("prompt_tokens", "completion_tokens", "total_tokens") match {
@@ -73,7 +71,7 @@ object SimplePromptJsonProt extends DefaultJsonProtocol {
         case Seq(choices, JsNumber(created), JsString(id), JsString(model), JsString(obj), usage) =>
           ChatResponse(id, chatObject = obj, created.toLong, model, usage.convertTo[Usage], choices = choices.convertTo[Seq[Choice]])
 
-        case _ => deserializationError(s"ChatResponse expected, got $json")
+        case _ => deserializationError(s"TextGenerationResponse expected, got $json")
       }
     }
   }
