@@ -1,8 +1,9 @@
 package org.linthaal.helpers.chatgpt
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
+import org.linthaal.ai.services.openai.{ OpenAIChatAct, OpenAIPromptService }
 import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
-import org.linthaal.ai.services.chatgpt.{ PromptService, SimpleChatAct }
+import org.linthaal.ai.services.chatgpt.{ OpenAIPromptService, OpenAIChatAct }
 import org.linthaal.ai.services.chatgpt.PromptService.Message
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -30,9 +31,9 @@ class PromptSimpleTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
     val timeout = 30.seconds
 
     "reply with a summary " in {
-      val prConf = PromptService.promptDefaultConf
+      val prConf = OpenAIPromptService.promptDefaultConf
       val replyProbe = createTestProbe[AIResponse]()
-      val underTest = spawn(SimpleChatAct(prConf, Seq(Message(content = TestAIPromptQuestions.test2)), replyTo = replyProbe.ref))
+      val underTest = spawn(OpenAIChatAct(prConf, Seq(Message(content = TestAIPromptQuestions.test2)), replyTo = replyProbe.ref))
 //        Seq(Message(content = "What is the capital of Germany?")),replyTo = replyProbe.ref))
 
       replyProbe.expectMessageType[AIResponse](timeout)
@@ -44,9 +45,9 @@ class PromptSimpleTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
     val timeout = 30.seconds
 
     "reply with an Json output summarizing different texts " in {
-      val prConf = PromptService.promptDefaultConf
+      val prConf = OpenAIPromptService.promptDefaultConf
       val replyProbe = createTestProbe[AIResponse]()
-      val underTest = spawn(SimpleChatAct(prConf, Seq(Message(content = TestAIPromptQuestions.test1)), replyTo = replyProbe.ref))
+      val underTest = spawn(OpenAIChatAct(prConf, Seq(Message(content = TestAIPromptQuestions.test1)), replyTo = replyProbe.ref))
 //        Seq(Message(content = "What is the capital of Germany?")),replyTo = replyProbe.ref))
 
       replyProbe.expectMessageType[AIResponse](timeout)

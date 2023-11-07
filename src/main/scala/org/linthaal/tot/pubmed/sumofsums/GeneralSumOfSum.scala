@@ -2,9 +2,9 @@ package org.linthaal.tot.pubmed.sumofsums
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import org.linthaal.ai.services.chatgpt.PromptService.Message
-import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
-import org.linthaal.ai.services.chatgpt.{PromptService, SimpleChatAct}
+import org.linthaal.ai.services.AIResponse
+import org.linthaal.ai.services.openai.{OpenAIChatAct, OpenAIPromptService}
+import org.linthaal.ai.services.openai.OpenAIPromptService.Message
 import org.linthaal.tot.pubmed
 import org.linthaal.tot.pubmed.PubMedSumAct.SummarizedAbstract
 
@@ -26,19 +26,11 @@ import scala.util.Try
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
-  */
-/**
+  *
   * Summarization of Pubmed summarizations on a defined topic (search string).
   *
   * We take all the summarized results on a defined query and ask a LLM to summarize it again.
   * We enable to add meta information like context (type of disease, interest in special treatment approaches, etc.)
-  *
-  */
-/**
-  * This actor prepares the prompt requests for the AI and sends it to the API.
-  *
-  * It will reply with the results once completed to the replyWhenFinished actor.
-  *
   */
 object GeneralSumOfSum {
 
@@ -59,7 +51,7 @@ object GeneralSumOfSum {
       val prompt = buildPrompt(sumAbsts, contextInfo)
       ctx.log.info(s"Prompt: $prompt")
       val p = Seq(Message(content = prompt))
-      ctx.spawn(SimpleChatAct.apply(PromptService.promptDefaultConf, p, wrap), s"talking-to-ai-${UUID.randomUUID().toString}")
+      ctx.spawn(OpenAIChatAct.apply(OpenAIPromptService.promptDefaultConf, p, wrap), s"talking-to-ai-${UUID.randomUUID().toString}")
       talkingToAI(replyWhenFinished)
     }
   }
@@ -68,9 +60,8 @@ object GeneralSumOfSum {
     Behaviors.receive { (ctx, msg) =>
       msg match {
         case AIResponseWrap(air: AIResponse) =>
-          ctx.log.debug(s"""AIResponse: ${air.toString}""")
-          val ch = Try {air.choices.head.message.content}.getOrElse("Empty.")
-          replyWhenFinished ! SumOfSums(ch)
+          ctx.log.debug(s"""AIResponse: ${air.extendedResponse()}""")
+          replyWhenFinished ! SumOfSums(air.mainResponse())
           Behaviors.stopped
       }
     }

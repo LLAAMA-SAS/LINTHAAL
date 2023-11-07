@@ -24,7 +24,6 @@ import scala.concurrent.duration.DurationInt
   */
 
 class SummarizePMAbstractsTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
-  //#definition
 
   "AI to summarize abstracts based on a query " must {
     val timeout = 30.seconds
@@ -33,7 +32,7 @@ class SummarizePMAbstractsTest extends ScalaTestWithActorTestKit with AnyWordSpe
     val replyAP = createTestProbe[ActionPerformed]()
     val replyRes = createTestProbe[AllSummarizationRequests]()
       val underTest = spawn(PubMedToTManager())
-      val passumReq = PubMedAISumReq("pancreatic cancer biomarkers",4, 20, 0, 5)
+      val passumReq = PubMedAISumReq("pancreatic cancer biomarkers")
       underTest.tell(StartAISummarization(passumReq, replyAP.ref))
       replyAP.expectMessageType[ActionPerformed](timeout)
       underTest.tell(RetrieveAll(replyRes.ref))

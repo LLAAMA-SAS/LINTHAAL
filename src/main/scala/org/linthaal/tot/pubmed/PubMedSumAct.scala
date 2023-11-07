@@ -2,7 +2,7 @@ package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
-import org.linthaal.ai.services.chatgpt.SimpleChatAct.AIResponse
+import org.linthaal.ai.services.AIResponse
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
@@ -11,12 +11,11 @@ import org.linthaal.tot.pubmed.PubMedSumAct.*
 import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum
 import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum.SumOfSums
 
-import java.util.{Date, UUID}
 import java.util.concurrent.TimeUnit
+import java.util.{Date, UUID}
 import scala.concurrent.duration.FiniteDuration
 
 /**
-  *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or

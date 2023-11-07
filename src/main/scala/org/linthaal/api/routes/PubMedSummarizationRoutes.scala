@@ -1,11 +1,12 @@
 package org.linthaal.api.routes
 
 import akka.actor.typed.scaladsl.AskPattern.*
-import akka.actor.typed.{ ActorRef, ActorSystem }
+import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
+import org.linthaal.ai.services.{OpenAIService, Service}
 import org.linthaal.tot.pubmed.PubMedSumAct.*
 import org.linthaal.tot.pubmed.PubMedToTManager
 import org.linthaal.tot.pubmed.PubMedToTManager.*
@@ -13,7 +14,6 @@ import org.linthaal.tot.pubmed.PubMedToTManager.*
 import scala.concurrent.Future
 
 /**
-  *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
@@ -26,9 +26,8 @@ import scala.concurrent.Future
   *
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
-  *
   */
-class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])(implicit val system: ActorSystem[_]) {
+final class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])(implicit val system: ActorSystem[_]) {
 
   import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
   import org.linthaal.api.protocols.APIJsonFormats.*
@@ -58,15 +57,17 @@ class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])(impli
     pathPrefix("tot_pubmed") {
       concat(
         pathEnd {
-          concat(get {
-            complete(retrieveAllSummarizations())
-          }, post {
-            entity(as[PubMedAISumReq]) { pmAIReq =>
-              onSuccess(summarize(pmAIReq)) { performed =>
-                complete((StatusCodes.Created, performed))
+          concat(
+            get {
+              complete(retrieveAllSummarizations())
+            },
+            post {
+              entity(as[PubMedAISumReq]) { pmAIReq =>
+                onSuccess(summarize(pmAIReq)) { performed =>
+                  complete((StatusCodes.Created, performed))
+                }
               }
-            }
-          })
+            })
         },
         pathPrefix(Segment) { id =>
           concat(pathEnd {
@@ -98,6 +99,12 @@ class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])(impli
     }
 }
 
-final case class PubMedAISumReq(search: String, titleLength: Int = 5, abstractLength: Int = 20, update: Int = 1800, maxAbstracts: Int = 20)
+case class PubMedAISumReq(
+    search: String,
+    service: Service = OpenAIService("gpt-3.5-turbo"),
+    titleLength: Int = 5,
+    abstractLength: Int = 20,
+    update: Int = 1800,
+    maxAbstracts: Int = 20)
 
 final case class SumOfSumsReq(context: List[String])

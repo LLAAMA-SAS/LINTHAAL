@@ -5,7 +5,6 @@ import org.linthaal.helpers.Parameters
 import org.slf4j.{ Logger, LoggerFactory }
 
 /**
-  *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
@@ -18,7 +17,6 @@ import org.slf4j.{ Logger, LoggerFactory }
   *
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
-  *
   */
 object Linthaal {
 
@@ -27,7 +25,7 @@ object Linthaal {
   var appArgs: Map[String, String] = Map.empty
 
   def main(args: Array[String]): Unit = {
-    println("Starting Linthaal...")
+    log.info("Starting Linthaal...")
     appArgs = Parameters.parseArgs(args)
     log.info(s"""Args: ${appArgs.keys.mkString(" , ")}""")
     ActorSystem[Nothing](LinthaalSupervisor(), "Linthaal-system")

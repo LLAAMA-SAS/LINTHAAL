@@ -1,15 +1,14 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors }
+import akka.actor.typed.{ ActorRef, Behavior }
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers
-import org.linthaal.tot.pubmed.PubMedSumAct.{AISumOfSums, GetResults, GetSummaryOfSummaries, SummarizedAbstracts, SummaryOfSummaries}
+import org.linthaal.tot.pubmed.PubMedSumAct.{ AISumOfSums, GetResults, GetSummaryOfSummaries, SummarizedAbstracts, SummaryOfSummaries }
 import org.linthaal.tot.pubmed.PubMedToTManager.*
 import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum.SumOfSums
 
 /**
-  *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
@@ -23,9 +22,9 @@ import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum.SumOfSums
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
- *
- * The Graph of Thoughts manager for pubmed summarization requests.
- *
+  *
+  * The Graph of Thoughts manager for pubmed summarization requests.
+  *
   */
 object PubMedToTManager {
   sealed trait Command
@@ -52,7 +51,7 @@ object PubMedToTManager {
   }
 }
 
-class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command]) extends AbstractBehavior[PubMedToTManager.Command](ctx) {
+final class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command]) extends AbstractBehavior[PubMedToTManager.Command](ctx) {
 
   import akka.actor.typed.scaladsl.AskPattern.*
 
