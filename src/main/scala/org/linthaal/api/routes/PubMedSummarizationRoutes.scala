@@ -1,16 +1,15 @@
 package org.linthaal.api.routes
 
 import akka.actor.typed.scaladsl.AskPattern.*
-import akka.actor.typed.{ ActorRef, ActorSystem }
+import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import org.linthaal.ai.services.OpenAIService
-import org.linthaal.tot.pubmed.PubMedSumAct.SummarizedAbstracts
+import org.linthaal.ai.services.{OpenAIService, Service}
+import org.linthaal.tot.pubmed.PubMedSumAct.*
 import org.linthaal.tot.pubmed.PubMedToTManager
 import org.linthaal.tot.pubmed.PubMedToTManager.*
-import org.linthaal.ai.services.Service
 
 import scala.concurrent.Future
 
@@ -30,8 +29,8 @@ import scala.concurrent.Future
   */
 final class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])(implicit val system: ActorSystem[_]) {
 
-  import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-  import org.linthaal.api.protocols.APIJsonFormats._
+  import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
+  import org.linthaal.api.protocols.APIJsonFormats.*
 
   // If ask takes more time than this to complete the request is failed
   private implicit val timeout: Timeout = Timeout.create(system.settings.config.getDuration("linthaal.routes.ask-timeout"))
@@ -48,10 +47,15 @@ final class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])
   private def removeSummarization(id: String): Future[ActionPerformed] =
     pmToT.ask(RemoveSummarizations(id, _))
 
+  private def summarizeSummaries(id: String, contextInfo: Seq[String]): Future[ActionPerformed] =
+    pmToT.ask(SummarizeSummarizations(id, contextInfo, _))
+
+  private def getSumOfSums(id: String): Future[SummaryOfSummaries] =
+    pmToT.ask(RetrieveSumOfSums(id, _))
+
   val pmAISumAllRoutes: Route =
     pathPrefix("tot_pubmed") {
       concat(
-        //#users-get-delete
         pathEnd {
           concat(
             get {
@@ -65,18 +69,32 @@ final class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])
               }
             })
         },
-        path(Segment) { id =>
-          concat(
-            get {
+        pathPrefix(Segment) { id =>
+          concat(pathEnd {
+            concat(get {
               onSuccess(getSummarization(id)) { response =>
                 complete(response)
               }
-            },
-            delete {
+            }, delete {
               onSuccess(removeSummarization(id)) { performed =>
                 complete((StatusCodes.OK, performed))
               }
             })
+          }, path("sumofsums") {
+            pathEnd {
+              concat(get {
+                onSuccess(getSumOfSums(id)) { response =>
+                  complete(response)
+                }
+              }, post {
+                entity(as[SumOfSumsReq]) { contextInfo =>
+                  onSuccess(summarizeSummaries(id, contextInfo.context)) { performed =>
+                    complete((StatusCodes.Created, performed))
+                  }
+                }
+              })
+            }
+          })
         })
     }
 }
@@ -88,3 +106,5 @@ case class PubMedAISumReq(
     abstractLength: Int = 20,
     update: Int = 1800,
     maxAbstracts: Int = 20)
+
+final case class SumOfSumsReq(context: List[String])

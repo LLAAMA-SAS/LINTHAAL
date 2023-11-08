@@ -45,7 +45,7 @@ object PubMedAISumOne {
               ctx.log.info(s"summarizing pmID=${pmAbst.id} with $model")
               ctx.spawn(
                 OpenAIChatAct.apply(
-                  OpenAIPromptService.createPromptConfig(model),
+                  OpenAIPromptService.createPromptConfig(OpenAIPromptService.uri, model),
                   Seq(prepareMsg(instructions, pmAbst)).map(m => Message(content = m)),
                   replyWhenDone),
                 s"talking-to-ai-${UUID.randomUUID().toString}")

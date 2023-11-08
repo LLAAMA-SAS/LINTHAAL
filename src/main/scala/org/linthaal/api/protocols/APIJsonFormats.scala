@@ -1,10 +1,10 @@
 package org.linthaal.api.protocols
 
-import org.linthaal.ai.services.{ HuggingFaceInferenceEndpointsService, OpenAIService, Service }
-import org.linthaal.api.routes.PubMedAISumReq
+import org.linthaal.ai.services.{HuggingFaceInferenceEndpointsService, OpenAIService, Service}
+import org.linthaal.api.routes.{PubMedAISumReq, SumOfSumsReq}
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
-import org.linthaal.tot.pubmed.PubMedSumAct.{ SummarizedAbstract, SummarizedAbstracts }
-import org.linthaal.tot.pubmed.PubMedToTManager.{ ActionPerformed, AllSummarizationRequests }
+import org.linthaal.tot.pubmed.PubMedSumAct.{SummarizedAbstract, SummarizedAbstracts, SummaryOfSummaries}
+import org.linthaal.tot.pubmed.PubMedToTManager.{ActionPerformed, AllSummarizationRequests}
 
 /**
   * This program is free software: you can redistribute it and/or modify
@@ -20,12 +20,9 @@ import org.linthaal.tot.pubmed.PubMedToTManager.{ ActionPerformed, AllSummarizat
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   */
-//#json-formats
-
 object APIJsonFormats {
-  // import the default encoders for primitive types (Int, String, Lists etc)
-  import org.linthaal.helpers.JsonFormats._
-  import spray.json._
+  import org.linthaal.helpers.JsonFormats.*
+  import spray.json.*
 
   implicit val openAiServiceJsonFormat: RootJsonFormat[OpenAIService] =
     jsonFormat(OpenAIService.apply, "openai_model")
@@ -42,7 +39,7 @@ object APIJsonFormats {
 
     def read(value: JsValue) = {
       if (value.asJsObject.fields.size == 1) {
-        value.asJsObject.getFields("open_ai_model") match {
+        value.asJsObject.getFields("openai_model") match {
           case Seq(JsString(_)) => value.convertTo[OpenAIService]
           case _ =>
             value.asJsObject.getFields("hugging_face_model") match {
@@ -56,11 +53,9 @@ object APIJsonFormats {
     }
   }
 
-  implicit val pmAISumReqJsonFormat: RootJsonFormat[PubMedAISumReq] =
-    jsonFormat6(PubMedAISumReq.apply)
+  implicit val pmAISumReqJsonFormat: RootJsonFormat[PubMedAISumReq] = jsonFormat6(PubMedAISumReq.apply)
 
-  implicit val actionPerformedJsonFormat: RootJsonFormat[ActionPerformed] =
-    jsonFormat1(ActionPerformed.apply)
+  implicit val actionPerformedJsonFormat: RootJsonFormat[ActionPerformed] = jsonFormat1(ActionPerformed.apply)
 
   implicit val pmAbstJsonFormat: RootJsonFormat[PMAbstract] = jsonFormat4(PMAbstract.apply)
 
@@ -70,5 +65,9 @@ object APIJsonFormats {
 
   implicit val allSummarizationRequestsJsonFormat: RootJsonFormat[AllSummarizationRequests] =
     jsonFormat1(AllSummarizationRequests.apply)
+
+  implicit val sumOfSumsReqJsonFormat: RootJsonFormat[SumOfSumsReq] = jsonFormat1(SumOfSumsReq.apply)
+
+  implicit val summaryOfSummaries: RootJsonFormat[SummaryOfSummaries] = jsonFormat1(SummaryOfSummaries.apply)
 
 }

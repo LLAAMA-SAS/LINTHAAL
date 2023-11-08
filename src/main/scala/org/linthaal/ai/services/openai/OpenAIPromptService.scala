@@ -50,6 +50,9 @@ final class OpenAIPromptService(promptConf: OpenAIPromptService.PromptConfig)(im
 
     val connFlow = Http().connectionTo(host).http2()
 
+    as.log.debug(s"OpenAI Request: $formatedRequest")
+    as.log.debug(s"OpenAI HTTP Request: $httpReq")
+
     val responseFuture: Future[HttpResponse] = Source.single(httpReq).via(connFlow).runWith(Sink.head)
 
     responseFuture.flatMap { response =>
@@ -65,6 +68,9 @@ final class OpenAIPromptService(promptConf: OpenAIPromptService.PromptConfig)(im
 }
 
 object OpenAIPromptService {
+  
+  val uri: String =  "https://api.openai.com/v1/chat/completions"
+  
   case class Message(role: String = "user", content: String)
 
   case class ChatRequest(model: String = "gpt-3.5-turbo", messages: Seq[Message], temperature: Double = 0.0)
@@ -77,13 +83,12 @@ object OpenAIPromptService {
 
   final case class ChatResponse(id: String, chatObject: String, created: Long, model: String, usage: Usage, choices: Seq[Choice])
 
-  final case class PromptConfig(apiKey: String, uri: String = "https://api.openai.com/v1/chat/completions", model: String = "gpt-3.5-turbo")
-//  case class PromptConfig(apiKey: String, uri: String = "https://api.openai.com/v1/chat/completions", model: String = "gpt-4")
+  final case class PromptConfig(apiKey: String, uri: String = uri, model: String = "gpt-3.5-turbo")
 
   private val host = "api.openai.com"
 
   val promptDefaultConf: PromptConfig = PromptConfig(ApiKeys.getKey("openai.api_key"))
 
-  def createPromptConfig(model: String): PromptConfig =
-    PromptConfig(ApiKeys.getKey("openai.api_key"), model)
+  def createPromptConfig(uri: String, model: String): PromptConfig =
+    PromptConfig(ApiKeys.getKey("openai.api_key"), uri, model)
 }

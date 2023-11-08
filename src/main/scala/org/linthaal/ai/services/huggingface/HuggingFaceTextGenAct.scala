@@ -1,11 +1,11 @@
 package org.linthaal.ai.services.huggingface
 
-import scala.concurrent.Future
-import scala.util.{ Failure, Success }
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ ActorRef, Behavior }
-
 import org.linthaal.ai.services.AIResponse
+
+import scala.concurrent.Future
+import scala.util.{ Failure, Success }
 
 /**
   * This program is free software: you can redistribute it and/or modify
@@ -23,13 +23,16 @@ import org.linthaal.ai.services.AIResponse
   */
 object HuggingFaceTextGenAct {
 
-  import HuggingFaceInferencePromptService._
+  import HuggingFaceInferencePromptService.*
 
   sealed trait ChatMessage
   case class Response(textGenRes: Seq[TextGenerationResponse]) extends ChatMessage
   case class ChatFailed(reason: String) extends ChatMessage
 
-  case class AIResponseMessage(message: String, result: Seq[String], temperature: Double = 0.0) extends AIResponse
+  case class AIResponseMessage(message: String, result: Seq[String], temperature: Double = 0.0) extends AIResponse {
+    override def mainResponse(): String = result.head //todo is that right?
+    override def extendedResponse(): String = result.mkString("\n") //todo is that right?
+  }
 
   def apply(
       promtConf: PromptConfig,

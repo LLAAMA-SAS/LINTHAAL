@@ -117,16 +117,16 @@ object PubMedAISumRouter {
 
   private def goalInstructions(titleNbW: Int, absNbW: Int, searchString: Option[String]) = {
     val topics =
-      if (searchString.isDefined) s"The users are particularly interested in: ${searchString.get}"
+      if (searchString.isDefined) s"The users are particularly interested in: ${searchString.get}."
       else ""
     s"""Your goal is to summarize scientific text.
        |An item is provided as a json object with 4 elements: id, title, abstractText, date.
        |The json part starts with #### as delimiter.
        |Your goal is:
-       |1) to summarize title in maximum $titleNbW words which will be sumTitle
-       |2) to summarize abstractText in maximum $absNbW words which will be sumAbstract
-       |3) Keep the id
-       |4) Keep the date
+       |1) to summarize title in maximum $titleNbW words which will be sumTitle.
+       |2) to summarize abstractText in maximum $absNbW words which will be sumAbstract.
+       |3) Keep the id.
+       |4) Keep the date.
        |The users are very smart scientists, knowing the domain very well.
        |$topics
        |Return the result as an XML object in the following format: id, sumTitle, sumAbstract, date.

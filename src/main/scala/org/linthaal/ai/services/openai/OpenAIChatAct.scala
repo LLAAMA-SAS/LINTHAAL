@@ -1,10 +1,10 @@
 package org.linthaal.ai.services.openai
 
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ ActorRef, Behavior }
+import akka.actor.typed.{ActorRef, Behavior}
 
 import scala.concurrent.Future
-import scala.util.{ Failure, Success }
+import scala.util.{Failure, Success, Try}
 import org.linthaal.ai.services.AIResponse
 
 /**
@@ -37,7 +37,17 @@ object OpenAIChatAct {
       messages: Seq[Message],
       temperature: Double = 0.0,
       model: String)
-      extends AIResponse
+      extends AIResponse {
+
+    //todo is that right? should explore more the structure of the answers
+    override def mainResponse(): String = Try { choices.head.message.content }.getOrElse("Empty.")
+
+    override def extendedResponse(): String =
+      s"""
+        |${Try { choices.map(_.message.content).mkString("\n") }.getOrElse("Empty.")}
+        |${Try { messages.map(_.content).mkString("\n") }.getOrElse("Empty.")}
+        |""".stripMargin
+  }
 
   def apply(
       promptConf: PromptConfig,

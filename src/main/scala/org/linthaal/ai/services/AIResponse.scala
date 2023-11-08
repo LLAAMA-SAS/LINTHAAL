@@ -14,4 +14,7 @@ package org.linthaal.ai.services
   * You should have received a copy of the GNU General Public License
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   */
-trait AIResponse
+trait AIResponse {
+  def mainResponse(): String
+  def extendedResponse(): String
+}

@@ -33,7 +33,7 @@ object PMActor {
   def apply(
       conf: EutilsCalls.EutilsConfig,
       search: String,
-      pmIdsAlreadyDone: List[Int],
+      pmIdsAlreadyDone: List[Int] = List.empty,
       replyToWhenDone: ActorRef[PMAbstracts]): Behavior[PMCommand] = {
     Behaviors.setup[PMCommand] { ctx =>
       val eutilsCalls: EutilsCalls = new EutilsCalls(conf)(ctx.system)
