@@ -17,9 +17,20 @@
  curl http://127.0.0.1:8080/tot_pubmed/{ID}
 ``` 
 
-### Start a new Pubmed Summarization ToT
+### Delete Pubmed Summarization ToT
 ```shell
  curl -XDELETE http://127.0.0.1:8080/tot_pubmed/{ID}
 ```
+ 
+### Start summarization of summarizations in given contexts.  
+```shell
+curl -XPOST -H "Content-Type: application/json" -d '{"context" : ["treatments", "biomarkers"] }' http://localhost:8080/tot_pubmed/{id}/sumofsums
+```
+
+### Get Summary of summaries   
+```shell
+curl http://localhost:8080/tot_pubmed/{id}/sumofsums
+```
+
 
 
