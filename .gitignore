@@ -12,5 +12,5 @@ target/
 .bsp
 
 #api key
-.openai_api_key
-.ncbi_api_key
+/keys
+*api_key
