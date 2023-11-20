@@ -9,7 +9,7 @@ inThisBuild(
     organization := "org.linthaal",
     name := "Linthaal",
     startYear := Some(2023),
-    version := "1.1.0",
+    version := "1.3.0",
     scalaVersion := "3.3.1",
     fork := true,
     dynverSeparator := "-"))

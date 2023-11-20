@@ -3,7 +3,8 @@ package org.linthaal.helpers
 import org.linthaal.Linthaal
 import org.slf4j.LoggerFactory
 
-import java.nio.file.{ Files, Path }
+import java.io.File
+import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters.*
 
 /** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
@@ -19,9 +20,16 @@ object ApiKeys {
   private val log = LoggerFactory.getLogger(getClass.toString)
 
   // keys are expected either as arguments or in the user dir, finishing with api_key
-  private val keyFiles: List[Path] =
-    (Path.of(System.getProperty("user.dir")).toFile.listFiles().filter(f => f.getName.endsWith("api_key")).map(_.toPath).toList ++
-      Linthaal.appArgs.filter(kv => kv._1.contains("api_key")).map(kv => Path.of(kv._2.trim))).filter(_.toFile.exists())
+  private val argsKeyFolder: File = new File(Linthaal.appArgs.getOrElse("api_keys", "/home/linthaal/keys"))
+
+  private val keyFolder: Array[File] = if (argsKeyFolder.exists) {
+    argsKeyFolder.listFiles()
+  } else {
+    Path.of(s"${System.getProperty("user.dir")}/keys").toFile.listFiles()
+  }
+
+  private val keyFiles: List[Path] = keyFolder.filter(f => f.getName.endsWith("api_key")).map(_.toPath).toList ++
+    Linthaal.appArgs.filter(kv => kv._1.contains("api_key")).map(kv => Path.of(kv._2.trim)).filter(_.toFile.exists())
 
   log.info(s"""api key files: ${keyFiles.mkString(" , ")}""")
 
