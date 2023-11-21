@@ -1,4 +1,5 @@
 target/
+cache/
 
 .settings
 .project
@@ -12,5 +13,5 @@ target/
 .bsp
 
 #api key
-/keys
+keys/
 *api_key
