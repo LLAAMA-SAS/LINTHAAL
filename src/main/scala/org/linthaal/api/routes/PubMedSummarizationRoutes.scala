@@ -7,6 +7,7 @@ import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import org.linthaal.ai.services.{ OpenAIService, Service }
+import org.linthaal.helpers
 import org.linthaal.tot.pubmed.PubMedSumAct.*
 import org.linthaal.tot.pubmed.PubMedToTManager
 import org.linthaal.tot.pubmed.PubMedToTManager.*
@@ -105,6 +106,11 @@ case class PubMedAISumReq(
     titleLength: Int = 5,
     abstractLength: Int = 20,
     update: Int = 1800,
-    maxAbstracts: Int = 20)
+    maxAbstracts: Int = 20)    {
+
+  def uniqueID(): String = helpers.getDigest(s"""${search}${service.model}$titleLength$abstractLength"""
+    
+  )
+}
 
 final case class SumOfSumsReq(context: List[String])

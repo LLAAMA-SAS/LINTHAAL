@@ -1,11 +1,13 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors }
-import akka.actor.typed.{ ActorRef, Behavior }
+import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
+import akka.actor.typed.{ActorRef, Behavior}
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers
-import org.linthaal.tot.pubmed.PubMedSumAct.{ AISumOfSums, GetResults, GetSummaryOfSummaries, SummarizedAbstracts, SummaryOfSummaries }
+import org.linthaal.tot.pubmed.PubMedSumAct.{AISumOfSums, GetResults, GetSummaryOfSummaries, SummarizedAbstracts, SummaryOfSummaries}
 import org.linthaal.tot.pubmed.PubMedToTManager.*
+import org.linthaal.tot.pubmed.caching.CachePubMedResults
+import org.linthaal.tot.pubmed.caching.CachePubMedResults.CachedResults
 import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum.SumOfSums
 
 /** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
@@ -39,23 +41,32 @@ object PubMedToTManager {
   final case class ActionPerformed(description: String)
 
   def apply(): Behavior[Command] = {
-    Behaviors.setup(context => new PubMedToTManager(context))
+    // load cached data and pass it as arguments
+    val results = CachePubMedResults.readAllPubMedResults()
+    Behaviors.setup(context => new PubMedToTManager(context, results))
   }
 }
 
-final class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command]) extends AbstractBehavior[PubMedToTManager.Command](ctx) {
+final class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command], results: List[CachedResults])
+  extends AbstractBehavior[PubMedToTManager.Command](ctx) {
 
   import akka.actor.typed.scaladsl.AskPattern.*
 
   private var sumAIActors: Map[String, ActorRef[PubMedSumAct.PMSumCmd]] = Map.empty
   private var allReq: Map[String, PubMedAISumReq] = Map.empty
 
+  results.foreach { r =>
+    val sac = context.spawn(PubMedSumAct(r.pmaiReq, r.id, Some(r)), s"summarizing_actor_${r.id}")
+    sumAIActors = sumAIActors + (r.id -> sac)
+    allReq = allReq + (r.id -> r.pmaiReq)
+  }
+
   override def onMessage(msg: PubMedToTManager.Command): Behavior[PubMedToTManager.Command] = {
     msg match {
       case StartAISummarization(pmSR, replyTo) =>
-        val id = helpers.getDigest(pmSR.toString)
+        val id = pmSR.uniqueID()
         if (!sumAIActors.contains(id)) {
-          val sac = context.spawn(PubMedSumAct(pmSR, id), s"summarizing_actor_$id")
+          val sac = context.spawn(PubMedSumAct(pmSR, id, None), s"summarizing_actor_$id")
           sumAIActors = sumAIActors + (id -> sac)
           allReq = allReq + (id -> pmSR)
           sac ! PubMedSumAct.Start
@@ -103,7 +114,6 @@ final class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command]) extend
           replyTo ! SummaryOfSummaries("Failed.")
         }
         this
-
     }
   }
 }

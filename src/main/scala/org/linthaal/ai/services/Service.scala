@@ -8,7 +8,9 @@ package org.linthaal.ai.services
   *
   * You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
   */
-sealed trait Service
+sealed trait Service {
+  def model: String
+}
 
 case class OpenAIService(model: String) extends Service
 

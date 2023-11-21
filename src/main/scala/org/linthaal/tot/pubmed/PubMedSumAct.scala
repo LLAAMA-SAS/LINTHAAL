@@ -8,6 +8,8 @@ import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
 import org.linthaal.helpers.ncbi.eutils.{ EutilsCalls, PMActor }
 import org.linthaal.tot.pubmed.PubMedSumAct.*
+import org.linthaal.tot.pubmed.caching.CachePubMedResults
+import org.linthaal.tot.pubmed.caching.CachePubMedResults.{ flushPubMedResults, CachedResults }
 import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum
 import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum.SumOfSums
 
@@ -59,10 +61,10 @@ object PubMedSumAct {
 
   final case class GetSummaryOfSummaries(replyTo: ActorRef[SummaryOfSummaries]) extends PMSumCmd
 
-  def apply(aiReq: PubMedAISumReq, id: String): Behavior[PMSumCmd] = {
+  def apply(aiReq: PubMedAISumReq, id: String, previousResults: Option[CachedResults]): Behavior[PMSumCmd] = {
     Behaviors.withTimers { timers =>
       Behaviors.setup[PMSumCmd] { ctx =>
-        new PubMedSumAct(aiReq, id, ctx, timers)
+        new PubMedSumAct(aiReq, id, ctx, timers, previousResults)
       }
     }
   }
@@ -72,15 +74,21 @@ class PubMedSumAct(
     aiReq: PubMedAISumReq,
     id: String,
     ctx: ActorContext[PubMedSumAct.PMSumCmd],
-    timers: TimerScheduler[PubMedSumAct.PMSumCmd])
+    timers: TimerScheduler[PubMedSumAct.PMSumCmd],
+    previousResults: Option[CachedResults])
     extends AbstractBehavior[PubMedSumAct.PMSumCmd](ctx) {
 
   private var originAbstracts: Map[Int, PMAbstract] = Map.empty
   private var summarizedAbstracts: Map[Int, SummarizedAbstract] = Map.empty
 
   private var runs: Int = 0
-
   private var sumOfSums: Option[SummaryOfSummaries] = None
+
+  if (previousResults.isDefined) {
+    originAbstracts = originAbstracts ++ previousResults.get.originalAbstracts.map(oa => (oa.id, oa)).toMap
+    summarizedAbstracts = summarizedAbstracts ++ previousResults.get.summarizedAbstracts.map(sa => (sa.id, sa)).toMap
+    sumOfSums = previousResults.get.summaryOfSummaries
+  }
 
   if (aiReq.update > 5) {
     timers.startTimerWithFixedDelay(s"timer_$id", Start, new FiniteDuration(aiReq.update, TimeUnit.SECONDS))
@@ -104,6 +112,7 @@ class PubMedSumAct(
         val pmas = PMAbstracts(pmAbst.abstracts.take(aiReq.maxAbstracts), pmAbst.msg)
         if (pmas.abstracts.nonEmpty) {
           originAbstracts = originAbstracts ++ pmas.abstracts.map(pma => pma.id -> pma).toMap
+          flushResults("saving original abstracts")
           ctx.spawn(PubMedAISumRouter.apply(pmas, aiReq, w), s"ai_summarization_router_actor_$id")
         }
         this
@@ -111,6 +120,7 @@ class PubMedSumAct(
       case aiSumW: AISummarizationWrap =>
         ctx.log.debug(aiSumW.summarizedAbstracts.toString)
         summarizedAbstracts = summarizedAbstracts ++ aiSumW.summarizedAbstracts.summarizedAbstracts.map(sa => sa.id -> sa).toMap
+        flushResults("saving summaries. ")
         this
 
       case GetFullResults(replyTo) =>
@@ -128,11 +138,18 @@ class PubMedSumAct(
 
       case SumOfSumsWrap(sos) =>
         sumOfSums = Some(SummaryOfSummaries(sos.summarization))
+        flushResults("saving summary of summaries")
         this
 
       case GetSummaryOfSummaries(replyTo) =>
         replyTo ! SummaryOfSummaries(sumOfSums.fold("not processed.")(_.sumOfSum))
         this
     }
+  }
+
+  private def flushResults(info: String): Unit = {
+    CachePubMedResults.flushPubMedResults(
+      CachedResults(id, aiReq, originAbstracts.values.toList,
+        summarizedAbstracts.values.toList, sumOfSums, info))
   }
 }
