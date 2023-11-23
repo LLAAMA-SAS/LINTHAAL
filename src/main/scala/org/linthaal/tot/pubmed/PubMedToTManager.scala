@@ -41,7 +41,7 @@ object PubMedToTManager {
   final case class ActionPerformed(description: String)
 
   def apply(): Behavior[Command] = {
-    // load cached data and pass it as arguments
+    // load cached data and pass it as arguments - todo improve
     val results = CachePubMedResults.readAllPubMedResults()
     Behaviors.setup(context => new PubMedToTManager(context, results))
   }

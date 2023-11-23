@@ -40,7 +40,7 @@ object CachePubMedResults {
       pmaiReq: PubMedAISumReq,
       originalAbstracts: List[PMAbstract] = List.empty,
       summarizedAbstracts: List[SummarizedAbstract] = List.empty,
-      summaryOfSummaries: Option[SummaryOfSummaries] = None,
+      summaryOfSummaries: String = "",
       information: String = "")
 
   import spray.json.*

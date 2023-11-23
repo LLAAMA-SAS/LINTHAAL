@@ -1,16 +1,12 @@
 package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ ActorRef, Behavior }
+import akka.actor.typed.{ActorRef, Behavior}
+import org.linthaal.ai.services.*
+import org.linthaal.ai.services.huggingface.{HuggingFaceInferencePromptService, HuggingFaceTextGenAct}
 import org.linthaal.ai.services.openai.OpenAIPromptService.Message
-import org.linthaal.ai.services.huggingface.{ HuggingFaceInferencePromptService, HuggingFaceTextGenAct }
-import org.linthaal.ai.services.openai.OpenAIChatAct.AIResponseMessage
-import org.linthaal.ai.services.openai.{ OpenAIChatAct, OpenAIPromptService }
+import org.linthaal.ai.services.openai.{OpenAIChatAct, OpenAIPromptService}
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
-import org.linthaal.ai.services.Service
-import org.linthaal.ai.services.huggingface
-import org.linthaal.ai.services.AIResponse
-import org.linthaal.ai.services._
 
 import java.util.UUID
 
@@ -58,7 +54,7 @@ object PubMedAISumOne {
 
   private def prepareMsg(instructions: String, pmAb: PMAbstract): String = {
     import org.linthaal.helpers.ncbi.eutils.PMJsonProt.jsonPMAbstract
-    import spray.json._
+    import spray.json.*
 
     val asJsonString =
       s"""$instructions #### ${pmAb.toJson.compactPrint.replace("\\n", " ").replace("\"", "'")} ####""".stripMargin

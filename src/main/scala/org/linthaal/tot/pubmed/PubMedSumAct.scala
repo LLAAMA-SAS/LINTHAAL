@@ -1,20 +1,21 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors, TimerScheduler }
-import akka.actor.typed.{ ActorRef, Behavior }
+import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
+import akka.actor.typed.{ActorRef, Behavior}
 import org.linthaal.ai.services.AIResponse
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.linthaal.helpers.ncbi.eutils.{ EutilsCalls, PMActor }
+import org.linthaal.helpers.ncbi.eutils.{EutilsCalls, PMActor}
 import org.linthaal.tot.pubmed.PubMedSumAct.*
-import org.linthaal.tot.pubmed.caching.CachePubMedResults
-import org.linthaal.tot.pubmed.caching.CachePubMedResults.{ flushPubMedResults, CachedResults }
+import org.linthaal.tot.pubmed.caching.{CachePubMedResults, CachingActor}
+import org.linthaal.tot.pubmed.caching.CachePubMedResults.{CachedResults, flushPubMedResults}
+import org.linthaal.tot.pubmed.caching.CachingActor.{CacheCmd, CacheResults}
 import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum
 import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum.SumOfSums
 
 import java.util.concurrent.TimeUnit
-import java.util.{ Date, UUID }
+import java.util.{Date, UUID}
 import scala.concurrent.duration.FiniteDuration
 
 /** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
@@ -63,8 +64,8 @@ object PubMedSumAct {
 
   def apply(aiReq: PubMedAISumReq, id: String, previousResults: Option[CachedResults]): Behavior[PMSumCmd] = {
     Behaviors.withTimers { timers =>
-      Behaviors.setup[PMSumCmd] { ctx =>
-        new PubMedSumAct(aiReq, id, ctx, timers, previousResults)
+      Behaviors.setup[PMSumCmd] { context =>
+        new PubMedSumAct(aiReq, id, context, timers, previousResults)
       }
     }
   }
@@ -73,10 +74,10 @@ object PubMedSumAct {
 class PubMedSumAct(
     aiReq: PubMedAISumReq,
     id: String,
-    ctx: ActorContext[PubMedSumAct.PMSumCmd],
+    context: ActorContext[PubMedSumAct.PMSumCmd],
     timers: TimerScheduler[PubMedSumAct.PMSumCmd],
     previousResults: Option[CachedResults])
-    extends AbstractBehavior[PubMedSumAct.PMSumCmd](ctx) {
+    extends AbstractBehavior[PubMedSumAct.PMSumCmd](context) {
 
   private var originAbstracts: Map[Int, PMAbstract] = Map.empty
   private var summarizedAbstracts: Map[Int, SummarizedAbstract] = Map.empty
@@ -87,8 +88,11 @@ class PubMedSumAct(
   if (previousResults.isDefined) {
     originAbstracts = originAbstracts ++ previousResults.get.originalAbstracts.map(oa => (oa.id, oa)).toMap
     summarizedAbstracts = summarizedAbstracts ++ previousResults.get.summarizedAbstracts.map(sa => (sa.id, sa)).toMap
-    sumOfSums = previousResults.get.summaryOfSummaries
+    sumOfSums = Some(SummaryOfSummaries(previousResults.get.summaryOfSummaries))
   }
+
+  val cachingActor: ActorRef[CacheCmd] = context.spawn(CachingActor.apply(), s"cachingActor_$id")
+
 
   if (aiReq.update > 5) {
     timers.startTimerWithFixedDelay(s"timer_$id", Start, new FiniteDuration(aiReq.update, TimeUnit.SECONDS))
@@ -97,28 +101,28 @@ class PubMedSumAct(
   override def onMessage(msg: PubMedSumAct.PMSumCmd): Behavior[PubMedSumAct.PMSumCmd] = {
     msg match {
       case Start =>
-        val wrap: ActorRef[PMAbstracts] = ctx.messageAdapter(m => AbstractsWrap(m))
-        ctx.spawn(
+        val wrap: ActorRef[PMAbstracts] = context.messageAdapter(m => AbstractsWrap(m))
+        context.spawn(
           PMActor.apply(EutilsCalls.eutilsDefaultConf, aiReq.search, originAbstracts.keys.toList, wrap),
           s"pubmed_query_actor${UUID.randomUUID().toString}")
         runs = runs + 1
-        ctx.log.info(s"running question [${aiReq.search}] for the $runs time.")
+        context.log.info(s"running query [${aiReq.search}] for the $runs time.")
         this
 
       case AbstractsWrap(pmAbst) =>
-        val w: ActorRef[FullResponse] = ctx.messageAdapter(m => AISummarizationWrap(m))
-        ctx.log.info(s"Limiting number of abstract to be processed by AI to: ${aiReq.maxAbstracts}")
+        val w: ActorRef[FullResponse] = context.messageAdapter(m => AISummarizationWrap(m))
+        context.log.info(s"Limiting number of abstract to be processed by AI to: ${aiReq.maxAbstracts}")
 
         val pmas = PMAbstracts(pmAbst.abstracts.take(aiReq.maxAbstracts), pmAbst.msg)
         if (pmas.abstracts.nonEmpty) {
           originAbstracts = originAbstracts ++ pmas.abstracts.map(pma => pma.id -> pma).toMap
           flushResults("saving original abstracts")
-          ctx.spawn(PubMedAISumRouter.apply(pmas, aiReq, w), s"ai_summarization_router_actor_$id")
+          context.spawn(PubMedAISumRouter.apply(pmas, aiReq, w), s"ai_summarization_router_actor_$id")
         }
         this
 
       case aiSumW: AISummarizationWrap =>
-        ctx.log.debug(aiSumW.summarizedAbstracts.toString)
+        context.log.debug(aiSumW.summarizedAbstracts.toString)
         summarizedAbstracts = summarizedAbstracts ++ aiSumW.summarizedAbstracts.summarizedAbstracts.map(sa => sa.id -> sa).toMap
         flushResults("saving summaries. ")
         this
@@ -132,7 +136,7 @@ class PubMedSumAct(
         this
 
       case AISumOfSums(contextInfo) =>
-        val mw: ActorRef[SumOfSums] = ctx.messageAdapter(m => SumOfSumsWrap(m))
+        val mw: ActorRef[SumOfSums] = context.messageAdapter(m => SumOfSumsWrap(m))
         context.spawn(GeneralSumOfSum(summarizedAbstracts.values.toList, contextInfo, mw), s"sum_of_sums_$id")
         this
 
@@ -148,8 +152,11 @@ class PubMedSumAct(
   }
 
   private def flushResults(info: String): Unit = {
-    CachePubMedResults.flushPubMedResults(
-      CachedResults(id, aiReq, originAbstracts.values.toList,
-        summarizedAbstracts.values.toList, sumOfSums, info))
+    val oriAbs = originAbstracts.values.toList
+    val sumAbs = summarizedAbstracts.values.toList
+    val sumOfS = if (sumOfSums.isDefined) sumOfSums.get.sumOfSum else "not processed"
+
+    val cr = CachedResults(id, aiReq, oriAbs, sumAbs, sumOfS, info)
+    cachingActor ! CacheResults(cr)
   }
 }
