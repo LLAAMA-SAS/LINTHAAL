@@ -7,23 +7,17 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.scaladsl.{ Sink, Source }
-import org.linthaal.helpers.ApiKeys
+import org.linthaal.helpers.EnvVariables
 
 import scala.concurrent.{ ExecutionContextExecutor, Future }
 
-/**
-  * This program is free software: you can redistribute it and/or modify
-  * it under the terms of the GNU General Public License as published by
-  * the Free Software Foundation, either version 3 of the License, or
-  * (at your option) any later version.
+/** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
+  * by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
   *
-  * This program is distributed in the hope that it will be useful,
-  * but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  * GNU General Public License for more details.
+  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
   *
-  * You should have received a copy of the GNU General Public License
-  * along with this program. If not, see <http://www.gnu.org/licenses/>.
+  * You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
   */
 final class OpenAIPromptService(promptConf: OpenAIPromptService.PromptConfig)(implicit as: ActorSystem[_]) {
 
@@ -68,9 +62,9 @@ final class OpenAIPromptService(promptConf: OpenAIPromptService.PromptConfig)(im
 }
 
 object OpenAIPromptService {
-  
-  val uri: String =  "https://api.openai.com/v1/chat/completions"
-  
+
+  val uri: String = "https://api.openai.com/v1/chat/completions"
+
   case class Message(role: String = "user", content: String)
 
   case class ChatRequest(model: String = "gpt-3.5-turbo", messages: Seq[Message], temperature: Double = 0.0)
@@ -78,7 +72,7 @@ object OpenAIPromptService {
 
   final case class Choice(index: Int, message: Message, finishReason: String)
 
-  //response
+  // response
   final case class Usage(promptTokens: Int, completionTokens: Int, totalTokens: Int)
 
   final case class ChatResponse(id: String, chatObject: String, created: Long, model: String, usage: Usage, choices: Seq[Choice])
@@ -87,8 +81,8 @@ object OpenAIPromptService {
 
   private val host = "api.openai.com"
 
-  val promptDefaultConf: PromptConfig = PromptConfig(ApiKeys.getKey("openai.api_key"))
+  val promptDefaultConf: PromptConfig = PromptConfig(EnvVariables.getEnvVar("openai.api_key"))
 
   def createPromptConfig(uri: String, model: String): PromptConfig =
-    PromptConfig(ApiKeys.getKey("openai.api_key"), uri, model)
+    PromptConfig(EnvVariables.getEnvVar("openai.api_key"), uri, model)
 }

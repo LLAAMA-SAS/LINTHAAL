@@ -1,42 +1,34 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors, TimerScheduler }
+import akka.actor.typed.{ ActorRef, Behavior }
 import org.linthaal.ai.services.AIResponse
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.linthaal.helpers.ncbi.eutils.{EutilsCalls, PMActor}
+import org.linthaal.helpers.ncbi.eutils.{ EutilsCalls, PMActor }
 import org.linthaal.tot.pubmed.PubMedSumAct.*
 import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum
 import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum.SumOfSums
 
 import java.util.concurrent.TimeUnit
-import java.util.{Date, UUID}
+import java.util.{ Date, UUID }
 import scala.concurrent.duration.FiniteDuration
 
-/**
-  * This program is free software: you can redistribute it and/or modify
-  * it under the terms of the GNU General Public License as published by
-  * the Free Software Foundation, either version 3 of the License, or
-  * (at your option) any later version.
+/** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
+  * by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
   *
-  * This program is distributed in the hope that it will be useful,
-  * but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  * GNU General Public License for more details.
+  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
   *
-  * You should have received a copy of the GNU General Public License
-  * along with this program. If not, see <http://www.gnu.org/licenses/>.
-  *
+  * You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
   * Manages the AI summarization for one defined request.
   *
   * It keeps the list of abstracts and builds the list of summarized versions.
   *
-  * It can also ask the AI to produce a contextual Summary of summaries
-  * (taking all summaries and producing a top summary in a given context).
-  *
+  * It can also ask the AI to produce a contextual Summary of summaries (taking all summaries and producing a top summary in a given
+  * context).
   */
 object PubMedSumAct {
 
@@ -92,16 +84,17 @@ class PubMedSumAct(
 
   if (aiReq.update > 5) {
     timers.startTimerWithFixedDelay(s"timer_$id", Start, new FiniteDuration(aiReq.update, TimeUnit.SECONDS))
-  }                                                                                                             
+  }
 
   override def onMessage(msg: PubMedSumAct.PMSumCmd): Behavior[PubMedSumAct.PMSumCmd] = {
     msg match {
       case Start =>
         val wrap: ActorRef[PMAbstracts] = ctx.messageAdapter(m => AbstractsWrap(m))
-        ctx.spawn(PMActor.apply(EutilsCalls.eutilsDefaultConf, aiReq.search,
-          originAbstracts.keys.toList, wrap), s"pubmed_query_actor${UUID.randomUUID().toString}")
+        ctx.spawn(
+          PMActor.apply(EutilsCalls.eutilsDefaultConf, aiReq.search, originAbstracts.keys.toList, wrap),
+          s"pubmed_query_actor${UUID.randomUUID().toString}")
         runs = runs + 1
-        ctx.log.info(s"running query [${aiReq.search}] for the $runs time.")
+        ctx.log.info(s"running question [${aiReq.search}] for the $runs time.")
         this
 
       case AbstractsWrap(pmAbst) =>

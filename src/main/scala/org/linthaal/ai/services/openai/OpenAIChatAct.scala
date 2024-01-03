@@ -1,25 +1,19 @@
 package org.linthaal.ai.services.openai
 
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.{ ActorRef, Behavior }
 
 import scala.concurrent.Future
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 import org.linthaal.ai.services.AIResponse
 
-/**
-  * This program is free software: you can redistribute it and/or modify
-  * it under the terms of the GNU General Public License as published by
-  * the Free Software Foundation, either version 3 of the License, or
-  * (at your option) any later version.
+/** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
+  * by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
   *
-  * This program is distributed in the hope that it will be useful,
-  * but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  * GNU General Public License for more details.
+  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
   *
-  * You should have received a copy of the GNU General Public License
-  * along with this program. If not, see <http://www.gnu.org/licenses/>.
+  * You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
   */
 object OpenAIChatAct {
 
@@ -39,14 +33,14 @@ object OpenAIChatAct {
       model: String)
       extends AIResponse {
 
-    //todo is that right? should explore more the structure of the answers
+    // todo is that right? should explore more the structure of the answers
     override def mainResponse(): String = Try { choices.head.message.content }.getOrElse("Empty.")
 
     override def extendedResponse(): String =
       s"""
-        |${Try { choices.map(_.message.content).mkString("\n") }.getOrElse("Empty.")}
-        |${Try { messages.map(_.content).mkString("\n") }.getOrElse("Empty.")}
-        |""".stripMargin
+         |${Try { choices.map(_.message.content).mkString("\n") }.getOrElse("Empty.")}
+         |${Try { messages.map(_.content).mkString("\n") }.getOrElse("Empty.")}
+         |""".stripMargin
   }
 
   def apply(

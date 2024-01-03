@@ -2,7 +2,7 @@ package org.linthaal.ai.services.huggingface
 
 import akka.actor.typed.ActorSystem
 import org.linthaal.ai.services.huggingface.HuggingFaceInferencePromptService.*
-import org.linthaal.helpers.ApiKeys
+import org.linthaal.helpers.EnvVariables
 import spray.json._
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
@@ -15,19 +15,13 @@ import org.linthaal.ai.services.huggingface.SimplePromptJsonProt
 
 import scala.concurrent.Future
 
-/**
-  * This program is free software: you can redistribute it and/or modify
-  * it under the terms of the GNU General Public License as published by
-  * the Free Software Foundation, either version 3 of the License, or
-  * (at your option) any later version.
+/** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
+  * by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
   *
-  * This program is distributed in the hope that it will be useful,
-  * but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  * GNU General Public License for more details.
+  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
   *
-  * You should have received a copy of the GNU General Public License
-  * along with this program. If not, see <http://www.gnu.org/licenses/>.
+  * You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
   */
 final class HuggingFaceInferencePromptService(promptConf: PromptConfig)(implicit as: ActorSystem[_]) {
 
@@ -80,5 +74,5 @@ object HuggingFaceInferencePromptService {
   private val host = "api-inference.huggingface.co"
 
   def createPromptConfig(model: String): PromptConfig =
-    PromptConfig(ApiKeys.getKey("huggingface.api_key"), model)
+    PromptConfig(EnvVariables.getEnvVar("huggingface.api_key"), model)
 }
