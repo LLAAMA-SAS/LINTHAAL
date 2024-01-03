@@ -30,6 +30,7 @@ lazy val root =
         logbackClassic,
         scalaUri,
         commonsCodec,
+        neo4jDriver,
         akkaActorTestkit,
         scalaTest))
     .settings(run / fork := true)
