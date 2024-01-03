@@ -32,5 +32,7 @@ curl -XPOST -H "Content-Type: application/json" -d '{"context" : ["treatments", 
 curl http://localhost:8080/tot_pubmed/{id}/sumofsums
 ```
 
-
-
+### Get answer using Precision Medicine Knowledge Graph (PrimeKG)
+```shell
+curl -XPOST -H "Content-Type: application/json" -d '{ "question" : "What are the treatments for cancer?" }' http://localhost:8080/qa_primekg
+```
