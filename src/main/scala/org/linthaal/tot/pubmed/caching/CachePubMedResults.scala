@@ -1,18 +1,12 @@
 package org.linthaal.tot.pubmed.caching
 
-import org.linthaal.Linthaal.getClass
-import org.linthaal.ai.services.AIResponse
 import org.linthaal.api.routes.PubMedAISumReq
-import org.linthaal.helpers.JsonFormats.jsonFormat4
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
-import org.linthaal.tot.pubmed.PubMedSumAct.{SummarizedAbstract, SummaryOfSummaries}
+import org.linthaal.tot.pubmed.PubMedSumAct.SummarizedAbstract
 import org.slf4j.{Logger, LoggerFactory}
-import spray.json.DefaultJsonProtocol.{jsonFormat5, jsonFormat6}
-import spray.json.RootJsonFormat
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, StandardOpenOption}
-import java.util.UUID
 
 /**
   *
@@ -35,6 +29,9 @@ object CachePubMedResults {
 
   val log: Logger = LoggerFactory.getLogger(getClass.toString)
 
+  log.info(s"cache location: $defaultPath")
+  log.info(s"Total cached Files at start: ${defaultPath.toFile.listFiles.count(_.getName.endsWith("json"))}")
+
   case class CachedResults(
       id: String,
       pmaiReq: PubMedAISumReq,
@@ -43,9 +40,9 @@ object CachePubMedResults {
       summaryOfSummaries: String = "",
       information: String = "")
 
+  import org.linthaal.api.protocols.APIJsonFormats.*
   import spray.json.*
   import spray.json.DefaultJsonProtocol.*
-  import org.linthaal.api.protocols.APIJsonFormats.*
   implicit val resultsJsonFormat: RootJsonFormat[CachedResults] = jsonFormat6(CachedResults.apply)
 
   def flushPubMedResults(results: CachedResults, targetFolder: Path = defaultPath): Unit = {
