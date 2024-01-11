@@ -1,31 +1,25 @@
 package org.linthaal.api.routes
 
 import akka.actor.typed.scaladsl.AskPattern.*
-import akka.actor.typed.{ActorRef, ActorSystem}
+import akka.actor.typed.{ ActorRef, ActorSystem }
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import org.linthaal.ai.services.{OpenAIService, Service}
+import org.linthaal.ai.services.{ OpenAIService, Service }
 import org.linthaal.tot.pubmed.PubMedSumAct.*
 import org.linthaal.tot.pubmed.PubMedToTManager
 import org.linthaal.tot.pubmed.PubMedToTManager.*
 
 import scala.concurrent.Future
 
-/**
-  * This program is free software: you can redistribute it and/or modify
-  * it under the terms of the GNU General Public License as published by
-  * the Free Software Foundation, either version 3 of the License, or
-  * (at your option) any later version.
+/** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
+  * by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
   *
-  * This program is distributed in the hope that it will be useful,
-  * but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  * GNU General Public License for more details.
+  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
   *
-  * You should have received a copy of the GNU General Public License
-  * along with this program. If not, see <http://www.gnu.org/licenses/>.
+  * You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
   */
 final class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])(implicit val system: ActorSystem[_]) {
 
@@ -70,31 +64,37 @@ final class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])
             })
         },
         pathPrefix(Segment) { id =>
-          concat(pathEnd {
-            concat(get {
-              onSuccess(getSummarization(id)) { response =>
-                complete(response)
-              }
-            }, delete {
-              onSuccess(removeSummarization(id)) { performed =>
-                complete((StatusCodes.OK, performed))
+          concat(
+            pathEnd {
+              concat(
+                get {
+                  onSuccess(getSummarization(id)) { response =>
+                    complete(response)
+                  }
+                },
+                delete {
+                  onSuccess(removeSummarization(id)) { performed =>
+                    complete((StatusCodes.OK, performed))
+                  }
+                })
+            },
+            path("sumofsums") {
+              pathEnd {
+                concat(
+                  get {
+                    onSuccess(getSumOfSums(id)) { response =>
+                      complete(response)
+                    }
+                  },
+                  post {
+                    entity(as[SumOfSumsReq]) { contextInfo =>
+                      onSuccess(summarizeSummaries(id, contextInfo.context)) { performed =>
+                        complete((StatusCodes.Created, performed))
+                      }
+                    }
+                  })
               }
             })
-          }, path("sumofsums") {
-            pathEnd {
-              concat(get {
-                onSuccess(getSumOfSums(id)) { response =>
-                  complete(response)
-                }
-              }, post {
-                entity(as[SumOfSumsReq]) { contextInfo =>
-                  onSuccess(summarizeSummaries(id, contextInfo.context)) { performed =>
-                    complete((StatusCodes.Created, performed))
-                  }
-                }
-              })
-            }
-          })
         })
     }
 }

@@ -6,22 +6,19 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Route
 import org.linthaal.api.routes.PubMedSummarizationRoutes
 import org.linthaal.tot.pubmed.PubMedToTManager
+import org.linthaal.api.routes.PrimeKGQARoutes
+import org.linthaal.qa.primekg.PrimeKGQARouter
+import akka.http.scaladsl.server.Directives.*
 
 import scala.util.{ Failure, Success }
 
-/**
-  * This program is free software: you can redistribute it and/or modify
-  * it under the terms of the GNU General Public License as published by
-  * the Free Software Foundation, either version 3 of the License, or
-  * (at your option) any later version.
+/** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
+  * by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
   *
-  * This program is distributed in the hope that it will be useful,
-  * but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  * GNU General Public License for more details.
+  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
   *
-  * You should have received a copy of the GNU General Public License
-  * along with this program. If not, see <http://www.gnu.org/licenses/>.
+  * You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
   */
 object LinthaalSupervisor {
   def apply(): Behavior[Nothing] =
@@ -30,8 +27,11 @@ object LinthaalSupervisor {
 
       val pubmedToTMain = ctx.spawn(PubMedToTManager(), "pubmed_tot_main")
       ctx.watch(pubmedToTMain)
-      val routes = new PubMedSummarizationRoutes(pubmedToTMain)(ctx.system)
-      startHttpServer(routes.pmAISumAllRoutes)(ctx.system)
+      val toTRoutes = PubMedSummarizationRoutes(pubmedToTMain)(ctx.system)
+      val primeKGQARouter = ctx.spawn(PrimeKGQARouter(), "primekg_qa_main")
+      ctx.watch(primeKGQARouter)
+      val primeKGQARoutes = PrimeKGQARoutes(primeKGQARouter)(ctx.system)
+      startHttpServer(concat(toTRoutes.pmAISumAllRoutes, primeKGQARoutes.primeKGQARoutes))(ctx.system)
       Behaviors.empty
     }
 
