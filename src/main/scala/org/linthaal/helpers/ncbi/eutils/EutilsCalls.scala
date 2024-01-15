@@ -5,7 +5,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.scaladsl.{ Flow, Sink, Source }
-import org.linthaal.helpers.EnvVariables
+import org.linthaal.helpers.ApiKeys
 
 import scala.concurrent.{ ExecutionContextExecutor, Future }
 import scala.xml.NodeSeq
@@ -86,7 +86,7 @@ object EutilsCalls {
     lazy val apiKeyURl = s"&api_key=$apiKey"
   }
 
-  val eutilsDefaultConf: EutilsConfig = EutilsConfig(EnvVariables.getEnvVar("ncbi.api_key"))
+  val eutilsDefaultConf: EutilsConfig = EutilsConfig(ApiKeys.getKey("ncbi.api_key"))
 
 }
 

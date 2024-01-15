@@ -2,7 +2,7 @@ package org.linthaal.ai.services.huggingface
 
 import akka.actor.typed.ActorSystem
 import org.linthaal.ai.services.huggingface.HuggingFaceInferencePromptService.*
-import org.linthaal.helpers.EnvVariables
+import org.linthaal.helpers.ApiKeys
 import spray.json._
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
@@ -74,5 +74,5 @@ object HuggingFaceInferencePromptService {
   private val host = "api-inference.huggingface.co"
 
   def createPromptConfig(model: String): PromptConfig =
-    PromptConfig(EnvVariables.getEnvVar("huggingface.api_key"), model)
+    PromptConfig(ApiKeys.getKey("huggingface.api_key"), model)
 }

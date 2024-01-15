@@ -7,7 +7,7 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.scaladsl.{ Sink, Source }
-import org.linthaal.helpers.EnvVariables
+import org.linthaal.helpers.ApiKeys
 
 import scala.concurrent.{ ExecutionContextExecutor, Future }
 
@@ -81,8 +81,8 @@ object OpenAIPromptService {
 
   private val host = "api.openai.com"
 
-  val promptDefaultConf: PromptConfig = PromptConfig(EnvVariables.getEnvVar("openai.api_key"))
+  val promptDefaultConf: PromptConfig = PromptConfig(ApiKeys.getKey("openai.api_key"))
 
   def createPromptConfig(uri: String, model: String): PromptConfig =
-    PromptConfig(EnvVariables.getEnvVar("openai.api_key"), uri, model)
+    PromptConfig(ApiKeys.getKey("openai.api_key"), uri, model)
 }

@@ -22,7 +22,7 @@ object PrimeKGQA {
     Behaviors.setup { ctx =>
       val replyBack: ActorRef[AIResponse] = ctx.messageAdapter(m => AIAnswer(m))
 
-      val schema: String = Neo4jDatabaseService.schema;
+      val schema: String = Neo4jDatabaseService.schema
       val ref = ctx.spawn(
         OpenAIChatAct(
           OpenAIPromptService.promptDefaultConf,

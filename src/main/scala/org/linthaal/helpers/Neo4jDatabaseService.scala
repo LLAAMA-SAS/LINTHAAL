@@ -6,8 +6,8 @@ import org.neo4j.driver.{ AuthTokens, GraphDatabase }
 import scala.jdk.CollectionConverters.*
 
 object Neo4jDatabaseService {
-  val authToken = AuthTokens.basic(EnvVariables.getEnvVar("neo4j.username"), EnvVariables.getEnvVar("neo4j.password"))
-  val driver = GraphDatabase.driver(EnvVariables.getEnvVar("neo4j.uri"), authToken)
+  val authToken = AuthTokens.basic("neo4j", "password")
+  val driver = GraphDatabase.driver("bolt://localhost:7687", authToken)
 
   val schema: String = {
     val nodeProperties = executeQuery(nodePropertiesQuery)
