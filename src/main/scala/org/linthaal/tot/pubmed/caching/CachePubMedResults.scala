@@ -25,12 +25,15 @@ import java.nio.file.{Files, Path, StandardOpenOption}
   *
   */
 object CachePubMedResults {
-  val defaultPath = Path.of(System.getProperty("user.dir")) resolve "cache"
+  //should add path as arg
+  val pathToCache = Path.of(System.getProperty("user.dir")) resolve "cache"
+  val cacheFolder = pathToCache.toFile
+  if (!cacheFolder.exists()) cacheFolder.mkdirs()
 
   val log: Logger = LoggerFactory.getLogger(getClass.toString)
 
-  log.info(s"cache location: $defaultPath")
-  log.info(s"Total cached Files at start: ${defaultPath.toFile.listFiles.count(_.getName.endsWith("json"))}")
+  log.info(s"Default cache location: $pathToCache")
+  log.info(s"Total cached Files at start: ${cacheFolder.listFiles.count(_.getName.endsWith("json"))}")
 
   case class CachedResults(
       id: String,
@@ -45,9 +48,9 @@ object CachePubMedResults {
   import spray.json.DefaultJsonProtocol.*
   implicit val resultsJsonFormat: RootJsonFormat[CachedResults] = jsonFormat6(CachedResults.apply)
 
-  def flushPubMedResults(results: CachedResults, targetFolder: Path = defaultPath): Unit = {
+  def flushPubMedResults(results: CachedResults): Unit = {
     val fileName = s"pm_${results.id}.json"
-    val p = targetFolder.resolve(fileName)
+    val p = pathToCache.resolve(fileName)
     if (p.toFile.exists()) {
       val f = p.toFile
       val nn = f.getName + "_old"
@@ -69,8 +72,8 @@ object CachePubMedResults {
     }
   }
 
-  def readAllPubMedResults(targetPath: Path = defaultPath): List[CachedResults] = {
-    val folder = targetPath.toFile
+  def readAllPubMedResults(): List[CachedResults] = {
+    val folder = pathToCache.toFile
     if (!folder.exists()) folder.mkdirs()
 
     val files = folder.listFiles()
