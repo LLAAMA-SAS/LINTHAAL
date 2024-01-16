@@ -9,7 +9,7 @@ object BuildHelper {
   val dockerSettings = List(
     dockerBaseImage := "docker.io/library/eclipse-temurin:17-jre-alpine",
     dockerUpdateLatest := true,
-    dockerExposedPorts := Seq(8080),
+    dockerExposedPorts := Seq(7847),
     dockerBuildCommand := {
       if (sys.props("os.arch") != "amd64") {
         dockerExecCommand.value ++ Seq("buildx", "build", "--platform=linux/amd64", "--load") ++ dockerBuildOptions.value :+ "."

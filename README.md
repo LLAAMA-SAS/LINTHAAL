@@ -127,3 +127,6 @@ To use the functionality involving Prime KG, you will need to do the following s
      } IN TRANSACTIONS OF 5000 ROWS
      RETURN 1;
     ```
+   
+
+
