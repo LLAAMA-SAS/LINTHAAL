@@ -14,13 +14,18 @@ import org.linthaal.tot.pubmed.PubMedToTManager.*
 
 import scala.concurrent.Future
 
-/** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
-  * by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+/** This program is free software: you can redistribute it and/or modify it
+  * under the terms of the GNU General Public License as published by the Free
+  * Software Foundation, either version 3 of the License, or (at your option)
+  * any later version.
   *
-  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+  * This program is distributed in the hope that it will be useful, but WITHOUT
+  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+  * more details.
   *
-  * You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
+  * You should have received a copy of the GNU General Public License along with
+  * this program. If not, see <http://www.gnu.org/licenses/>.
   */
 final class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])(implicit val system: ActorSystem[_]) {
 
@@ -106,11 +111,9 @@ case class PubMedAISumReq(
     titleLength: Int = 5,
     abstractLength: Int = 20,
     update: Int = 1800,
-    maxAbstracts: Int = 20)    {
+    maxAbstracts: Int = 20) {
 
-  def uniqueID(): String = helpers.getDigest(s"""${search}${service.model}$titleLength$abstractLength"""
-    
-  )
+  def uniqueID(): String = helpers.getDigest(s"""${search}${service.model}$titleLength$abstractLength""")
 }
 
 final case class SumOfSumsReq(context: List[String])

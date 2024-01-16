@@ -3,30 +3,27 @@ package org.linthaal.tot.pubmed.caching
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.tot.pubmed.PubMedSumAct.SummarizedAbstract
-import org.slf4j.{Logger, LoggerFactory}
+import org.slf4j.{ Logger, LoggerFactory }
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, StandardOpenOption}
+import java.nio.file.{ Files, Path, StandardOpenOption }
 
-/**
+/** This program is free software: you can redistribute it and/or modify it
+  * under the terms of the GNU General Public License as published by the Free
+  * Software Foundation, either version 3 of the License, or (at your option)
+  * any later version.
   *
-  * This program is free software: you can redistribute it and/or modify
-  * it under the terms of the GNU General Public License as published by
-  * the Free Software Foundation, either version 3 of the License, or
-  * (at your option) any later version.
+  * This program is distributed in the hope that it will be useful, but WITHOUT
+  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+  * more details.
   *
-  * This program is distributed in the hope that it will be useful,
-  * but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  * GNU General Public License for more details.
-  *
-  * You should have received a copy of the GNU General Public License
-  * along with this program. If not, see <http://www.gnu.org/licenses/>.
-  *
+  * You should have received a copy of the GNU General Public License along with
+  * this program. If not, see <http://www.gnu.org/licenses/>.
   */
 object CachePubMedResults {
-  //should add path as arg
-  val pathToCache = Path.of(System.getProperty("user.dir")) resolve "cache"
+  // should add path as arg
+  val pathToCache = Path.of(System.getProperty("user.dir")).resolve("cache")
   val cacheFolder = pathToCache.toFile
   if (!cacheFolder.exists()) cacheFolder.mkdirs()
 
@@ -54,7 +51,7 @@ object CachePubMedResults {
     if (p.toFile.exists()) {
       val f = p.toFile
       val nn = f.getName + "_old"
-      val nf = (p.getParent resolve nn).toFile
+      val nf = p.getParent.resolve(nn).toFile
       f.renameTo(nf)
     }
     val resultsAsJson = results.toJson.prettyPrint
@@ -76,16 +73,13 @@ object CachePubMedResults {
     val folder = pathToCache.toFile
     if (!folder.exists()) folder.mkdirs()
 
-    val files = folder.listFiles()
-      .filter(f => f.isFile && f.getName.startsWith("pm") && f.getName.endsWith("json"))
-      .map(_.toPath).toList
+    val files = folder.listFiles().filter(f => f.isFile && f.getName.startsWith("pm") && f.getName.endsWith("json")).map(_.toPath).toList
 
     def parseFiles(fl: List[Path], accum: List[CachedResults]): List[CachedResults] = {
       fl match
         case Nil => accum
         case h :: l =>
-          readPubMedResults(h)
-            .fold(parseFiles(l,accum))(pf => parseFiles(l,pf +: accum))
+          readPubMedResults(h).fold(parseFiles(l, accum))(pf => parseFiles(l, pf +: accum))
     }
 
     parseFiles(files, List.empty)

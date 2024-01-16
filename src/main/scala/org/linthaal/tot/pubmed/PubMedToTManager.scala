@@ -1,22 +1,27 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors }
+import akka.actor.typed.{ ActorRef, Behavior }
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers
-import org.linthaal.tot.pubmed.PubMedSumAct.{AISumOfSums, GetResults, GetSummaryOfSummaries, SummarizedAbstracts, SummaryOfSummaries}
+import org.linthaal.tot.pubmed.PubMedSumAct.{ AISumOfSums, GetResults, GetSummaryOfSummaries, SummarizedAbstracts, SummaryOfSummaries }
 import org.linthaal.tot.pubmed.PubMedToTManager.*
 import org.linthaal.tot.pubmed.caching.CachePubMedResults
 import org.linthaal.tot.pubmed.caching.CachePubMedResults.CachedResults
 import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum.SumOfSums
 
-/** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
-  * by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+/** This program is free software: you can redistribute it and/or modify it
+  * under the terms of the GNU General Public License as published by the Free
+  * Software Foundation, either version 3 of the License, or (at your option)
+  * any later version.
   *
-  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+  * This program is distributed in the hope that it will be useful, but WITHOUT
+  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+  * more details.
   *
-  * You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
+  * You should have received a copy of the GNU General Public License along with
+  * this program. If not, see <http://www.gnu.org/licenses/>.
   *
   * The Graph of Thoughts manager for pubmed summarization requests.
   */
@@ -31,8 +36,7 @@ object PubMedToTManager {
 
   final case class RetrieveAll(replyTo: ActorRef[AllSummarizationRequests]) extends Command
 
-  final case class SummarizeSummarizations(id: String, contextInfo: Seq[String] = Seq.empty, replyTo: ActorRef[ActionPerformed])
-      extends Command
+  final case class SummarizeSummarizations(id: String, contextInfo: Seq[String] = Seq.empty, replyTo: ActorRef[ActionPerformed]) extends Command
 
   final case class RetrieveSumOfSums(id: String, replyTo: ActorRef[SummaryOfSummaries]) extends Command
 
@@ -47,8 +51,7 @@ object PubMedToTManager {
   }
 }
 
-final class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command], results: List[CachedResults])
-  extends AbstractBehavior[PubMedToTManager.Command](ctx) {
+final class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command], results: List[CachedResults]) extends AbstractBehavior[PubMedToTManager.Command](ctx) {
 
   import akka.actor.typed.scaladsl.AskPattern.*
 

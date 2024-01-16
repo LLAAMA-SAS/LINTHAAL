@@ -12,15 +12,21 @@ import org.linthaal.ai.services.huggingface.HuggingFaceTextGenAct
 import java.text.SimpleDateFormat
 import scala.concurrent.duration.DurationInt
 
-/** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
-  * by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+/** This program is free software: you can redistribute it and/or modify it
+  * under the terms of the GNU General Public License as published by the Free
+  * Software Foundation, either version 3 of the License, or (at your option)
+  * any later version.
   *
-  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+  * This program is distributed in the hope that it will be useful, but WITHOUT
+  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+  * more details.
   *
-  * You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
+  * You should have received a copy of the GNU General Public License along with
+  * this program. If not, see <http://www.gnu.org/licenses/>.
   */
-/** Talking to AI. Sending one abstract to one prompt (each routee) to get it summarized and compiling all results once finished.
+/** Talking to AI. Sending one abstract to one prompt (each routee) to get it
+  * summarized and compiling all results once finished.
   *
   * todo refactor to hybrid approach Funct/oo
   */
@@ -37,9 +43,7 @@ object PubMedAISumRouter {
       val wrap: ActorRef[AIResponse] = ctx.messageAdapter(m => AIResponseWrap(m))
       val pool = Routers
         .pool(Math.max(5, pmas.abstracts.size)) {
-          Behaviors
-            .supervise(PubMedAISumOne(wrap, instructions))
-            .onFailure[Exception](SupervisorStrategy.restart.withLimit(maxNrOfRetries = 3, withinTimeRange = 5.seconds))
+          Behaviors.supervise(PubMedAISumOne(wrap, instructions)).onFailure[Exception](SupervisorStrategy.restart.withLimit(maxNrOfRetries = 3, withinTimeRange = 5.seconds))
         }
         .withRouteeProps(routeeProps = DispatcherSelector.blocking())
         .withRoundRobinRouting()

@@ -24,20 +24,14 @@ object PrimeKGQA {
 
       val schema: String = Neo4jDatabaseService.schema
       val ref = ctx.spawn(
-        OpenAIChatAct(
-          OpenAIPromptService.promptDefaultConf,
-          Seq(prepareCypherGenerationMsg(schema, question)).map(m => Message(content = m)),
-          replyBack),
+        OpenAIChatAct(OpenAIPromptService.promptDefaultConf, Seq(prepareCypherGenerationMsg(schema, question)).map(m => Message(content = m)), replyBack),
         s"talking-to-ai-${UUID.randomUUID().toString}")
 
       waitingForCypherStatement(question, replyBack, replyWhenDone)
     }
   }
 
-  private def waitingForCypherStatement(
-      question: String,
-      replyBack: ActorRef[AIResponse],
-      replyWhenDone: ActorRef[PrimeKGAnswer]): Behavior[Command] =
+  private def waitingForCypherStatement(question: String, replyBack: ActorRef[AIResponse], replyWhenDone: ActorRef[PrimeKGAnswer]): Behavior[Command] =
     Behaviors.receive { case (ctx, AIAnswer(aiR)) =>
       val statement = aiR.mainResponse()
       val response = Neo4jDatabaseService.executeQuery(statement)
@@ -50,10 +44,7 @@ object PrimeKGQA {
         Behaviors.stopped
       } else {
         val ref = ctx.spawn(
-          OpenAIChatAct(
-            OpenAIPromptService.promptDefaultConf,
-            Seq(prepareCypherContextMsg(response, question)).map(m => Message(content = m)),
-            replyBack),
+          OpenAIChatAct(OpenAIPromptService.promptDefaultConf, Seq(prepareCypherContextMsg(response, question)).map(m => Message(content = m)), replyBack),
           s"talking-to-ai-${UUID.randomUUID().toString}")
 
         waitingForAnswer(replyWhenDone)

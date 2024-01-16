@@ -15,13 +15,18 @@ import org.linthaal.ai.services.huggingface.SimplePromptJsonProt
 
 import scala.concurrent.Future
 
-/** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
-  * by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+/** This program is free software: you can redistribute it and/or modify it
+  * under the terms of the GNU General Public License as published by the Free
+  * Software Foundation, either version 3 of the License, or (at your option)
+  * any later version.
   *
-  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+  * This program is distributed in the hope that it will be useful, but WITHOUT
+  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+  * more details.
   *
-  * You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
+  * You should have received a copy of the GNU General Public License along with
+  * this program. If not, see <http://www.gnu.org/licenses/>.
   */
 final class HuggingFaceInferencePromptService(promptConf: PromptConfig)(implicit as: ActorSystem[_]) {
 
@@ -32,7 +37,8 @@ final class HuggingFaceInferencePromptService(promptConf: PromptConfig)(implicit
 
     val authorization = Authorization(OAuth2BearerToken(promptConf.apiKey))
 
-    val chatRequest = TextGenerationRequest(message, Parameters(temperature), Options(waitForModel = true))
+    val chatRequest =
+      TextGenerationRequest(message, Parameters(temperature), Options(waitForModel = true))
 
     val formatedRequest = chatRequest.toJson.compactPrint
 
@@ -45,7 +51,8 @@ final class HuggingFaceInferencePromptService(promptConf: PromptConfig)(implicit
 
     val connFlow = Http().connectionTo(host).http2()
 
-    val responseFuture: Future[HttpResponse] = Source.single(httpReq).via(connFlow).runWith(Sink.head)
+    val responseFuture: Future[HttpResponse] =
+      Source.single(httpReq).via(connFlow).runWith(Sink.head)
 
     responseFuture.flatMap { response =>
       response.status match {

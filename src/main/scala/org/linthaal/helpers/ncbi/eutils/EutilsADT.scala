@@ -5,13 +5,18 @@ import java.util.Date
 import scala.util.Try
 import scala.xml.NodeSeq
 
-/** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
-  * by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+/** This program is free software: you can redistribute it and/or modify it
+  * under the terms of the GNU General Public License as published by the Free
+  * Software Foundation, either version 3 of the License, or (at your option)
+  * any later version.
   *
-  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+  * This program is distributed in the hope that it will be useful, but WITHOUT
+  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+  * more details.
   *
-  * You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
+  * You should have received a copy of the GNU General Public License along with
+  * this program. If not, see <http://www.gnu.org/licenses/>.
   */
 object EutilsADT {
 
@@ -26,10 +31,7 @@ object EutilsADT {
     val ids: List[Int] = (ns \\ "eSearchResult" \\ "IdList" \ "Id").map(id => id.text.toInt).toList
 
     val trans: List[QueryTranslation] =
-      (ns \\ "eSearchResult" \\ "TranslationSet" \ "Translation")
-        .map(n => ((n \\ "From").text, (n \\ "To").text))
-        .map(t => QueryTranslation(t._1, t._2))
-        .toList
+      (ns \\ "eSearchResult" \\ "TranslationSet" \ "Translation").map(n => ((n \\ "From").text, (n \\ "To").text)).map(t => QueryTranslation(t._1, t._2)).toList
 
     PMIdSearchResults(count, retMax, retStart, ids, trans)
   }
@@ -73,8 +75,7 @@ object EutilsADT {
   private def pmXmlAbstToText(n: NodeSeq): String = {
     (n \\ "AbstractText")
       .map(n => (n \@ "Label", n.text))
-      .map(n =>
-        if (n._1.nonEmpty && n._1 == "CONCLUSIONS") n._1 + ": " + n._2 else n._2) // for now, only keep conclusions if there are many fields
+      .map(n => if (n._1.nonEmpty && n._1 == "CONCLUSIONS") n._1 + ": " + n._2 else n._2) // for now, only keep conclusions if there are many fields
       .mkString("\n")
   }
 }

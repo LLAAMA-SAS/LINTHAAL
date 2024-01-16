@@ -1,22 +1,27 @@
 package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.{ ActorRef, Behavior }
 import org.linthaal.ai.services.*
-import org.linthaal.ai.services.huggingface.{HuggingFaceInferencePromptService, HuggingFaceTextGenAct}
+import org.linthaal.ai.services.huggingface.{ HuggingFaceInferencePromptService, HuggingFaceTextGenAct }
 import org.linthaal.ai.services.openai.OpenAIPromptService.Message
-import org.linthaal.ai.services.openai.{OpenAIChatAct, OpenAIPromptService}
+import org.linthaal.ai.services.openai.{ OpenAIChatAct, OpenAIPromptService }
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 
 import java.util.UUID
 
-/** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published
-  * by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+/** This program is free software: you can redistribute it and/or modify it
+  * under the terms of the GNU General Public License as published by the Free
+  * Software Foundation, either version 3 of the License, or (at your option)
+  * any later version.
   *
-  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+  * This program is distributed in the hope that it will be useful, but WITHOUT
+  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+  * more details.
   *
-  * You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
+  * You should have received a copy of the GNU General Public License along with
+  * this program. If not, see <http://www.gnu.org/licenses/>.
   */
 object PubMedAISumOne {
 
@@ -33,19 +38,14 @@ object PubMedAISumOne {
           case OpenAIService(model) =>
             ctx.log.info(s"summarizing pmID=${pmAbst.id} with $model")
             ctx.spawn(
-              OpenAIChatAct.apply(
-                OpenAIPromptService.createPromptConfig(OpenAIPromptService.uri, model),
-                Seq(prepareMsg(instructions, pmAbst)).map(m => Message(content = m)),
-                replyWhenDone),
+              OpenAIChatAct
+                .apply(OpenAIPromptService.createPromptConfig(OpenAIPromptService.uri, model), Seq(prepareMsg(instructions, pmAbst)).map(m => Message(content = m)), replyWhenDone),
               s"talking-to-ai-${UUID.randomUUID().toString}")
 
           case HuggingFaceInferenceEndpointsService(model) =>
             ctx.log.info(s"summarizing pmID=${pmAbst.id} with $model")
             ctx.spawn(
-              HuggingFaceTextGenAct(
-                HuggingFaceInferencePromptService.createPromptConfig(model),
-                prepareMsg(instructions, pmAbst),
-                replyWhenDone),
+              HuggingFaceTextGenAct(HuggingFaceInferencePromptService.createPromptConfig(model), prepareMsg(instructions, pmAbst), replyWhenDone),
               s"talking-to-ai-${UUID.randomUUID().toString}")
         }
         Behaviors.same
