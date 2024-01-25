@@ -5,9 +5,14 @@ cache/
 .project
 .classpath
 
-.idea
+# intellij idea
 *.iml
+*.ipr
+*.iws
+.idea
 
+# metals
+project/metals.sbt
 .metals
 .bloop
 .bsp
@@ -15,3 +20,35 @@ cache/
 #api key
 keys/
 *api_key
+
+*.db
+*.data
+*.class
+
+# local settings
+.java-version
+.jvmopts
+local.sbt
+local.conf
+**/secret.conf
+
+# vs code
+.vscode
+
+# sbt
+project/project/
+project/target/
+.sbtopts
+
+# eclipse
+build/
+.worksheet
+bin/
+.cache
+
+# mac
+.DS_Store
+
+# vim
+*.swp
+*.swo
