@@ -1,7 +1,7 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ ActorRef, Behavior }
+import org.apache.pekko.actor.typed.scaladsl.Behaviors
+import org.apache.pekko.actor.typed.{ ActorRef, Behavior }
 import org.linthaal.ai.services.*
 import org.linthaal.ai.services.huggingface.{ HuggingFaceInferencePromptService, HuggingFaceTextGenAct }
 import org.linthaal.ai.services.openai.OpenAIPromptService.Message

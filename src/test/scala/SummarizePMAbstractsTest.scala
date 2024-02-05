@@ -1,4 +1,4 @@
-import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
+import org.apache.pekko.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.tot.pubmed.{ PubMedSumAct, PubMedToTManager }
 import org.linthaal.tot.pubmed.PubMedToTManager.{ ActionPerformed, AllSummarizationRequests, RetrieveAll, StartAISummarization }

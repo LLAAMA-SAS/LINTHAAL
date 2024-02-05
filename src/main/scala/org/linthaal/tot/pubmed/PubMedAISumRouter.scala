@@ -1,7 +1,7 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, Routers }
-import akka.actor.typed.{ ActorRef, Behavior, DispatcherSelector, SupervisorStrategy }
+import org.apache.pekko.actor.typed.scaladsl.{ ActorContext, Behaviors, Routers }
+import org.apache.pekko.actor.typed.{ ActorRef, Behavior, DispatcherSelector, SupervisorStrategy }
 import org.linthaal.ai.services.openai.OpenAIChatAct
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts

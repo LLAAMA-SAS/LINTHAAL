@@ -1,6 +1,6 @@
 package org.linthaal
 
-import akka.actor.typed.ActorSystem
+import org.apache.pekko.actor.typed.ActorSystem
 import org.linthaal.helpers.{ ApiKeys, Parameters }
 import org.slf4j.{ Logger, LoggerFactory }
 

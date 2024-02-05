@@ -1,14 +1,14 @@
 package org.linthaal
 
-import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ ActorSystem, Behavior }
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.server.Route
+import org.apache.pekko.actor.typed.scaladsl.Behaviors
+import org.apache.pekko.actor.typed.{ ActorSystem, Behavior }
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.server.Route
 import org.linthaal.api.routes.PubMedSummarizationRoutes
 import org.linthaal.tot.pubmed.PubMedToTManager
 import org.linthaal.api.routes.PrimeKGQARoutes
 import org.linthaal.qa.primekg.PrimeKGQARouter
-import akka.http.scaladsl.server.Directives.*
+import org.apache.pekko.http.scaladsl.server.Directives.*
 
 import scala.util.{ Failure, Success }
 

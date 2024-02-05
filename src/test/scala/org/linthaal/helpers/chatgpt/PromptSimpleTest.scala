@@ -1,6 +1,6 @@
 package org.linthaal.helpers.chatgpt
 
-import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
+import org.apache.pekko.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import org.linthaal.ai.services.AIResponse
 import org.linthaal.ai.services.openai.OpenAIPromptService.Message
 import org.linthaal.ai.services.openai.{ OpenAIChatAct, OpenAIPromptService }

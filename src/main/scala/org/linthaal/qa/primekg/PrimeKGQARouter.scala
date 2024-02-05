@@ -1,7 +1,7 @@
 package org.linthaal.qa.primekg
 
-import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ ActorRef, Behavior }
+import org.apache.pekko.actor.typed.scaladsl.Behaviors
+import org.apache.pekko.actor.typed.{ ActorRef, Behavior }
 import org.linthaal.api.routes.PrimeKGQAReq
 import org.linthaal.qa.primekg.PrimeKGQA.PrimeKGAnswer
 

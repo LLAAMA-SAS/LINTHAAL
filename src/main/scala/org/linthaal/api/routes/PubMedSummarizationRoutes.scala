@@ -1,11 +1,11 @@
 package org.linthaal.api.routes
 
-import akka.actor.typed.scaladsl.AskPattern.*
-import akka.actor.typed.{ ActorRef, ActorSystem }
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Directives.*
-import akka.http.scaladsl.server.Route
-import akka.util.Timeout
+import org.apache.pekko.actor.typed.scaladsl.AskPattern.*
+import org.apache.pekko.actor.typed.{ ActorRef, ActorSystem }
+import org.apache.pekko.http.scaladsl.model.StatusCodes
+import org.apache.pekko.http.scaladsl.server.Directives.*
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.util.Timeout
 import org.linthaal.ai.services.{ OpenAIService, Service }
 import org.linthaal.helpers
 import org.linthaal.tot.pubmed.PubMedSumAct.*
@@ -29,7 +29,7 @@ import scala.concurrent.Future
   */
 final class PubMedSummarizationRoutes(pmToT: ActorRef[PubMedToTManager.Command])(implicit val system: ActorSystem[_]) {
 
-  import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
+  import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
   import org.linthaal.api.protocols.APIJsonFormats.*
 
   // If ask takes more time than this to complete the request is failed

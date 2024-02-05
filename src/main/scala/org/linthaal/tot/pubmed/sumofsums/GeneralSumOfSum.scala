@@ -1,7 +1,7 @@
 package org.linthaal.tot.pubmed.sumofsums
 
-import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ ActorRef, Behavior }
+import org.apache.pekko.actor.typed.scaladsl.Behaviors
+import org.apache.pekko.actor.typed.{ ActorRef, Behavior }
 import org.linthaal.ai.services.AIResponse
 import org.linthaal.ai.services.openai.{ OpenAIChatAct, OpenAIPromptService }
 import org.linthaal.ai.services.openai.OpenAIPromptService.Message
@@ -66,16 +66,16 @@ object GeneralSumOfSum {
     val abst = sas.map(a => s"${a.sumTitle}.\n${a.sumAbstract}.\n").mkString("####\n", "###", "\n####")
     val cont = if (contextInfo.nonEmpty) {
       val ci = contextInfo.zipWithIndex.map(c => s"${c._2}) ${c._1}").mkString("\n")
-      s"""I provide you context information which are very important for your work:\n${ci}\n"""
+      s"""Some context information which are very important for your work:\n${ci}\n"""
     } else "\n"
 
     s"""
        |$cont
-       |I ask you to extract the most important information of all the following texts.
+       |Extract the most important information of all the following texts.
        |The set of texts starts and ends with ####.
        |Each text is separated from the next one by ###.
        |For each text, the first line is a title.
-       |You should produce one coherent text in a maximum of 5 sentences.
+       |You should produce one coherent text in a maximum of 10 sentences.
        |Think in steps.
        |1. Find the 1 to 3 most important ideas or concepts from the texts.
        |2. Favor logical relationships between the results you deliver.

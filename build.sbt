@@ -22,16 +22,16 @@ lazy val root =
     .settings(scalacOptions := stdOptions)
     .settings(
       libraryDependencies ++= Seq(
-        akkaActor,
-        akkaStream,
-        akkaHttp,
-        akkaSprayJson,
-        akkaHttpXml,
+        pekkoActor,
+        pekkoStream,
+        pekkoHttp,
+        pekkoSprayJson,
+        pekkoHttpXml,
         logbackClassic,
         scalaUri,
         commonsCodec,
         neo4jDriver,
-        akkaActorTestkit,
+        pekkoActorTestkit,
         scalaTest))
     .settings(run / fork := true)
     .settings(Compile / mainClass := Some("org.linthaal.Linthaal"))
