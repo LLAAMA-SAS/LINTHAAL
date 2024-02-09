@@ -31,6 +31,7 @@ lazy val root =
         scalaUri,
         commonsCodec,
         neo4jDriver,
+        milvus,
         pekkoActorTestkit,
         scalaTest))
     .settings(run / fork := true)
