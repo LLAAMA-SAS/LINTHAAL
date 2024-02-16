@@ -42,7 +42,7 @@ object LinthaalSupervisor {
 
   private def startHttpServer(routes: Route)(implicit system: ActorSystem[_]): Unit = {
 
-    // Akka HTTP still needs a classic ActorSystem to start
+    // Pekko HTTP still needs a classic ActorSystem to start
     import system.executionContext
 
     val futureBinding = Http().newServerAt("0.0.0.0", 7847).bind(routes)
