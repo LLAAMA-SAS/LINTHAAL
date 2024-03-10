@@ -32,7 +32,8 @@ lazy val root =
         commonsCodec,
         neo4jDriver,
         pekkoActorTestkit,
-        scalaTest))
+        scalaTest,
+        upickle))
     .settings(run / fork := true)
     .settings(Compile / mainClass := Some("org.linthaal.Linthaal"))
     .settings(Universal / mappings ++= directory("user"))

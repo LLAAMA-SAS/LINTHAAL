@@ -1,10 +1,10 @@
-package org.linthaal.helpers.ncbi.eutils
+package org.linthaal.agents.pubmed
 
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.linthaal.helpers.enoughButNotTooMuchInfo
-import EutilsADT.{PMAbstract, PMIdSearchResults}
-import org.linthaal.core.adt.Agent.{AgentResp, Status, TaskStatus}
+import org.linthaal.helpers.ncbi.eutils.EutilsADT.{PMAbstract, PMIdSearchResults}
+import org.linthaal.helpers.ncbi.eutils.{EutilsADT, EutilsCalls}
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -29,11 +29,6 @@ object PMActor {
   final case class PMIds(sr: PMIdSearchResults) extends PMCommand
   final case class PMFailed(reason: String) extends PMCommand
   final case class PMAbstracts(abstracts: List[PMAbstract], msg: String = "") extends PMCommand
-  
-  case class GetStatus(taskID: String, replyTo: ActorRef[AgentResp]) extends PMCommand
-  
-  case object NotSoGraceFullShutdown extends PMCommand
-  
 
   def apply(conf: EutilsCalls.EutilsConfig, search: String, pmIdsAlreadyDone: List[Int] = List.empty, replyToWhenDone: ActorRef[PMAbstracts]): Behavior[PMCommand] = {
     Behaviors.setup[PMCommand] { ctx =>
@@ -76,13 +71,6 @@ object PMActor {
           ctx.log.error(r)
           replyToWhenDone ! PMAbstracts(List.empty, r)
           Behaviors.stopped
-
-        case GetStatus(taskId, replyTo) =>
-          replyTo ! Status(taskId, "querying abstracts...", 50, TaskStatus.Running)
-          Behaviors.same
-
-        case NotSoGraceFullShutdown => 
-          Behaviors.stopped
       }
     }
   }
@@ -94,14 +82,6 @@ object PMActor {
           replyToWhenDone ! pmr
           ctx.log.info(s"returned ${pmr.abstracts.size} abstracts...")
           Behaviors.stopped
-
-        case GetStatus(taskId, replyTo) =>
-          replyTo ! Status(taskId, "almost completed...", 99, TaskStatus.Completed)
-          Behaviors.same
-
-        case NotSoGraceFullShutdown =>
-          Behaviors.stopped
-
         case any: Any =>
           replyToWhenDone ! PMAbstracts(List.empty, s"Failed: $any")
           Behaviors.stopped

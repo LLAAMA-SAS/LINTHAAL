@@ -1,14 +1,17 @@
 # Linthaal 
 
-### Linthaal is a Graph-of-thoughts multi-agent library for Computational Biology.
+### Linthaal is a Multi-agent platform to build complex AI solutions, yet reproducible and explainable.
 
-It's based on the Actor paradigm. 
-Each agent or node in the graph is represented by an autonomous software actor.
+Linthaal's architecture is based on the [Actor Model](https://en.wikipedia.org/wiki/Actor_model). 
 
-Each agent has a well defined scope and role. 
+Each agent is a quasi autonomous software module (an actor) that reacts to messages. 
+It can itself send messages to other agents, change its internal state based on received messages, spawn new agents. 
+After each message it decides how to respond to the next message. 
 
-It can take decisions, cache data, stream data to another agent based 
-on internal rules and algorithms. 
+Each agent type has a well defined scope and role.  
+
+That includes taking decisions, caching data, 
+streaming data to agents, etc.  
 It can call AI APIs for help, advices or to solve a problem. It can run local LLMs or vector databases. 
 
 An agent can live for a short period of time (accomplishing one given task and stopping) or for longer period of time, 
@@ -133,6 +136,4 @@ To use the functionality involving Prime KG, you will need to do the following s
      } IN TRANSACTIONS OF 5000 ROWS
      RETURN 1;
     ```
-   
-
-
+ 

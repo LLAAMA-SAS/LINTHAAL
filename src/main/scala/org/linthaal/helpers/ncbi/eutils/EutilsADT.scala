@@ -1,9 +1,13 @@
 package org.linthaal.helpers.ncbi.eutils
 
+import org.linthaal.helpers.{DateAndTimeHelpers, JSONHelpers}
+
 import java.text.SimpleDateFormat
 import java.util.Date
 import scala.util.Try
 import scala.xml.NodeSeq
+import upickle.default.*
+
 
 /** This program is free software: you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the Free
@@ -21,8 +25,12 @@ import scala.xml.NodeSeq
 object EutilsADT {
 
   final case class QueryTranslation(from: String, to: String)
+
   final case class PMIdSearchResults(count: Int, retMax: Int, RetStart: Int, ids: List[Int], queryTranslations: List[QueryTranslation])
-  final case class PMAbstract(id: Int, title: String, abstractText: String, date: Date)
+
+  import JSONHelpers.dateRW
+  final case class PMAbstract(id: Int, title: String, abstractText: String, date: Date) derives ReadWriter
+
 
   def pmIdsFromXml(ns: NodeSeq): PMIdSearchResults = {
     val count: Int = (ns \\ "eSearchResult" \\ "Count").text.toInt
@@ -50,19 +58,9 @@ object EutilsADT {
     absts
   }
 
-  // Helpers
-  private val localDateFormatter = new ThreadLocal[SimpleDateFormat] {
-    override def initialValue() = new SimpleDateFormat("yyyy-MM-dd")
-  }
+  private def stringToDate(date: String): Date = DateAndTimeHelpers.stringToDate(date).getOrElse(new Date(0))
 
-  private def stringToDateOption(date: String): Option[Date] =
-    Try {
-      localDateFormatter.get().parse(date)
-    }.toOption
-
-  private def stringToDate(date: String): Date = stringToDateOption(date).getOrElse(new Date(0))
-
-  def dateToString(date: Date): String = localDateFormatter.get().format(date)
+  def dateToString(date: Date): String = DateAndTimeHelpers.localDateFormatter.get().format(date)
 
   private def pmXmlDate(n: NodeSeq): String = {
     val y = (n \ "Year").text
