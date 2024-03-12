@@ -21,13 +21,14 @@ case class AddConf(conf: Map[String, String], replyTo: ActorRef[AgentResp]) exte
 
 case class AddTaskParams(taskId: String, params: Map[String, String], replyTo: ActorRef[AgentResp]) extends AgentMsg
 
-case class StartTask(mateSGId: String, taskId: String, conf: Map[String, String], 
-                     params: Map[String, String], replyTo: ActorRef[AgentTaskResp]) extends AgentMsg
+case class StartTask(taskId: String, replyTo: ActorRef[AgentResp]) extends AgentMsg
 
 case class StopTask(taskId: String, replyTo: ActorRef[AgentResp]) extends AgentMsg
 
-case class GetResults(taskId: String, replyTo: ActorRef[AgentResp]) extends AgentMsg
-
 case class GetStatus(taskId: String, replyTo: ActorRef[AgentResp]) extends AgentMsg
 
-case class SetResults(taskId: String, results: String) extends AgentMsg
+case class AddResults(taskId: String, results: Map[String, String]) extends AgentMsg
+
+case class GetResults(taskId: String, replyTo: ActorRef[AgentResp]) extends AgentMsg
+
+case class SetTransitions(taskId: String, transitions: List[BlueprintTransition], replyTo: ActorRef[AgentResp]) extends AgentMsg

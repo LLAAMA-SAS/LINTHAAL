@@ -1,7 +1,7 @@
 package org.linthaal.core.adt
 
 import org.apache.pekko.actor.typed.ActorRef
-import org.linthaal.core.adt.Agent.{Cache, CheckedParams}
+import org.linthaal.core.adt.Agent.{ Cache, CheckedParams }
 
 /** This program is free software: you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the Free
@@ -17,14 +17,13 @@ import org.linthaal.core.adt.Agent.{Cache, CheckedParams}
   * this program. If not, see <http://www.gnu.org/licenses/>.
   */
 case class Agent(
-                  name: String,
-                  description: String = "",
-                  version: String = "0.1",
-                  mandatoryConf: List[String] = List.empty, // initialization params are like configuration to start the agent
-                  optionalConf: List[String] = List.empty,
-                  mandatoryStartTaskParams: List[String] = List.empty, // the parameters to start the task
-                  optionalStartTaskParams: List[String] = List.empty,
-                  checkParams: Map[String, String => (Boolean, String)] = Map.empty) {
+    agentId: AgentId,
+    description: String = "",
+    mandatoryConf: List[String] = List.empty, // initialization params are like configuration to start the agent
+    optionalConf: List[String] = List.empty,
+    mandatoryStartTaskParams: List[String] = List.empty, // the parameters to start the task
+    optionalStartTaskParams: List[String] = List.empty,
+    checkParams: Map[String, String => (Boolean, String)] = Map.empty) {
 
   def checkConf(conf: Map[String, String]): CheckedParams =
     checkParams(conf, mandatoryConf ++ optionalConf)
@@ -35,8 +34,7 @@ case class Agent(
   private def checkParams(params: Map[String, String], paramsToCheck: List[String]): CheckedParams = {
     val keys = params.keys.toList
     val missing = paramsToCheck.filterNot(p => keys.contains(p))
-    val failedParams: Map[String, String] = checkParams.filter(kv => keys.contains(kv._1))
-      .map(kv => (kv._1, kv._2(params(kv._1)))).filter(cr => cr._2._1).map(r => (r._1, r._2._2))
+    val failedParams: Map[String, String] = checkParams.filter(kv => keys.contains(kv._1)).map(kv => (kv._1, kv._2(params(kv._1)))).filter(cr => cr._2._1).map(r => (r._1, r._2._2))
 
     CheckedParams(missing.isEmpty && failedParams.isEmpty, missing, failedParams)
   }
@@ -51,6 +49,5 @@ object Agent {
 
   enum Cache:
     case None, Memory, Disk, Both
-
 
 }

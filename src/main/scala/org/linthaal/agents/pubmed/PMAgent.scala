@@ -6,8 +6,7 @@ import org.linthaal.agents.pubmed.PMAgent.{KEY_SEARCH, PM_ID_ALREADY_DONE, msgTr
 import org.linthaal.core.Channel
 import org.linthaal.core.adt.Agent.*
 import org.linthaal.core.Channel.ChannelMessage
-import org.linthaal.core.SmartGraph.AgentId
-import org.linthaal.core.adt.Agent
+import org.linthaal.core.adt.{Agent, AgentId, AgentMsg}
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.helpers.ncbi.eutils.PMActor.{NotSoGraceFullShutdown, PMAbstracts, PMCommand, GetStatus as PMGetStatus}
 import org.linthaal.helpers.ncbi.eutils.{EutilsADT, EutilsCalls, PMActor}
@@ -29,18 +28,13 @@ import upickle.default.*
   * this program. If not, see <http://www.gnu.org/licenses/>.
   */
 object PMAgent {
-  val NAME = "Pubmed query agent"
-  val DESCRIPTION = "An agent to query Pubmed"
-  val VERSION = "0.1"
   val KEY_SEARCH = "search"
   val PM_ID_ALREADY_DONE = "PM_ID_DONE"
 
-  val agentId = AgentId(NAME, VERSION)
-  
-  val agent = Agent(
-    name = NAME,
-    description = DESCRIPTION,
-    version = VERSION,
+  val agentId = AgentId("Pubmed query agent", "0.1")
+
+  val agent = Agent(agentId,
+    description = "An agent to query Pubmed",
     mandatoryStartTaskParams = List(KEY_SEARCH),
     checkParams = Map(KEY_SEARCH -> (s => (s.nonEmpty, "provide a search string"))))
 

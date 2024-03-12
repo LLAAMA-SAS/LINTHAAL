@@ -1,5 +1,7 @@
 package org.linthaal.core.adt
 
+import io.lemonlabs.uri.config.All
+
 import scala.concurrent.duration.{DurationInt, FiniteDuration, TimeUnit}
 
 /** This program is free software: you can redistribute it and/or modify it
@@ -16,32 +18,42 @@ import scala.concurrent.duration.{DurationInt, FiniteDuration, TimeUnit}
   * this program. If not, see <http://www.gnu.org/licenses/>.
   */
 
-case class SGTask(agent: AgentId, nextTasks: List[SGTransition] = List.empty, 
-                  decision: Decision = Decision.All, timeOut: FiniteDuration = 10.days) {
-
-  override def toString: String = agent.toString
-
-  def toExtendedString: String = s"""[$agent]~>(decision:$decision)~>${nextTasks.mkString("\n~>")}"""
+case class BlueprintTask(name: String, agent: AgentId, timeOut: FiniteDuration = 10.days) {
+  override def toString: String = s"""[$name]~>[$agent]"""
 }
 
-case class SGTransition(toTask: SGTask, transformer: String = "") {
-  override def toString: String = s"[$transformer]~>$toTask"
+case class BlueprintTransition(fromTask: String, toTask: String, transformer: String = "") {
+  override def toString: String = s"[$fromTask]~>[$transformer]~>[$toTask]"
 }
 
-case class SGBlueprint(name: String, description: String = "", version: String = "",
-                       tasks: List[SGTask]) {
+case class SGBlueprint(name: String, description: String = "", version: String = "", 
+                       tasks: List[BlueprintTask], transitions: List[BlueprintTransition]) {
 
   val id = s"${name}_${version}".trim.replaceAll("\\s", "_")
 
-  lazy val allNeededAgents: List[AgentId] = {
+  def checker(): List[String] = {
+    var l: List[String] = Nil
+    
+    if (tasks.map(_.name).distinct.length != tasks.length) l = l :+ "Found duplicate tasks in the blueprint."
+    if (!transitions.flatMap(t => List(t.fromTask, t.toTask)).distinct.forall(t => tasks.map(_.name).contains(t)))
+      l = l :+ "At least a transition contains unknown task name. "
 
-    def getAgents(tasks: List[SGTask], acc: List[AgentId]): List[AgentId] = tasks match
-      case Nil => acc
-      case h :: l => getAgents(l ++ h.nextTasks.map(_.toTask), acc :+ h.agent)
-
-    getAgents(tasks, List.empty)
+    l
   }
+
+  val allNeededAgents: List[AgentId] = tasks.map(_.agent)
+  
+  val fromTasks: List[String] = transitions.map(_.fromTask)
+
+  val toTasks: List[String] = transitions.map(_.toTask)
+
+  val startingTasks: List[BlueprintTask] = tasks.filter(t => !toTasks.contains(t.name))
+
+  val endTasks: List[BlueprintTask] = tasks.filter(t => !fromTasks.contains(t.name))
+
+  def taskByName(name: String): Option[BlueprintTask] = tasks.find(t => t.name == name)
+  
+  def transitionsFrom(name: String): List[BlueprintTransition] = transitions.filter(t => t.fromTask == name)  
+  
+  def transitionsTo(name: String): List[BlueprintTransition] = transitions.filter(t => t.toTask == name)  
 }
-
-enum Decision {case All, Several, One, Final}
-

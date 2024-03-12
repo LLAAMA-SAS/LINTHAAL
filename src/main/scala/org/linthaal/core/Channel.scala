@@ -8,6 +8,7 @@ import org.linthaal.core.adt.Agent.{AgentMsg, AgentResp, Results, StartTask}
 import org.linthaal.core.Channel.{ChannelMessage, OutputInput}
 import org.linthaal.core.Conductor.PipeFeedback
 import org.linthaal.core.SmartGraph.AgentId
+import org.linthaal.core.adt.{AgentId, AgentMsg, StartTask}
 
 /** This program is free software: you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the Free

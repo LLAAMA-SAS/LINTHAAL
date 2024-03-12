@@ -22,25 +22,30 @@ import org.linthaal.core.adt.Agent.TaskStatus
 
 sealed trait AgentResp
 
-case class InitSuccess(msg: String = "") extends AgentResp
+case class AgentStatus(agentStatus: AgentStatusType, msg: String = "")
 
-case class InitFailed(msg: String) extends AgentResp
+case class Success(taskId: String, msg: String = "") extends AgentResp
 
-sealed trait AgentTaskResp {
-  def taskId: String
-}
+case class Warning(taskId: String, reason: String) extends AgentResp
 
-case class TaskStartSuccess(taskId: String, msg: String = "") extends AgentTaskResp
+case class Failure(taskId: String, reason: String) extends AgentResp
 
-case class TaskStartFailed(msg: String = "") extends AgentTaskResp
+case class TaskStatus(taskId: String, msg: String, percentCompleted: Int = 0, status: TaskStatusType) extends AgentResp
 
-case class TaskStopRequested(taskId: String, msg: String = "") extends AgentTaskResp
+case class TaskCompleted(taskId: String, msg: String = "") extends AgentResp
 
-case class Status(taskId: String, msg: String, percentCompleted: Int = 0, status: TaskStatus) extends AgentTaskResp
+case class TaskFailed(taskId: String, reason: String) extends AgentResp
 
-case class TaskCompleted(taskId: String, msg: String = "") extends AgentTaskResp
+case class Results(taskId: String, results: Map[String, String]) extends AgentResp
 
-case class Results(taskId: String, json: String = """{}""") extends AgentTaskResp
+case class ActualTransitions(taskId: String, transitions: List[BlueprintTransition]) extends AgentResp
 
-//case class AgentStopRequested(msg: String = "") extends AgentTaskResp
 
+enum AgentStatusType: 
+  case Running, InLimbo, Failing
+
+enum TaskStatusType:
+  case New, Ready, Running, Waiting, Completed, Failed
+
+enum TransitionStatusType:
+  case New, Completed, Failed, NotSelected 
