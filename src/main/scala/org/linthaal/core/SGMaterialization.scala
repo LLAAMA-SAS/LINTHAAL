@@ -2,6 +2,7 @@ package org.linthaal.core
 
 import org.apache.pekko.actor.typed.scaladsl.{ActorContext, Behaviors}
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
+import org.linthaal.core.TransitionActor.{Transition, TransitionMsg}
 import org.linthaal.core.Conductor.{ConductorResp, FailedMaterialization}
 import org.linthaal.core.SGMaterialization.{SGMatMsg, Start}
 import org.linthaal.core.adt.*
@@ -26,20 +27,11 @@ import scala.concurrent.duration.FiniteDuration
 
 object SGMaterialization {
   sealed trait SGMatMsg
-  case class Start(conf: Map[String, String], params: Map[String, String], replyTo: ActorRef[SGMatResp]) extends SGMatMsg
+  case class Start(conf: Map[String, String], params: Map[String, String], replyTo: ActorRef[SGSupervisionMsg]) extends SGMatMsg
 
-  sealed trait SGMatResp extends SGMatMsg {
-    def taskId: String
-  }
+  case class WrapAgentMsg(AgentMsg: AgentMsg) extends SGMatMsg
 
-  case class WrapAgentResp(agentResp: AgentResp) extends SGMatMsg
-
-  case class Transition(from: String, to: String)
-
-  enum TransitionStatusType:
-    case New, Ready, Completed, Failed
-
-  def apply(blueprint: SGBlueprint, agents: Map[AgentId, ActorRef[AgentMsg]], ctx: ActorContext[SGMatMsg], 
+  def apply(blueprint: SGBlueprint, agents: Map[AgentId, ActorRef[AgentMsg]],
             replyTo: ActorRef[ConductorResp]): Behavior[SGMatMsg] = {
 
     Behaviors.setup { ctx =>
@@ -49,7 +41,7 @@ object SGMaterialization {
   }
 }
 
-class SGMaterialization private (blueprint: SGBlueprint, agents: Map[AgentId, ActorRef[AgentMsg]], 
+class SGMaterialization private (blueprint: SGBlueprint, agents: Map[AgentId, ActorRef[AgentMsg]],
                                  context: ActorContext[SGMatMsg], replyTo: ActorRef[ConductorResp]) {
 
   import SGMaterialization._
@@ -57,31 +49,31 @@ class SGMaterialization private (blueprint: SGBlueprint, agents: Map[AgentId, Ac
   val uid: String = blueprint.id + "_" + DateAndTimeHelpers.getCurrentDate_ms_()
 
   var materializedTasks: Map[String, BlueprintTask] = Map.empty
-  var taskStatus: Map[String, TaskStatusType] = Map.empty
+  var taskStatus: Map[String, TaskStateType] = Map.empty
 
   var transitions: Map[Transition, BlueprintTransition] = Map.empty
   var transitionsStatus: Map[Transition, TransitionStatusType] = Map.empty
 
-   private def init(): Behavior[SGMatMsg] = {
+  private def init(): Behavior[SGMatMsg] = {
     // mismatch between available agents and requested agents.
     if (blueprint.allNeededAgents.exists(a => !agents.keySet.contains(a))) {
       replyTo ! FailedMaterialization("At least one required agent is missing.")
       Behaviors.stopped
     } else {
       materializedTasks ++= blueprint.startingTasks.map(t => UUID.randomUUID().toString -> t)
-      taskStatus ++= materializedTasks.keySet.map(k => k -> TaskStatusType.Ready)
+      taskStatus ++= materializedTasks.keySet.map(k => k -> TaskStateType.Ready)
       readyToStart()
     }
   }
 
   private def readyToStart(): Behavior[SGMatMsg] = {
     Behaviors.receiveMessage { case Start(conf, params, replyTo) =>
-      val msgAdapter: ActorRef[AgentResp] = context.messageAdapter[AgentResp](m => WrapAgentResp(m))
+      val msgAdapter: ActorRef[AgentMsg] = context.messageAdapter[AgentMsg](m => WrapAgentMsg(m))
 
       materializedTasks.foreach { mt =>
         val agt = agents.get(mt._2.agent)
-        if (agt.nonEmpty) agt.get ! StartTask(uid, mt._1, conf, params, msgAdapter)
-        taskStatus += (mt._1 -> TaskStatusType.Running)
+        if (agt.nonEmpty) agt.get ! StartTask(mt._1, conf, params, msgAdapter)
+        taskStatus += (mt._1 -> TaskStateType.Running)
       }
       // replyTo ! todo implement
       running()
@@ -89,31 +81,29 @@ class SGMaterialization private (blueprint: SGBlueprint, agents: Map[AgentId, Ac
   }
 
   private def running(): Behavior[SGMatMsg] = {
-    Behaviors.receiveMessage { case WrapAgentResp(aTaskResp) =>
+    Behaviors.receiveMessage { case WrapAgentMsg(aTaskResp) =>
       aTaskResp match {
         case TaskCompleted(taskId, msg) =>
-          taskStatus += taskId -> TaskStatusType.Completed
+          taskStatus += taskId -> TaskStateType.Completed
 
           if (materializedTasks.isDefinedAt(taskId)) {
             val tak = materializedTasks(taskId)
             val trs = blueprint.transitionsFrom(tak.name)
             val nextTks: Map[String, (BlueprintTask, BlueprintTransition)] =
               trs.map(tr => (blueprint.taskByName(tr.toTask), tr))
-              .filter(t => t._1.nonEmpty).map(t => (t._1.get, t._2))
+                .filter(t => t._1.nonEmpty).map(t => (t._1.get, t._2))
                 .map(t => UUID.randomUUID.toString -> t).toMap
 
             materializedTasks ++= nextTks.map(t => t._1 -> t._2._1)
-            taskStatus ++= nextTks.keySet.map(k => k -> TaskStatusType.New)
+            taskStatus ++= nextTks.keySet.map(k => k -> TaskStateType.New)
 
             nextTks.foreach { kv =>
               val tr = Transition(taskId, kv._1)
               transitions += tr -> nextTks(kv._1)._2
-              transitionsStatus += tr -> TransitionStatus.New
+              transitionsStatus += tr -> TransitionStatusType.New
             }
           }
 
-           
-          
 
           Behaviors.same
 
@@ -123,4 +113,5 @@ class SGMaterialization private (blueprint: SGBlueprint, agents: Map[AgentId, Ac
     }
     Behaviors.same
   }
+}
 

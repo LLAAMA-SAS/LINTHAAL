@@ -1,8 +1,4 @@
-package org.linthaal.agents.helpers
-
-import org.apache.pekko.actor.typed.Behavior
-import org.apache.pekko.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import org.linthaal.core.adt.{Agent, AgentId, AgentMsg}
+package org.linthaal.core.adt
 
 /**
   *
@@ -20,21 +16,7 @@ import org.linthaal.core.adt.{Agent, AgentId, AgentMsg}
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
   */
-object DoNothing {
-  val agentId = AgentId("Do Nothing", "1.0")
 
-  val agent = Agent(agentId, description = "does nothing")
+sealed trait SGSupervisionMsg {
 
-  def apply(): Behavior[AgentMsg] =
-    Behaviors.setup[AgentMsg] { ctx =>
-      new DoNothing(agent, ctx)
-    }
-}
-
-
-class DoNothing(agent: Agent, context: ActorContext[AgentMsg]) extends AbstractBehavior[AgentMsg](context) {
-  
-  override def onMessage(msg: AgentMsg): Behavior[AgentMsg] = {
-    
-  }
 }

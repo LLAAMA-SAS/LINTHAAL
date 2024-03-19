@@ -1,10 +1,10 @@
 package org.linthaal.core
 
 import org.apache.pekko.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import org.apache.pekko.actor.typed.{ActorSystem, Behavior, SpawnProtocol}
+import org.apache.pekko.actor.typed.{ActorRef, ActorSystem, Behavior, SpawnProtocol}
 import org.linthaal.LinthaalSupervisor
-import org.linthaal.core.SmartGraph.SmartGraphMessage
-import org.linthaal.core.adt.{AgentId, ChannelDefinition}
+import org.linthaal.core.SmartGraph.SmartGraphMsg
+import org.linthaal.core.adt.{AgentId, AgentMsg, SGBlueprint}
 import org.linthaal.helpers.Parameters
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -24,28 +24,31 @@ import org.slf4j.{Logger, LoggerFactory}
 
 object SmartGraph {
 
-  sealed trait SmartGraphMessage
+  sealed trait SmartGraphMsg
 
-  case class AddBlueprint(blueprint: SGBlueprint) extends SmartGraphMessage
+  case class AddBlueprint(blueprint: SGBlueprint) extends SmartGraphMsg
 
-  case class RunBlueprint(bluePrintKey: String, params: String) extends SmartGraphMessage
-
-  def apply(params: Map[String, String]): Behavior[SmartGraphMessage] =
+  def apply(conf: Map[String, String] = Map.empty): Behavior[SmartGraphMsg] =
     Behaviors.setup { ctx =>
-      new SmartGraph(params, ctx)
+      new SmartGraph(conf, ctx)
     }
 }
 
-class SmartGraph(params: Map[String, String], context: ActorContext[SmartGraphMessage]) extends AbstractBehavior[SmartGraphMessage](context) {
-  val conductor = context.spawn(Conductor(params), "conductor")
+class SmartGraph(conf: Map[String, String], context: ActorContext[SmartGraphMsg]) extends AbstractBehavior[SmartGraphMsg](context) {
+
   import SmartGraph.*
 
-  override def onMessage(msg: SmartGraphMessage): Behavior[SmartGraphMessage] = {
-    msg match
-      case AddBlueprint(name, description, version, nodes, channels) =>
-        this
+  var blueprint: Set[SGBlueprint] = Set.empty
+  
+  // todo add agents with messages
+  val agents: Set[ActorRef[AgentMsg]] = Set(
+    AgentActor
+  )
 
-      case RunBlueprint(bluePrintKey, params) =>
+  override def onMessage(msg: SmartGraphMsg): Behavior[SmartGraphMsg] = {
+    msg match
+      case AddBlueprint(bprint) =>
+        blueprint += bprint
         this
 
   }

@@ -13,7 +13,7 @@ import org.linthaal.core.adt.{AgentId, AgentMsg}
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation, either version 3 of the License, or
-  * (at your option) any later version. 
+  * (at your option) any later version.
   *
   * This program is distributed in the hope that it will be useful,
   * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -35,13 +35,13 @@ object Conductor {
   final case object Stop extends ConductorMsg
 
   final case object GetStatusAndFeedback extends ConductorMsg
-  
+
   final case class PipeFeedback(from: String, to: String, msg: String = "", feedback: String = "") extends ConductorMsg
-    
+
   sealed trait ConductorResp extends ConductorMsg
-  
+
   final case class FailedMaterialization(msg: String) extends ConductorResp
-  
+
   def apply(mainProps: Map[String, String] = Map.empty): Behavior[ConductorMsg] = {
     Behaviors.setup[ConductorMsg] { ctx =>
       new Conductor(ctx)
@@ -60,7 +60,7 @@ class Conductor(context: ActorContext[ConductorMsg]) extends AbstractBehavior[Co
 
   // Add transformers here (for in/out channel)
 
-  
+
 
   override def onMessage(msg: ConductorMsg): Behavior[ConductorMsg] = {
     msg match

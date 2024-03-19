@@ -4,7 +4,7 @@ import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.linthaal.helpers.enoughButNotTooMuchInfo
 import EutilsADT.{PMAbstract, PMIdSearchResults}
-import org.linthaal.core.adt.Agent.{AgentResp, Status, TaskStatus}
+import org.linthaal.core.adt.Agent.{AgentMsg, Status, TaskStatus}
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -30,7 +30,7 @@ object PMActor {
   final case class PMFailed(reason: String) extends PMCommand
   final case class PMAbstracts(abstracts: List[PMAbstract], msg: String = "") extends PMCommand
   
-  case class GetStatus(taskID: String, replyTo: ActorRef[AgentResp]) extends PMCommand
+  case class GetStatus(taskID: String, replyTo: ActorRef[AgentMsg]) extends PMCommand
   
   case object NotSoGraceFullShutdown extends PMCommand
   

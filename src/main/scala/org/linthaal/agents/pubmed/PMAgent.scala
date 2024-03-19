@@ -3,10 +3,10 @@ package org.linthaal.agents.pubmed
 import org.apache.pekko.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.linthaal.agents.pubmed.PMAgent.{KEY_SEARCH, PM_ID_ALREADY_DONE, msgTransform}
-import org.linthaal.core.Channel
+import org.linthaal.core.TransitionActor
 import org.linthaal.core.adt.Agent.*
-import org.linthaal.core.Channel.ChannelMessage
-import org.linthaal.core.adt.{Agent, AgentId, AgentMsg}
+import org.linthaal.core.TransitionActor.TransitionMsg
+import org.linthaal.core.adt.{Agent, AgentId, AgentMsg, Results}
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.helpers.ncbi.eutils.PMActor.{NotSoGraceFullShutdown, PMAbstracts, PMCommand, GetStatus as PMGetStatus}
 import org.linthaal.helpers.ncbi.eutils.{EutilsADT, EutilsCalls, PMActor}
@@ -52,7 +52,7 @@ class PMAgent(agent: Agent, context: ActorContext[AgentMsg]) extends AbstractBeh
 
   var results: Map[String, Results] = Map.empty
   var actors: Map[String, ActorRef[PMCommand]] = Map.empty
-  var pipes: Map[String, List[ActorRef[ChannelMessage]]] = Map.empty
+  var pipes: Map[String, List[ActorRef[TransitionMsg]]] = Map.empty
 
   override def onMessage(msg: AgentMsg): Behavior[AgentMsg] = {
     msg match {
@@ -106,8 +106,8 @@ class PMAgent(agent: Agent, context: ActorContext[AgentMsg]) extends AbstractBeh
         this
 
       case AddPipe(taskId, toAgent, transformers, supervisor) =>
-        val ar = context.spawn(Channel.apply(taskId, transformers, toAgent, supervisor), s"pipe_from${agent.name}_${UUID.randomUUID().toString}")
-        val newL: List[ActorRef[ChannelMessage]] = pipes.get(taskId).fold(List(ar))(l => ar :: l)
+        val ar = context.spawn(TransitionActor.apply(taskId, transformers, toAgent, supervisor), s"pipe_from${agent.name}_${UUID.randomUUID().toString}")
+        val newL: List[ActorRef[TransitionMsg]] = pipes.get(taskId).fold(List(ar))(l => ar :: l)
         pipes += taskId -> newL
         this
 

@@ -2,6 +2,7 @@ package org.linthaal
 
 import org.apache.pekko.actor.typed.ActorSystem
 import org.linthaal.core.SmartGraph
+import org.linthaal.core.SmartGraph.SmartGraphMsg
 import org.linthaal.helpers.{ApiKeys, Parameters}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -21,13 +22,11 @@ import org.slf4j.{Logger, LoggerFactory}
 object LinthaalSmartGraph {
 
   val log: Logger = LoggerFactory.getLogger(getClass.toString)
-
-  var appArgs: Map[String, String] = Map.empty
-
+  
   def main(args: Array[String]): Unit = {
-    log.info("Starting Linthaal...")
-    appArgs = Parameters.parseArgs(args)
+    log.info("Starting Linthaal SmartGraph...")
+    val appArgs = Parameters.parseArgs(args)
     log.info(s"""Args: ${appArgs.keys.mkString(" , ")}""")
-    ActorSystem[Nothing](SmartGraph(appArgs), "Linthaal-system")
+    ActorSystem[SmartGraphMsg](SmartGraph(appArgs), "Linthaal-system")
   }
 }

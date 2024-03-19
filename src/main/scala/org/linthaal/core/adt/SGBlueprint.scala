@@ -1,6 +1,7 @@
 package org.linthaal.core.adt
 
 import io.lemonlabs.uri.config.All
+import org.linthaal.helpers
 
 import scala.concurrent.duration.{DurationInt, FiniteDuration, TimeUnit}
 
@@ -26,14 +27,19 @@ case class BlueprintTransition(fromTask: String, toTask: String, transformer: St
   override def toString: String = s"[$fromTask]~>[$transformer]~>[$toTask]"
 }
 
-case class SGBlueprint(name: String, description: String = "", version: String = "", 
+case class SGBlueprint(name: String, description: String = "", version: String = "",
                        tasks: List[BlueprintTask], transitions: List[BlueprintTransition]) {
 
   val id = s"${name}_${version}".trim.replaceAll("\\s", "_")
+  val uid = helpers.getDigest(id)
 
+  /**
+   * checks the consistency of the blueprint
+   * @return
+   */
   def checker(): List[String] = {
     var l: List[String] = Nil
-    
+
     if (tasks.map(_.name).distinct.length != tasks.length) l = l :+ "Found duplicate tasks in the blueprint."
     if (!transitions.flatMap(t => List(t.fromTask, t.toTask)).distinct.forall(t => tasks.map(_.name).contains(t)))
       l = l :+ "At least a transition contains unknown task name. "
@@ -42,7 +48,7 @@ case class SGBlueprint(name: String, description: String = "", version: String =
   }
 
   val allNeededAgents: List[AgentId] = tasks.map(_.agent)
-  
+
   val fromTasks: List[String] = transitions.map(_.fromTask)
 
   val toTasks: List[String] = transitions.map(_.toTask)
@@ -52,8 +58,8 @@ case class SGBlueprint(name: String, description: String = "", version: String =
   val endTasks: List[BlueprintTask] = tasks.filter(t => !fromTasks.contains(t.name))
 
   def taskByName(name: String): Option[BlueprintTask] = tasks.find(t => t.name == name)
-  
-  def transitionsFrom(name: String): List[BlueprintTransition] = transitions.filter(t => t.fromTask == name)  
-  
-  def transitionsTo(name: String): List[BlueprintTransition] = transitions.filter(t => t.toTask == name)  
+
+  def transitionsFrom(name: String): List[BlueprintTransition] = transitions.filter(t => t.fromTask == name)
+
+  def transitionsTo(name: String): List[BlueprintTransition] = transitions.filter(t => t.toTask == name)
 }
