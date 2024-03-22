@@ -1,11 +1,5 @@
 package org.linthaal
 
-import org.apache.pekko.actor.typed.ActorSystem
-import org.linthaal.core.SmartGraphManager
-import org.linthaal.core.SmartGraphManager.SmartGraphMsg
-import org.linthaal.helpers.{ApiKeys, Parameters}
-import org.slf4j.{Logger, LoggerFactory}
-
 /** This program is free software: you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the Free
   * Software Foundation, either version 3 of the License, or (at your option)
@@ -19,14 +13,9 @@ import org.slf4j.{Logger, LoggerFactory}
   * You should have received a copy of the GNU General Public License along with
   * this program. If not, see <http://www.gnu.org/licenses/>.
   */
-object LinthaalSmartGraph {
-
-  val log: Logger = LoggerFactory.getLogger(getClass.toString)
+package object core {
   
-  def main(args: Array[String]): Unit = {
-    log.info("Starting Linthaal SmartGraph...")
-    val appArgs = Parameters.parseArgs(args)
-    log.info(s"""Args: ${appArgs.keys.mkString(" , ")}""")
-    ActorSystem[SmartGraphMsg](SmartGraphManager(appArgs), "Linthaal-system")
-  }
+  enum GenericFeedback:
+    case Success, Failure, Warning
+  
 }

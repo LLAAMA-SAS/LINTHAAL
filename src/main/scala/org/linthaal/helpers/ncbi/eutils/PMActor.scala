@@ -4,7 +4,7 @@ import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.linthaal.helpers.enoughButNotTooMuchInfo
 import EutilsADT.{PMAbstract, PMIdSearchResults}
-import org.linthaal.core.adt.Agent.{AgentMsg, Status, TaskStatus}
+import org.linthaal.core.AgentAct.AgentMsg
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -29,11 +29,11 @@ object PMActor {
   final case class PMIds(sr: PMIdSearchResults) extends PMCommand
   final case class PMFailed(reason: String) extends PMCommand
   final case class PMAbstracts(abstracts: List[PMAbstract], msg: String = "") extends PMCommand
-  
+
   case class GetStatus(taskID: String, replyTo: ActorRef[AgentMsg]) extends PMCommand
-  
+
   case object NotSoGraceFullShutdown extends PMCommand
-  
+
 
   def apply(conf: EutilsCalls.EutilsConfig, search: String, pmIdsAlreadyDone: List[Int] = List.empty, replyToWhenDone: ActorRef[PMAbstracts]): Behavior[PMCommand] = {
     Behaviors.setup[PMCommand] { ctx =>
@@ -78,7 +78,7 @@ object PMActor {
           Behaviors.stopped
 
         case GetStatus(taskId, replyTo) =>
-          replyTo ! Status(taskId, "querying abstracts...", 50, TaskStatus.Running)
+//          replyTo ! Status(taskId, "querying abstracts...", 50, TaskStatus.Running) Todo Fix
           Behaviors.same
 
         case NotSoGraceFullShutdown => 
@@ -96,7 +96,7 @@ object PMActor {
           Behaviors.stopped
 
         case GetStatus(taskId, replyTo) =>
-          replyTo ! Status(taskId, "almost completed...", 99, TaskStatus.Completed)
+//          replyTo ! Status(taskId, "almost completed...", 99, TaskStatus.Completed)   todo Fix
           Behaviors.same
 
         case NotSoGraceFullShutdown =>

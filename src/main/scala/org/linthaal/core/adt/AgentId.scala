@@ -17,7 +17,7 @@ package org.linthaal.core.adt
   *
   */
 case class AgentId(name: String, version: String) {
-  override def toString: String = s"${name}_${version}".trim.replaceAll("\\s", "_")
+  override def toString: String = s"${name}_${version}".trim.replaceAll("\\s", "_").replaceAll("\\.", "_")
 }
 
 

@@ -1,21 +1,21 @@
 package org.linthaal.tot.pubmed
 
-import org.apache.pekko.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors, TimerScheduler }
-import org.apache.pekko.actor.typed.{ ActorRef, Behavior }
+import org.apache.pekko.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
+import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.linthaal.ai.services.AIResponse
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.linthaal.helpers.ncbi.eutils.{ EutilsCalls, PMActor }
+import org.linthaal.helpers.ncbi.eutils.{EutilsCalls, PMActor}
 import org.linthaal.tot.pubmed.PubMedSumAct.*
-import org.linthaal.tot.pubmed.caching.{ CachePubMedResults, CachingActor }
-import org.linthaal.tot.pubmed.caching.CachePubMedResults.{ flushPubMedResults, CachedResults }
-import org.linthaal.tot.pubmed.caching.CachingActor.{ CacheCmd, CacheResults }
+import org.linthaal.tot.pubmed.caching.{CachePubMedResults, CachingActor}
+import org.linthaal.tot.pubmed.caching.CachePubMedResults.{CachedResults, flushPubMedResults}
+import org.linthaal.tot.pubmed.caching.CachingActor.{CacheCmd, CacheResults}
 import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum
 import org.linthaal.tot.pubmed.sumofsums.GeneralSumOfSum.SumOfSums
 
 import java.util.concurrent.TimeUnit
-import java.util.{ Date, UUID }
+import java.util.{Date, UUID}
 import scala.concurrent.duration.FiniteDuration
 
 /** This program is free software: you can redistribute it and/or modify it

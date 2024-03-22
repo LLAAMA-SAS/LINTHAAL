@@ -1,7 +1,7 @@
 package org.linthaal.core.adt
 
-import org.apache.pekko.actor.typed.ActorRef
-import org.linthaal.core.adt.Agent.{ Cache, CheckedParams }
+import org.apache.pekko.actor.typed.{ActorRef, Behavior}
+import org.linthaal.core.adt.Agent.CheckedParams
 
 /** This program is free software: you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the Free
@@ -18,6 +18,7 @@ import org.linthaal.core.adt.Agent.{ Cache, CheckedParams }
   */
 case class Agent(
     agentId: AgentId,
+    behavior: Behavior[WorkerMsg],
     description: String = "",
     mandatoryConf: List[String] = List.empty, // initialization params are like configuration to start the agent
     optionalConf: List[String] = List.empty,
@@ -43,11 +44,12 @@ case class Agent(
 object Agent {
 
   // helpers
-  case class CheckedParams(ok: Boolean, missing: List[String] = List.empty, wrongValue: Map[String, String] = Map.empty) {
+  case class CheckedParams(ok: Boolean, missing: List[String] = List.empty, wrongValues: Map[String, String] = Map.empty) {
     def isOk: Boolean = ok
-  }
 
-  enum Cache:
-    case None, Memory, Disk, Both
+    override def toString: String =
+      s"""Missing: [${missing.mkString(", ")}]
+         | wrong values: [${wrongValues.mkString}]""".stripMargin
+  }
 
 }

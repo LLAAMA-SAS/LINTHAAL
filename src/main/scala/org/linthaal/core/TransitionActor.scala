@@ -4,11 +4,8 @@ import org.apache.pekko.actor.Actor
 import org.apache.pekko.actor.typed.scaladsl.AbstractBehavior
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.apache.pekko.actor.typed.scaladsl.{ActorContext, Behaviors}
-import org.linthaal.core.adt.Agent.{AgentMsg, AgentMsg, Results, StartTask}
-import org.linthaal.core.TransitionActor.{TransitionMsg, OutputInput}
-import org.linthaal.core.Conductor.{ConductorMsg, PipeFeedback}
-import org.linthaal.core.SmartGraph.AgentId
-import org.linthaal.core.adt.{AddTaskInput, AgentId, AgentMsg, AgentMsg, DataLoad, StartTask}
+import org.linthaal.core.AgentAct.{AddTaskInput, AgentMsg, DataLoad, DataTransferInfo, Results, TaskInfo}
+import org.linthaal.core.TransitionActor.{OutputInput, TransitionMsg}
 
 /** This program is free software: you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the Free
@@ -28,21 +25,15 @@ object TransitionActor {
 
   sealed trait TransitionMsg
 
-  case class OutputInput(data: Map[String, String], inputStep: DataLoad) extends TransitionMsg //todo typing
+  case class OutputInput(data: Map[String, String], inputStep: DataLoad = DataLoad.Last) extends TransitionMsg
 
-  case class Transition(fromMatTask: String, toMatTask: String)
-
-  def apply(
-      toTask: String,
-      fromAgent: ActorRef[AgentMsg],
-      toAgent: ActorRef[AgentMsg],
-      transformer: Map[String, String => String]): Behavior[TransitionMsg] = {
+  def apply(toTask: String, toAgent: ActorRef[AgentMsg], transformers: Map[String, String => String] = Map.empty,
+            supervise: ActorRef[DataTransferInfo]): Behavior[TransitionMsg] = {
     Behaviors.setup { ctx =>
       Behaviors.receiveMessage { case OutputInput(data, inputStep) =>
-        val datat = data.map(kv => if (transformer.isDefinedAt(kv._1)) kv._1 -> transformer(kv._1)(kv._2) else kv._1 -> kv._2)
+        val datat = data.map(kv => if (transformers.isDefinedAt(kv._1)) kv._1 -> transformers(kv._1)(kv._2) else kv._1 -> kv._2)
         ctx.log.info(s"data transfer to task: $toTask")
-        toAgent ! AddTaskInput(toTask, datat, inputStep, fromAgent)
-        
+        toAgent ! AddTaskInput(toTask, datat, inputStep, supervise)
         if (inputStep == DataLoad.Last) Behaviors.stopped
         else Behaviors.same
       }
