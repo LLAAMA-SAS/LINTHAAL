@@ -40,4 +40,4 @@ case class WorkerState(state: WorkerStateType = WorkerStateType.DataInput, perce
 case class ChosenTransitions(transitions: List[BlueprintTransition])
 
 enum WorkerStateType:
-  case DataInput, WrongData, Ready, Running, Completed, InLimbo, Failed
+  case DataInput, Running, Completed, Failed

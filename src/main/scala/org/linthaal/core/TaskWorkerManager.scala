@@ -39,12 +39,14 @@ object TaskWorkerManager {
 
   case object Stop extends TaskWorkerManagerMsg
 
+  
   case class TaskWorkerResults(taskId: String, results: Map[String, String], cmt: String = "")
 
   case class TaskWorkerState(taskId: String, state: WorkerStateType = WorkerStateType.DataInput, percentCompleted: Int = 0, msg: String = "")
 
   case class TaskChosenTransitions(taskId: String, transitions: List[BlueprintTransition], cmt: String = "")
 
+  
   def apply(conf: Map[String, String], taskId: String, taskWorker: ActorRef[WorkerMsg]): Behavior[TaskWorkerManagerMsg] = {
     Behaviors.setup[TaskWorkerManagerMsg] { ctx =>
       new TaskWorkerManager(conf, taskId, taskWorker, ctx).inProgress()
@@ -69,7 +71,7 @@ class TaskWorkerManager private (conf: Map[String, String], taskId: String, task
         val res: Future[WorkerState] = taskWorker.ask(ref => AddWorkerData(d,i,ref))
         res.onComplete {
           case Success(wt: WorkerState) => rt ! TaskWorkerState(taskId, wt.state, wt.percentCompleted, wt.msg)
-          case Failure(_) => rt ! TaskWorkerState(taskId, WorkerStateType.InLimbo, 0, "Could not add data.")
+          case Failure(_) => rt ! TaskWorkerState(taskId, WorkerStateType.Failed, 0, "Could not add data.")
         }
 
         Behaviors.same
@@ -78,7 +80,7 @@ class TaskWorkerManager private (conf: Map[String, String], taskId: String, task
         val res: Future[WorkerState] = taskWorker.ask(ref => GetWorkerState(ref))
         res.onComplete {
           case Success(wt: WorkerState) => rt ! TaskWorkerState(taskId, wt.state, wt.percentCompleted, wt.msg)
-          case Failure(_)               => rt ! TaskWorkerState(taskId, WorkerStateType.InLimbo, 0, "worker not responding properly.")
+          case Failure(_)               => rt ! TaskWorkerState(taskId, WorkerStateType.Failed, 0, "worker not responding properly.")
         }
         Behaviors.same
 

@@ -2,6 +2,7 @@ package org.linthaal.core.adt
 
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.linthaal.core.adt.Agent.CheckedParams
+import org.linthaal.helpers
 
 /** This program is free software: you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the Free
@@ -25,6 +26,8 @@ case class Agent(
     mandatoryStartTaskParams: List[String] = List.empty, // the parameters to start the task
     optionalStartTaskParams: List[String] = List.empty,
     checkParams: Map[String, String => (Boolean, String)] = Map.empty) {
+
+  override def toString: String = s"${agentId} [${helpers.enoughButNotTooMuchInfo(description, 100)}]"
 
   def checkConf(conf: Map[String, String]): CheckedParams =
     checkParams(conf, mandatoryConf ++ optionalConf)

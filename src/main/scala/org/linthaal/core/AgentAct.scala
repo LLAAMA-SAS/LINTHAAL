@@ -3,6 +3,7 @@ package org.linthaal.core
 import org.apache.pekko.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
 import org.apache.pekko.actor.typed.{ActorRef, Behavior, Props, SpawnProtocol}
 import org.apache.pekko.util.Timeout
+import org.linthaal.core.AgentAct.TaskStateType.{Failed, Ready}
 import org.linthaal.core.AgentAct.{AgentMsg, MaterializedTransition, NewTask, TaskStateType}
 import org.linthaal.core.TaskWorkerManager.{TaskChosenTransitions, TaskWorkerResults, TaskWorkerState}
 import org.linthaal.core.TransitionActor
@@ -75,17 +76,14 @@ object AgentAct {
     case Info, Warning, Problem
 
   enum TaskStateType:
-    case New, Ready, Running, Waiting, Completed, Failed, PartiallyFailed, Transitioned, Problem //todo replace by a FSM
+    case New, Ready, Running, Completed, Failed, PartiallyFailed, Transitioned, Problem //todo replace by a FSM
 
-  //WorkerStateTypes: DataInput, WrongData, Ready, Running, Completed, InLimbo, Failed
   def workerStateToTaskState(ws: WorkerStateType): TaskStateType = {
     ws match {
       case WorkerStateType.DataInput => TaskStateType.New
-      case WorkerStateType.Ready => TaskStateType.Ready
       case WorkerStateType.Completed => TaskStateType.Completed
       case WorkerStateType.Running => TaskStateType.Running
       case WorkerStateType.Failed => TaskStateType.Failed
-      case _ => TaskStateType.Completed // todo fix, misses the Transitions!
     }
   }
 
@@ -101,6 +99,12 @@ object AgentAct {
 
   case class MaterializedTransition(blueprintTransition: BlueprintTransition, toAgent: ActorRef[AgentMsg])
 
+  // worker spawning results
+  private case class WorkerSpawnSuccess(taskId: String, wactor: ActorRef[WorkerMsg], params: Map[String, String],
+                                        step: DataLoad = DataLoad.Last, replyTo: ActorRef[TaskInfo]) extends AgentMsg
+
+  private case class WorkerSpawnFailure(taskId: String, reason: Throwable, replyTo: ActorRef[TaskInfo]) extends AgentMsg
+
   def apply(agent: Agent, conf: Map[String, String] = Map.empty, transformers: Map[String, String => String] = Map.empty): Behavior[AgentMsg] =
     Behaviors.withTimers[AgentMsg] { timers =>
       Behaviors.setup[AgentMsg] { ctx =>
@@ -110,18 +114,20 @@ object AgentAct {
     }
 }
 
-
-private[core] class AgentAct(agent: Agent, ctx: ActorContext[AgentMsg], conf: Map[String, String],
-                             transformers: Map[String, String => String]) extends AbstractBehavior[AgentMsg](ctx) {
+private[core] class AgentAct(agent: Agent, context: ActorContext[AgentMsg], conf: Map[String, String],
+                             transformers: Map[String, String => String]) extends AbstractBehavior[AgentMsg](context) {
 
   import TaskWorkerManager.*
   import AgentAct.*
 
-  val workerSpawnAct: ActorRef[SpawnProtocol.Command] = ctx.spawn(WorkerSpawnAct(), s"${agent.agentId.toString}_worker_spawning")
+  context.log.debug(s"Started new actor as Agent for ${agent.agentId}")
 
-  val wtwr: ActorRef[TaskWorkerResults] = ctx.messageAdapter(w => WTaskWorkerResults(w))
-  val wtws: ActorRef[TaskWorkerState] = ctx.messageAdapter(w => WTaskWorkerState(w))
-  val wtct: ActorRef[TaskChosenTransitions] = ctx.messageAdapter(w => WTaskChosenTransitions(w))
+  val workerSpawnAct: ActorRef[SpawnProtocol.Command] = context.spawn(WorkerSpawnAct(), s"${agent.agentId.toString}_worker_spawning")
+  context.log.debug(s"Started new actor to spawn workers [${workerSpawnAct.toString}]")
+
+  val wtwr: ActorRef[TaskWorkerResults] = context.messageAdapter(w => WTaskWorkerResults(w))
+  val wtws: ActorRef[TaskWorkerState] = context.messageAdapter(w => WTaskWorkerState(w))
+  val wtct: ActorRef[TaskChosenTransitions] = context.messageAdapter(w => WTaskChosenTransitions(w))
 
   var configuration: Map[String, String] = conf
 
@@ -134,6 +140,11 @@ private[core] class AgentAct(agent: Agent, ctx: ActorContext[AgentMsg], conf: Ma
 
   var transitionStates: Map[MaterializedTransition, TransitionStatusType] = Map.empty
 
+  def info(): String =
+    s"""agentId: [${agent}] taskActors size: ${taskActors.size}
+       | transitions size: ${transitions.size}
+       | results size: ${taskResults.size}""".stripMargin
+
   override def onMessage(msg: AgentMsg): Behavior[AgentMsg] = msg match {
     case AddConf(conf, rt) =>
       configuration ++= conf
@@ -142,31 +153,42 @@ private[core] class AgentAct(agent: Agent, ctx: ActorContext[AgentMsg], conf: Ma
 
     case NewTask(taskId, params, step, rt) =>
       //todo improve
-
       // spawning worker actor
       import org.apache.pekko.actor.typed.scaladsl.AskPattern._
-      implicit val ec = ctx.executionContext
-      implicit val as = ctx.system
+      implicit val ec = context.executionContext
+      implicit val as = context.system
       implicit val timeout: Timeout = Timeout(500.millis)
       val worker: Future[ActorRef[WorkerMsg]] = workerSpawnAct.ask(SpawnProtocol
         .Spawn(behavior = agent.behavior, name = s"${taskId}_worker", props = Props.empty, _))
-      worker.onComplete {
-        case Success(actRef) =>
-          val manager: ActorRef[TaskWorkerManagerMsg] = ctx.spawn(TaskWorkerManager.apply(configuration, taskId, actRef), s"${taskId}_worker_manager") // todo watch
-          taskActors += taskId -> manager
-          taskStates += taskId -> TaskStateType.New
-          ctx.self ! AddTaskInput(taskId, params, step, ctx.self)
-        case Failure(ex) => ctx.log.error(ex.toString)
+      context.log.debug(s"spawning actual agent worker for task: [$taskId]")
+      context.pipeToSelf(worker) {
+        case Success(actRef) => WorkerSpawnSuccess(taskId, actRef, params, step, rt)
+        case Failure(ex) => WorkerSpawnFailure(taskId, ex, rt)
       }
+      this
+
+    case WorkerSpawnSuccess(taskId, actRef, params, step, rt) =>
+      context.log.debug(s"spawning worker manager for [$taskId]")
+      val manager: ActorRef[TaskWorkerManagerMsg] = context.spawn(TaskWorkerManager.apply(configuration, taskId, actRef), s"${taskId}_worker_manager") // todo watch
+      taskActors += taskId -> manager
+      taskStates += taskId -> TaskStateType.New
+      context.self ! AddTaskInput(taskId, params, step, context.self)
+      rt ! TaskInfo(taskId, TaskStateType.New)
+      context.log.info(info())
+      this
+
+    case WorkerSpawnFailure(taskId, ex, rt) =>
+      context.log.error(ex.toString)
+      rt ! TaskInfo(taskId, TaskStateType.Failed)
       this
 
     case AddTaskInput(taskId, params, step, rt) =>
       val act = taskActors.get(taskId)
       if (act.isDefined) {
         act.get ! AddTaskWorkerData(params, step, wtws)
-//        rt ! AgentInfo(agentSummary("Data added. "))
+        rt ! DataTransferInfo("?", taskId, step, enoughButNotTooMuchInfo(params.mkString, 120))
       } else {
-        ctx.log.error("no task actor. ")
+        context.log.error("no task actor. ")
       }
       this
 
@@ -195,8 +217,8 @@ private[core] class AgentAct(agent: Agent, ctx: ActorContext[AgentMsg], conf: Ma
       if (taskActors.isDefinedAt(taskId)) {
         val actRef = taskActors(taskId)
         import org.apache.pekko.actor.typed.scaladsl.AskPattern._
-        implicit val ec = ctx.executionContext
-        implicit val as = ctx.system
+        implicit val ec = context.executionContext
+        implicit val as = context.system
         implicit val timeout: Timeout = Timeout(100.millis)
         val res: Future[TaskWorkerState] = actRef.ask(ref => GetTaskWorkerState(ref))
         res.onComplete {
@@ -215,7 +237,7 @@ private[core] class AgentAct(agent: Agent, ctx: ActorContext[AgentMsg], conf: Ma
       transitionsToTrigger.map { kv =>
         kv._2.map { mt =>
           val transActor: ActorRef[TransitionMsg] = context.spawn(TransitionActor
-            .apply(mt.blueprintTransition.toTask, mt.toAgent, transformers, ctx.self), UUID.randomUUID().toString) // Todo improve
+            .apply(mt.blueprintTransition.toTask, mt.toAgent, transformers, context.self), UUID.randomUUID().toString) // Todo improve
 
           transActor ! OutputInput(taskResults.getOrElse(kv._1, Map.empty), DataLoad.Last)//todo later
         }
@@ -223,8 +245,21 @@ private[core] class AgentAct(agent: Agent, ctx: ActorContext[AgentMsg], conf: Ma
       this
 
     case tmi: DataTransferInfo =>
-      ctx.log.info(tmi.toString)
+      context.log.info(tmi.toString)
       this
+
+    case WTaskWorkerResults(twr) =>
+      context.log.debug(twr.toString)
+      this
+
+    case WTaskWorkerState(tws) =>
+      context.log.debug(tws.toString)
+      this
+
+    case WTaskChosenTransitions(twct) =>
+      context.log.debug(twct.toString)
+      this
+
   }
 
   private def agentSummary(cmt: String = ""): AgentSummary =

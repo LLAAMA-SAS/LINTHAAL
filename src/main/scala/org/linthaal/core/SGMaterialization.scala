@@ -4,7 +4,7 @@ import org.apache.pekko.actor.typed.scaladsl.{ActorContext, Behaviors}
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.linthaal.core.AgentAct.TaskStateType.{Completed, Running}
 import org.linthaal.core.AgentAct.{AgentMsg, DataLoad, NewTask, TaskInfo, TaskStateType, TransitionStatusType}
-import org.linthaal.core.GenericFeedback.Success
+import org.linthaal.core.GenericFeedbackType.Success
 import org.linthaal.core.TransitionActor.TransitionMsg
 import org.linthaal.core.SGMaterialization.{SGMatMsg, StartMat, Transition}
 import org.linthaal.core.adt.*
@@ -32,15 +32,13 @@ import scala.concurrent.duration.DurationInt
 object SGMaterialization {
   sealed trait SGMatMsg
 
-  case class StartMat(conf: Map[String, String], params: Map[String, String], replyTo: ActorRef[MaterializationRes]) extends SGMatMsg
+  case class StartMat(conf: Map[String, String], params: Map[String, String], replyTo: ActorRef[GenericFeedback]) extends SGMatMsg
 
   private case object Ticktack extends SGMatMsg
 
   case class WrapTaskInfo(taskInfo: TaskInfo) extends SGMatMsg
 
   case class Transition(fromMatTask: String, toMatTask: String)
-
-  case class MaterializationRes(matId: String, status: GenericFeedback = GenericFeedback.Success, msg: String = "")
 
 
   def apply(blueprint: SGBlueprint, agents: Map[AgentId, ActorRef[AgentMsg]]): Behavior[SGMatMsg] = {
@@ -88,7 +86,7 @@ class SGMaterialization private (blueprint: SGBlueprint, agents: Map[AgentId, Ac
         if (agt.nonEmpty) agt.get ! NewTask(mt._1, params, DataLoad.Last, msgAdapter)
         taskStates += (mt._1 -> TaskStateType.Running)
       }
-      replyTo ! MaterializationRes(uid, Success, "Materialization started...")
+      replyTo ! GenericFeedback(Success, action = "Starting Mat", id = uid, "Materialization started...")
       running(conf)
     }
   }
@@ -107,6 +105,10 @@ class SGMaterialization private (blueprint: SGBlueprint, agents: Map[AgentId, Ac
             taskStates += taskId -> TaskStateType.Running
           case Failed =>
             taskStates += taskId -> TaskStateType.Failed
+          case Ready =>
+            taskStates += taskId -> TaskStateType.Ready
+          case _ =>
+            taskStates += taskId -> TaskStateType.Ready
         }
         Behaviors.same
 

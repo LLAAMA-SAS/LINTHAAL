@@ -6,6 +6,7 @@ import org.apache.pekko.actor.typed.scaladsl.{ ActorContext, Behaviors }
 import org.linthaal.core.AgentAct.DataLoad
 import org.linthaal.core.TaskWorkerManager.{ AddTaskWorkerData, GetTaskWorkerState }
 import org.linthaal.core.adt.*
+import org.linthaal.core.adt.WorkerStateType.DataInput
 import org.linthaal.helpers.enoughButNotTooMuchInfo
 
 /** This program is free software: you can redistribute it and/or modify it under the terms of the
@@ -22,22 +23,33 @@ import org.linthaal.helpers.enoughButNotTooMuchInfo
 object WorkerExamples {
 
   val upperCase: Behavior[WorkerMsg] = {
-    def dataInput(data: Map[String, String]): Behavior[WorkerMsg] = {
-      Behaviors.receiveMessage {
-        case AddWorkerData(d, i, rt) =>
-          val nd = data ++ d
-          if (i == DataLoad.Last)
-            rt ! WorkerState(WorkerStateType.Running, 20, "all Data provided, starting processing. ")
-            // do the work here (could spawn another actor and manage it from here
-            val results = data.map(kv => kv._1 -> kv._2.toUpperCase)
-            completed(results)
-          else
-            rt ! WorkerState(WorkerStateType.DataInput, 10, "adding data in progress...")
-            dataInput(nd)
+    def dataInput(conf: Map[String, String], data: Map[String, String]): Behavior[WorkerMsg] = {
+      Behaviors.receive { (ctx, msg) =>
+        msg match
+          case AddWorkerConf(c) =>
+            val nconf = conf ++ c
+            ctx.log.debug(s"""added conf: ${c.mkString(",")}""")
+            dataInput(nconf, data)
 
-        case GetWorkerState(rt) =>
-          rt ! WorkerState(WorkerStateType.DataInput, 50, "adding data in progress...")
-          dataInput(data)
+          case AddWorkerData(d, i, rt) =>
+            val nd = data ++ d
+            if (i == DataLoad.Last)
+              rt ! WorkerState(WorkerStateType.Running, 20, "all Data provided, starting processing. ")
+              ctx.log.info("WORKING...")
+              // do the work here (could spawn another actor and manage it from here
+              val results = data.map(kv => kv._1 -> kv._2.toUpperCase)
+              completed(results)
+            else
+              rt ! WorkerState(WorkerStateType.DataInput, 10, "adding data in progress...")
+              dataInput(conf, nd)
+
+          case GetWorkerState(rt) =>
+            rt ! WorkerState(WorkerStateType.DataInput, 50, "adding data in progress...")
+            dataInput(conf, data)
+
+          case msg: Any =>
+            println(s"message [$msg] not implemented.")
+            dataInput(conf, data)
       }
     }
 
@@ -57,13 +69,10 @@ object WorkerExamples {
           completed(results)
       }
     }
-    
-    dataInput(Map.empty)
+
+    dataInput(Map.empty, Map.empty)
   }
 
-  val upperCaseAgent = Agent(AgentId("upper_case","1.1.1"), upperCase)
-
+  val upperCaseAgentId = AgentId("upper_case", "1.1.1")
+  val upperCaseAgent = Agent(upperCaseAgentId, upperCase)
 }
-
-
-

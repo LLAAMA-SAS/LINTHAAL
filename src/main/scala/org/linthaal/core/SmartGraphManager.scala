@@ -4,8 +4,8 @@ import org.apache.pekko.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Be
 import org.apache.pekko.actor.typed.{ActorRef, ActorSystem, Behavior, SpawnProtocol}
 import org.linthaal.LinthaalSupervisor
 import org.linthaal.core.AgentAct.AgentMsg
-import org.linthaal.core.GenericFeedback.{Failure, Success}
-import org.linthaal.core.SGMaterialization.{MaterializationRes, SGMatMsg, StartMat}
+import org.linthaal.core.GenericFeedbackType.{Failure, Success}
+import org.linthaal.core.SGMaterialization.{SGMatMsg, StartMat}
 import org.linthaal.core.SmartGraphManager.SmartGraphMsg
 import org.linthaal.core.adt.{Agent, AgentId, SGBlueprint}
 import org.linthaal.helpers.DateAndTimeHelpers.getCurrentDate_ms_
@@ -32,15 +32,11 @@ object SmartGraphManager {
 
   sealed trait SmartGraphMsg
 
-  case class AddBlueprint(blueprint: SGBlueprint, replyTo: ActorRef[AddBlueprintRes]) extends SmartGraphMsg
-  case class AddAgent(agent: Agent, replyTo: ActorRef[AddAgentRes]) extends SmartGraphMsg
+  case class AddBlueprint(blueprint: SGBlueprint, replyTo: ActorRef[GenericFeedback]) extends SmartGraphMsg
+  case class CreateAgent(agent: Agent, replyTo: ActorRef[GenericFeedback]) extends SmartGraphMsg
 
   case class StartMaterialization(blueprintId: String, conf: Map[String, String] = Map.empty,
-                                  params: Map[String, String] = Map.empty, replyTo: ActorRef[MaterializationRes]) extends SmartGraphMsg
-  
-  case class AddBlueprintRes(uid: String, status: GenericFeedback = Success, msg: String = "")
-  case class AddAgentRes(agentId: AgentId, status: GenericFeedback = Success, msg: String = "")
-  
+                                  params: Map[String, String] = Map.empty, replyTo: ActorRef[GenericFeedback]) extends SmartGraphMsg
   
   def apply(conf: Map[String, String] = Map.empty): Behavior[SmartGraphMsg] =
     Behaviors.setup { ctx =>
@@ -56,36 +52,39 @@ class SmartGraphManager private(conf: Map[String, String], ctx: ActorContext[Sma
   var agents: Map[AgentId, ActorRef[AgentMsg]] = Map.empty
   
   var sgMaterializations: Map[String, ActorRef[SGMatMsg]] = Map.empty 
-  
-  // todo add agents with messages
-  
+
+  ctx.log.info("Smart graph created...")
+
   def running(): Behavior[SmartGraphMsg] = {
     Behaviors.receiveMessage {
-      case AddAgent(agent, rt) =>
+      case CreateAgent(agent, rt) =>
         //check conf 
         val cconf = agent.checkConf(conf)
         if (cconf.isOk) {
           val agentAct: ActorRef[AgentMsg] = ctx.spawn(AgentAct.apply(agent, conf = conf), s"Agent_${agent.agentId}")
           agents += agent.agentId -> agentAct
+          ctx.log.debug(s"Adding agent: ${agent}")
+          rt ! GenericFeedback(Success, id = agent.agentId.toString, s"Agent created: ${agentAct.toString}")
         } else {
-          rt ! AddAgentRes(agent.agentId, Failure, cconf.toString)
+          rt ! GenericFeedback(Failure, id = agent.agentId.toString, cconf.toString)
         }
         Behaviors.same
         
       case AddBlueprint(blueprint, rt) =>
         blueprints += blueprint
+        rt ! GenericFeedback(Success, blueprint.id)
         Behaviors.same
 
       case StartMaterialization(bpId, conf, params, rt) =>
-        val bp = blueprints.find(_.uid == bpId)
+        val bp = blueprints.find(_.id == bpId)
         if (bp.isDefined && bp.get.allNeededAgents.forall(a => agents.keySet.contains(a))) {
           val ags = agents.view.filterKeys(k => bp.get.allNeededAgents.contains(k)).toMap
           val sgMat = ctx.spawn(SGMaterialization.apply(bp.get, ags), s"SG_Materialization_${UUID.randomUUID().toString}")
           sgMaterializations += s"${bp.get.id}_${getCurrentDate_ms_()}" -> sgMat
           sgMat ! StartMat(conf, params, rt)
-          rt ! MaterializationRes(bpId, GenericFeedback.Success,  "Started Smart Graph Materialization. ")
+          rt ! GenericFeedback(GenericFeedbackType.Success, bpId, "Started Smart Graph Materialization. ")
         } else {
-          rt ! MaterializationRes(bpId, GenericFeedback.Failure, "Failed starting materialization. ")
+          rt ! GenericFeedback(GenericFeedbackType.Failure, bpId, "Failed starting materialization. ")
         }
         Behaviors.same
     }

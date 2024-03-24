@@ -2,7 +2,8 @@ package org.linthaal.core
 
 import org.apache.pekko.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import org.linthaal.agents.helpers.WorkerExamples
-import org.linthaal.core.SmartGraphManager.{AddAgent, AddAgentRes}
+import org.linthaal.core.SmartGraphManager.{AddBlueprint, CreateAgent, StartMaterialization}
+import org.linthaal.core.adt.{BlueprintTask, SGBlueprint}
 import org.linthaal.tot.pubmed.PubMedToTManager.ActionPerformed
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -29,10 +30,21 @@ class SmartGraphManagerTest extends ScalaTestWithActorTestKit with AnyWordSpecLi
   "Starting a super simple smart graph with only one Agent" must {
     val timeout = 30.seconds
     "start a SG and run the agent to do one simple task" in {
-      val replyTo1 = createTestProbe[AddAgentRes]()
+      val replyTo1 = createTestProbe[GenericFeedback]()
       val underTest = spawn(SmartGraphManager())
-      underTest.tell(SmartGraphManager.AddAgent(WorkerExamples.upperCaseAgent, replyTo1.ref))
-      replyTo1.expectMessageType[AddAgentRes](timeout)
+      underTest.tell(CreateAgent(WorkerExamples.upperCaseAgent, replyTo1.ref))
+      replyTo1.expectMessageType[GenericFeedback](timeout)
+
+      //Super simple Blueprint
+      val bpt = BlueprintTask("to upper case", WorkerExamples.upperCaseAgentId)
+      val bp = SGBlueprint("ultra simple", tasks = List(bpt), transitions = Nil)
+
+      underTest.tell(AddBlueprint(bp, replyTo1.ref))
+      replyTo1.expectMessageType[GenericFeedback](timeout)
+
+      underTest.tell(StartMaterialization(bp.id, Map.empty, Map("hello" -> "world"), replyTo = replyTo1.ref))
+      replyTo1.expectMessageType[GenericFeedback](timeout)
+
     }
   }
 }

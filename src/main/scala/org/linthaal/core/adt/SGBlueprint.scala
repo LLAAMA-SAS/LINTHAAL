@@ -1,9 +1,8 @@
 package org.linthaal.core.adt
 
-import io.lemonlabs.uri.config.All
 import org.linthaal.helpers
 
-import scala.concurrent.duration.{DurationInt, FiniteDuration, TimeUnit}
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 /** This program is free software: you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the Free
@@ -31,7 +30,6 @@ case class SGBlueprint(name: String, description: String = "", version: String =
                        tasks: List[BlueprintTask], transitions: List[BlueprintTransition]) {
 
   val id = s"${name}_${version}".trim.replaceAll("\\s", "_")
-  val uid = helpers.getDigest(id)
 
   /**
    * checks the consistency of the blueprint
