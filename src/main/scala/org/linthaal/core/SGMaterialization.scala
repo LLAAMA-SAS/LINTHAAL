@@ -2,11 +2,11 @@ package org.linthaal.core
 
 import org.apache.pekko.actor.typed.scaladsl.{ActorContext, Behaviors}
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
-import org.linthaal.core.AgentAct.TaskStateType.{Completed, Running}
-import org.linthaal.core.AgentAct.{AgentMsg, DataLoad, NewTask, TaskInfo, TaskStateType, TransitionStatusType}
-import org.linthaal.core.GenericFeedbackType.Success
-import org.linthaal.core.TransitionActor.TransitionMsg
-import org.linthaal.core.SGMaterialization.{SGMatMsg, StartMat, Transition}
+import org.linthaal.core.AgentAct.TaskStateType.{RunningTask, TaskSuccess}
+import org.linthaal.core.AgentAct.{AddTransition, AgentMsg, DataLoad, MaterializedTransition, NewTask, TaskInfo, TaskStateType, TransitionStatusType}
+import org.linthaal.core.GenericFeedbackType.GenericSuccess
+import org.linthaal.core.TransitionPipe.TransitionPipeMsg
+import org.linthaal.core.SGMaterialization.{SGMatMsg, StartMat, TransitionEnds}
 import org.linthaal.core.adt.*
 import org.linthaal.helpers.DateAndTimeHelpers
 
@@ -32,16 +32,13 @@ import scala.concurrent.duration.DurationInt
 object SGMaterialization {
   sealed trait SGMatMsg
 
-  case class StartMat(conf: Map[String, String], params: Map[String, String], replyTo: ActorRef[GenericFeedback]) extends SGMatMsg
+  case class StartMat(params: Map[String, String], replyTo: ActorRef[GenericFeedback]) extends SGMatMsg
 
   private case object Ticktack extends SGMatMsg
 
   case class WrapTaskInfo(taskInfo: TaskInfo) extends SGMatMsg
 
-  case class Transition(fromMatTask: String, toMatTask: String)
-
-
-  def apply(blueprint: SGBlueprint, agents: Map[AgentId, ActorRef[AgentMsg]]): Behavior[SGMatMsg] = {
+  def apply(blueprint: SGBlueprint, agents: Map[WorkerId, ActorRef[AgentMsg]]): Behavior[SGMatMsg] = {
     Behaviors.withTimers[SGMatMsg] { timers =>
       Behaviors.setup[SGMatMsg] { ctx =>
         timers.startTimerWithFixedDelay(Ticktack, 5.seconds)
@@ -52,17 +49,18 @@ object SGMaterialization {
   }
 }
 
-class SGMaterialization private (blueprint: SGBlueprint, agents: Map[AgentId, ActorRef[AgentMsg]], context: ActorContext[SGMatMsg]) {
+class SGMaterialization private (blueprint: SGBlueprint, agents: Map[WorkerId, ActorRef[AgentMsg]], context: ActorContext[SGMatMsg]) {
 
   import SGMaterialization._
 
   val uid: String = blueprint.id + "_" + DateAndTimeHelpers.getCurrentDate_ms_()
 
+  val msgAdapter: ActorRef[TaskInfo] = context.messageAdapter(m => WrapTaskInfo(m))
+
   var materializedTasks: Map[String, BlueprintTask] = Map.empty // actual taskID to blueprint task
   var taskStates: Map[String, TaskStateType] = Map.empty // taskID to state
-
-  var transitions: Map[Transition, BlueprintTransition] = Map.empty // from+to ID -> blueprint
-  var transitionStates: Map[Transition, TransitionStatusType] = Map.empty // state of the given transition
+  
+  var params: Map[String, String] = Map.empty
 
   private def init(): Behavior[SGMatMsg] = {
     // mismatch between available agents and requested agents.
@@ -71,67 +69,80 @@ class SGMaterialization private (blueprint: SGBlueprint, agents: Map[AgentId, Ac
       Behaviors.stopped
     } else {
       materializedTasks ++= blueprint.startingTasks.map(t => UUID.randomUUID().toString -> t)
-      taskStates ++= materializedTasks.keySet.map(k => k -> TaskStateType.Ready)
+      taskStates ++= materializedTasks.keySet.map(k => k -> TaskStateType.TaskReady)
       starting()
     }
   }
 
   private def starting(): Behavior[SGMatMsg] = {
     Behaviors.receiveMessage {
-      case StartMat(conf, params, replyTo) =>
-      val msgAdapter: ActorRef[TaskInfo] = context.messageAdapter(m => WrapTaskInfo(m))
-
+      case StartMat(pars, replyTo) =>
+      params ++= pars 
       materializedTasks.foreach { mt =>
         val agt = agents.get(mt._2.agent)
-        if (agt.nonEmpty) agt.get ! NewTask(mt._1, params, DataLoad.Last, msgAdapter)
-        taskStates += (mt._1 -> TaskStateType.Running)
+        if (agt.nonEmpty) agt.get ! NewTask(mt._1, msgAdapter)
+        taskStates += (mt._1 -> TaskStateType.RunningTask)
       }
-      replyTo ! GenericFeedback(Success, action = "Starting Mat", id = uid, "Materialization started...")
-      running(conf)
+      replyTo ! GenericFeedback(GenericSuccess, action = "Starting Mat", id = uid, "Materialization started...")
+      running()
     }
   }
 
-  private def running(conf: Map[String, String] = Map.empty): Behavior[SGMatMsg] = {
+  private def running(): Behavior[SGMatMsg] = {
     import TaskStateType._
 
     Behaviors.receiveMessage {
       case WrapTaskInfo(taskInfo) => // replyTo ! todo implement
         val taskId = taskInfo.taskId
         context.log.info(taskInfo.toString)
-        taskInfo.state match {
-          case Completed =>
-            taskStates += taskId -> TaskStateType.Completed
-          case Running =>
-            taskStates += taskId -> TaskStateType.Running
-          case Failed =>
-            taskStates += taskId -> TaskStateType.Failed
-          case Ready =>
-            taskStates += taskId -> TaskStateType.Ready
-          case _ =>
-            taskStates += taskId -> TaskStateType.Ready
-        }
+        taskStates += taskId -> taskInfo.state
         Behaviors.same
 
       case Ticktack =>
-        taskStates.filter(t => t._2 == TaskStateType.Completed).foreach { t =>
-          if (materializedTasks.isDefinedAt(t._1)) {
-            val tak = materializedTasks(t._1)
-            val trs = blueprint.transitionsFrom(tak.name)
-            val nextTks: Map[String, (BlueprintTask, BlueprintTransition)] =
-              trs.map(tr => (blueprint.taskByName(tr.toTask), tr)).filter(t => t._1.nonEmpty)
-                .map(t => (t._1.get, t._2)).map(t => UUID.randomUUID.toString -> t).toMap
+        // tasks completed successfully, preparing children tasks and transitions
+        val tSuccess: Set[String] = taskStates.filter(t => t._2 == TaskStateType.TaskSuccess).keySet
+        
+        tSuccess.foreach { t =>
+          context.log.debug("going through successful tasks to setup follow-up tasks and transitions. ")
+          if (materializedTasks.isDefinedAt(t)) {
+            val tak = materializedTasks(t)
+            val transFrom: List[BlueprintTransition] = blueprint.transitionsFrom(tak.name)
 
-            materializedTasks ++= nextTks.map(t => t._1 -> t._2._1)
-            taskStates ++= nextTks.keySet.map(k => k -> TaskStateType.New)
-
+            //next materialized tasks with blueprint + blueprinttransition
+            val nextTks: Map[String, (BlueprintTask, BlueprintTransition)] = 
+              transFrom.map(bptrans => (getMatTaskFromBlueprintName(bptrans.toTask), bptrans))
+                .filter(t => t._1.nonEmpty).map(kv => (kv._1.get._1 -> (kv._1.get._2, kv._2))).toMap
+            
             nextTks.foreach { kv =>
-              val tr = Transition(t._1, kv._1)
-              transitions += tr -> nextTks(kv._1)._2
+              val tr = TransitionEnds(t, kv._1)
+              val toAgent = agents.get(kv._2._1.agent) 
+              transitions += tr -> kv._2._2
               transitionStates += tr -> TransitionStatusType.New
+              if (toAgent.isDefined) agents.get(tak.agent).foreach(a => a ! AddTransition(t, AgentAct.MaterializedTransition(tr, toAgent)))
             }
+
+            taskStates += t -> TaskStateType.TaskReadyForTransitions
           }
         }
+
         Behaviors.same
     }
+  }
+
+  private def getMatTaskFromBlueprintName(bpTkName: String): Option[(String, BlueprintTask)] = {
+    val t = blueprint.taskByName(bpTkName)
+    if (t.isDefined)
+      val alreadyThere = materializedTasks.find(kv => kv._2.name == bpTkName)
+      if (alreadyThere.isDefined)
+        alreadyThere
+      else
+        val newTask = UUID.randomUUID.toString -> t.get
+        materializedTasks += newTask
+        taskStates += newTask._1 -> TaskStateType.NewTask
+        agents.get(t.get.agent).foreach(ag => ag ! NewTask(newTask._1, msgAdapter))
+        context.log.debug(s"adding new child task [${newTask._1}]")
+        Some(newTask)
+    else
+      None
   }
 }

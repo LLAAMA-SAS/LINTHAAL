@@ -18,16 +18,15 @@ import org.linthaal.helpers
   * this program. If not, see <http://www.gnu.org/licenses/>.
   */
 case class Agent(
-    agentId: AgentId,
-    behavior: Behavior[WorkerMsg],
-    description: String = "",
-    mandatoryConf: List[String] = List.empty, // initialization params are like configuration to start the agent
-    optionalConf: List[String] = List.empty,
-    mandatoryStartTaskParams: List[String] = List.empty, // the parameters to start the task
-    optionalStartTaskParams: List[String] = List.empty,
-    checkParams: Map[String, String => (Boolean, String)] = Map.empty) {
+                  workerId: WorkerId,
+                  behavior: Behavior[WorkerMsg],
+                  mandatoryConf: List[String] = List.empty, // initialization params are like configuration to start the agent
+                  optionalConf: List[String] = List.empty,
+                  mandatoryStartTaskParams: List[String] = List.empty, // the parameters to start the task
+                  optionalStartTaskParams: List[String] = List.empty,
+                  checkParams: Map[String, String => (Boolean, String)] = Map.empty) {
 
-  override def toString: String = s"${agentId} [${helpers.enoughButNotTooMuchInfo(description, 100)}]"
+  override def toString: String = s"${workerId} [${helpers.enoughButNotTooMuchInfo(workerId.description, 100)}]"
 
   def checkConf(conf: Map[String, String]): CheckedParams =
     checkParams(conf, mandatoryConf ++ optionalConf)

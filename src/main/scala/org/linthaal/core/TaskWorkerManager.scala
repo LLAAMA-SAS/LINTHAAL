@@ -4,9 +4,7 @@ import org.apache.pekko.actor.typed.scaladsl.{ActorContext, Behaviors}
 import org.apache.pekko.actor.typed.{ActorRef, ActorSystem, Behavior}
 import org.apache.pekko.util.Timeout
 import org.linthaal.core.AgentAct.DataLoad
-import org.linthaal.core.TaskWorkerManager.TaskWorkerManagerMsg
 import org.linthaal.core.adt.*
-import org.linthaal.helpers.enoughButNotTooMuchInfo
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.*
@@ -24,6 +22,8 @@ import scala.util.{Failure, Success}
   *
   * You should have received a copy of the GNU General Public License along with
   * this program. If not, see <http://www.gnu.org/licenses/>.
+ * 
+ * 
   */
 object TaskWorkerManager {
 
@@ -54,6 +54,7 @@ object TaskWorkerManager {
   }
 }
 
+import org.linthaal.core.TaskWorkerManager.TaskWorkerManagerMsg
 class TaskWorkerManager private (conf: Map[String, String], taskId: String, taskWorker: ActorRef[WorkerMsg], ctx: ActorContext[TaskWorkerManagerMsg]) {
 
   import TaskWorkerManager.*
@@ -67,20 +68,20 @@ class TaskWorkerManager private (conf: Map[String, String], taskId: String, task
 
   private def inProgress(): Behavior[TaskWorkerManagerMsg] = {
     Behaviors.receiveMessage {
+
       case AddTaskWorkerData(d, i, rt) =>
         val res: Future[WorkerState] = taskWorker.ask(ref => AddWorkerData(d,i,ref))
         res.onComplete {
           case Success(wt: WorkerState) => rt ! TaskWorkerState(taskId, wt.state, wt.percentCompleted, wt.msg)
-          case Failure(_) => rt ! TaskWorkerState(taskId, WorkerStateType.Failed, 0, "Could not add data.")
+          case Failure(_) => rt ! TaskWorkerState(taskId, WorkerStateType.Failure, 0, "Could not add data.")
         }
-
         Behaviors.same
 
       case GetTaskWorkerState(rt) =>
         val res: Future[WorkerState] = taskWorker.ask(ref => GetWorkerState(ref))
         res.onComplete {
           case Success(wt: WorkerState) => rt ! TaskWorkerState(taskId, wt.state, wt.percentCompleted, wt.msg)
-          case Failure(_)               => rt ! TaskWorkerState(taskId, WorkerStateType.Failed, 0, "worker not responding properly.")
+          case Failure(_)               => rt ! TaskWorkerState(taskId, WorkerStateType.Failure, 0, "worker not responding properly.")
         }
         Behaviors.same
 

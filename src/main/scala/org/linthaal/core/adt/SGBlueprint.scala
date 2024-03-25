@@ -18,7 +18,7 @@ import scala.concurrent.duration.{DurationInt, FiniteDuration}
   * this program. If not, see <http://www.gnu.org/licenses/>.
   */
 
-case class BlueprintTask(name: String, agent: AgentId, timeOut: FiniteDuration = 10.days) {
+case class BlueprintTask(name: String, agent: WorkerId, timeOut: FiniteDuration = 10.days) {
   override def toString: String = s"""[$name]~>[$agent]"""
 }
 
@@ -45,7 +45,7 @@ case class SGBlueprint(name: String, description: String = "", version: String =
     l
   }
 
-  val allNeededAgents: List[AgentId] = tasks.map(_.agent)
+  val allNeededAgents: List[WorkerId] = tasks.map(_.agent)
 
   val fromTasks: List[String] = transitions.map(_.fromTask)
 

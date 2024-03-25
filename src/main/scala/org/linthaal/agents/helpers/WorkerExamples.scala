@@ -60,7 +60,7 @@ object WorkerExamples {
           completed(results)
 
         case GetWorkerState(rt) =>
-          rt ! WorkerState(WorkerStateType.Completed, 100, s"results = ${enoughButNotTooMuchInfo(results.mkString)}")
+          rt ! WorkerState(WorkerStateType.Success, 100, s"results = ${enoughButNotTooMuchInfo(results.mkString)}")
           completed(results)
 
         case GetWorkerTransitions(bpTs, rt) =>
@@ -73,6 +73,6 @@ object WorkerExamples {
     dataInput(Map.empty, Map.empty)
   }
 
-  val upperCaseAgentId = AgentId("upper_case", "1.1.1")
+  val upperCaseAgentId = WorkerId("upper_case", "1.1.1", "Upper_case Agent")
   val upperCaseAgent = Agent(upperCaseAgentId, upperCase)
 }

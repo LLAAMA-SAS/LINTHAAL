@@ -4,7 +4,6 @@ import org.apache.pekko.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import org.linthaal.agents.helpers.WorkerExamples
 import org.linthaal.core.SmartGraphManager.{AddBlueprint, CreateAgent, StartMaterialization}
 import org.linthaal.core.adt.{BlueprintTask, SGBlueprint}
-import org.linthaal.tot.pubmed.PubMedToTManager.ActionPerformed
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.duration.DurationInt

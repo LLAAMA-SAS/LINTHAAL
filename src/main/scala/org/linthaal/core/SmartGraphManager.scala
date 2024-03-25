@@ -4,10 +4,10 @@ import org.apache.pekko.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Be
 import org.apache.pekko.actor.typed.{ActorRef, ActorSystem, Behavior, SpawnProtocol}
 import org.linthaal.LinthaalSupervisor
 import org.linthaal.core.AgentAct.AgentMsg
-import org.linthaal.core.GenericFeedbackType.{Failure, Success}
+import org.linthaal.core.GenericFeedbackType.{GenericFailure, GenericSuccess}
 import org.linthaal.core.SGMaterialization.{SGMatMsg, StartMat}
 import org.linthaal.core.SmartGraphManager.SmartGraphMsg
-import org.linthaal.core.adt.{Agent, AgentId, SGBlueprint}
+import org.linthaal.core.adt.{Agent, WorkerId, SGBlueprint}
 import org.linthaal.helpers.DateAndTimeHelpers.getCurrentDate_ms_
 import org.linthaal.helpers.Parameters
 import org.slf4j.{Logger, LoggerFactory}
@@ -49,7 +49,7 @@ class SmartGraphManager private(conf: Map[String, String], ctx: ActorContext[Sma
   import SmartGraphManager.*
 
   var blueprints: Set[SGBlueprint] = Set.empty
-  var agents: Map[AgentId, ActorRef[AgentMsg]] = Map.empty
+  var agents: Map[WorkerId, ActorRef[AgentMsg]] = Map.empty
   
   var sgMaterializations: Map[String, ActorRef[SGMatMsg]] = Map.empty 
 
@@ -61,18 +61,18 @@ class SmartGraphManager private(conf: Map[String, String], ctx: ActorContext[Sma
         //check conf 
         val cconf = agent.checkConf(conf)
         if (cconf.isOk) {
-          val agentAct: ActorRef[AgentMsg] = ctx.spawn(AgentAct.apply(agent, conf = conf), s"Agent_${agent.agentId}")
-          agents += agent.agentId -> agentAct
+          val agentAct: ActorRef[AgentMsg] = ctx.spawn(AgentAct.apply(agent, conf = conf), s"Agent_${agent.workerId}")
+          agents += agent.workerId -> agentAct
           ctx.log.debug(s"Adding agent: ${agent}")
-          rt ! GenericFeedback(Success, id = agent.agentId.toString, s"Agent created: ${agentAct.toString}")
+          rt ! GenericFeedback(GenericSuccess, id = agent.workerId.toString, s"Agent created: ${agentAct.toString}")
         } else {
-          rt ! GenericFeedback(Failure, id = agent.agentId.toString, cconf.toString)
+          rt ! GenericFeedback(GenericFailure, id = agent.workerId.toString, cconf.toString)
         }
         Behaviors.same
         
       case AddBlueprint(blueprint, rt) =>
         blueprints += blueprint
-        rt ! GenericFeedback(Success, blueprint.id)
+        rt ! GenericFeedback(GenericSuccess, blueprint.id)
         Behaviors.same
 
       case StartMaterialization(bpId, conf, params, rt) =>
@@ -82,9 +82,9 @@ class SmartGraphManager private(conf: Map[String, String], ctx: ActorContext[Sma
           val sgMat = ctx.spawn(SGMaterialization.apply(bp.get, ags), s"SG_Materialization_${UUID.randomUUID().toString}")
           sgMaterializations += s"${bp.get.id}_${getCurrentDate_ms_()}" -> sgMat
           sgMat ! StartMat(conf, params, rt)
-          rt ! GenericFeedback(GenericFeedbackType.Success, bpId, "Started Smart Graph Materialization. ")
+          rt ! GenericFeedback(GenericFeedbackType.GenericSuccess, bpId, "Started Smart Graph Materialization. ")
         } else {
-          rt ! GenericFeedback(GenericFeedbackType.Failure, bpId, "Failed starting materialization. ")
+          rt ! GenericFeedback(GenericFeedbackType.GenericFailure, bpId, "Failed starting materialization. ")
         }
         Behaviors.same
     }

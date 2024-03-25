@@ -1,44 +1,44 @@
 package org.linthaal.core
 
-import org.apache.pekko.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
-import org.apache.pekko.actor.typed.{ActorRef, Behavior, Props, SpawnProtocol}
+import org.apache.pekko.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors }
+import org.apache.pekko.actor.typed.{ ActorRef, Behavior, Props, SpawnProtocol }
 import org.apache.pekko.util.Timeout
-import org.linthaal.core.AgentAct.TaskStateType.{Failed, Ready}
-import org.linthaal.core.AgentAct.{AgentMsg, MaterializedTransition, NewTask, TaskStateType}
-import org.linthaal.core.TaskWorkerManager.{TaskChosenTransitions, TaskWorkerResults, TaskWorkerState}
-import org.linthaal.core.TransitionActor
-import org.linthaal.core.TransitionActor.{OutputInput, TransitionMsg}
+import org.linthaal.core.AgentAct.AgentMsg
+import org.linthaal.core.AgentAct.TaskStateType.TaskFailure
+import org.linthaal.core.TaskWorkerManager.{ TaskChosenTransitions, TaskWorkerResults, TaskWorkerState }
+import org.linthaal.core.TransitionPipe.{ OutputInput, TransitionPipeMsg }
 import org.linthaal.core.adt.*
 import org.linthaal.helpers.*
 
 import java.util.UUID
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
-import scala.util.{Failure, Success}
+import scala.util.{ Failure, Success }
 
-/** This program is free software: you can redistribute it and/or modify it
-  * under the terms of the GNU General Public License as published by the Free
-  * Software Foundation, either version 3 of the License, or (at your option)
-  * any later version.
+/** This program is free software: you can redistribute it and/or modify it under the terms of the
+  * GNU General Public License as published by the Free Software Foundation, either version 3 of the
+  * License, or (at your option) any later version.
   *
-  * This program is distributed in the hope that it will be useful, but WITHOUT
-  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
-  * more details.
+  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+  * the GNU General Public License for more details.
   *
-  * You should have received a copy of the GNU General Public License along with
-  * this program. If not, see <http://www.gnu.org/licenses/>.
+  * You should have received a copy of the GNU General Public License along with this program. If
+  * not, see <http://www.gnu.org/licenses/>.
   */
 object AgentAct {
+
+  case class MaterializedTransition(transitionEnds: TransitionEnds, blueprintTransition: BlueprintTransition, toAgent: ActorRef[AgentMsg])
+
   sealed trait AgentMsg
 
   case class AddConf(conf: Map[String, String], replyTo: ActorRef[AgentInfo]) extends AgentMsg
   case class GetAgentInfo(replyTo: ActorRef[AgentInfo]) extends AgentMsg
-  case class NewTask(taskId: String, params: Map[String, String], step: DataLoad = DataLoad.Last, replyTo: ActorRef[TaskInfo]) extends AgentMsg
-  case class AddTaskInput(taskId: String, params: Map[String, String], step: DataLoad = DataLoad.Last, replyTo: ActorRef[DataTransferInfo]) extends AgentMsg
+  case class NewTask(taskId: String, replyTo: ActorRef[TaskInfo]) extends AgentMsg
+  case class AddTaskInputData(transitionEnds: TransitionEnds, data: Map[String, String], step: DataLoad = DataLoad.Last) extends AgentMsg
   case class GetResults(taskId: String, replyTo: ActorRef[Results]) extends AgentMsg
   case class GetTaskInfo(taskId: String, replyTo: ActorRef[TaskInfo]) extends AgentMsg
-  case class AddTransitions(taskId: String, transitions: List[MaterializedTransition], replyTo: ActorRef[TaskInfo]) extends AgentMsg
+  case class AddTransition(materializedTransition: MaterializedTransition, supervisor: ActorRef[GenericFeedback]) extends AgentMsg
 
   // internal communication
   private case object CheckTask extends AgentMsg
@@ -47,7 +47,7 @@ object AgentAct {
   case class AgentInfo(msg: AgentSummary, agentInfoType: AgentInfoType = AgentInfoType.Info)
 
   case class AgentSummary(
-      agentId: AgentId,
+      agentId: WorkerId,
       totalTasks: Int,
       runningTasks: Int,
       completedTasks: Int,
@@ -62,28 +62,25 @@ object AgentAct {
   }
 
   case class TaskInfo(taskId: String, state: TaskStateType, percentCompleted: Int = 0, transitions: Int = 0, msg: String = "") {
-    override def toString: String = s"""task: ${taskId} - state: $state - % $percentCompleted - transitions: $transitions - ${enoughButNotTooMuchInfo(msg)}"""
-  }
-
-  case class DataTransferInfo(fromTask: String, toTask: String, step: DataLoad, msg: String) extends AgentMsg  {
-    override def toString: String = s"""from=$fromTask to=$toTask step=$step"""
+    override def toString: String =
+      s"""task: ${taskId} - state: $state - % $percentCompleted - transitions: $transitions - ${enoughButNotTooMuchInfo(msg)}"""
   }
 
   case class Results(taskId: String, results: Map[String, String])
-  case class ActualTransitions(taskId: String, transitions: List[BlueprintTransition])
 
   enum AgentInfoType:
     case Info, Warning, Problem
 
   enum TaskStateType:
-    case New, Ready, Running, Completed, Failed, PartiallyFailed, Transitioned, Problem //todo replace by a FSM
+    case NewTask, TaskReady, RunningTask, TaskSuccess, TaskFailure, TaskPartialSuccess,
+      TaskReadyForTransitions, TaskCompleted // todo replace by a FSM
 
   def workerStateToTaskState(ws: WorkerStateType): TaskStateType = {
     ws match {
-      case WorkerStateType.DataInput => TaskStateType.New
-      case WorkerStateType.Completed => TaskStateType.Completed
-      case WorkerStateType.Running => TaskStateType.Running
-      case WorkerStateType.Failed => TaskStateType.Failed
+      case WorkerStateType.DataInput => TaskStateType.NewTask
+      case WorkerStateType.Success   => TaskStateType.TaskSuccess
+      case WorkerStateType.Running   => TaskStateType.RunningTask
+      case WorkerStateType.Failure   => TaskStateType.TaskFailure
     }
   }
 
@@ -97,15 +94,17 @@ object AgentAct {
   private case class WTaskWorkerState(tws: TaskWorkerState) extends AgentMsg
   private case class WTaskChosenTransitions(tct: TaskChosenTransitions) extends AgentMsg
 
-  case class MaterializedTransition(blueprintTransition: BlueprintTransition, toAgent: ActorRef[AgentMsg])
+//  case class MaterializedTransition(blueprintTransition: BlueprintTransition, toAgent: ActorRef[AgentMsg])
 
   // worker spawning results
-  private case class WorkerSpawnSuccess(taskId: String, wactor: ActorRef[WorkerMsg], params: Map[String, String],
-                                        step: DataLoad = DataLoad.Last, replyTo: ActorRef[TaskInfo]) extends AgentMsg
+  private case class WorkerSpawnSuccess(taskId: String, wactor: ActorRef[WorkerMsg], replyTo: ActorRef[TaskInfo]) extends AgentMsg
 
   private case class WorkerSpawnFailure(taskId: String, reason: Throwable, replyTo: ActorRef[TaskInfo]) extends AgentMsg
 
-  def apply(agent: Agent, conf: Map[String, String] = Map.empty, transformers: Map[String, String => String] = Map.empty): Behavior[AgentMsg] =
+  def apply(
+      agent: Agent,
+      conf: Map[String, String] = Map.empty,
+      transformers: Map[String, String => String] = Map.empty): Behavior[AgentMsg] =
     Behaviors.withTimers[AgentMsg] { timers =>
       Behaviors.setup[AgentMsg] { ctx =>
         timers.startTimerWithFixedDelay(CheckTask, 1000.millis)
@@ -114,15 +113,21 @@ object AgentAct {
     }
 }
 
-private[core] class AgentAct(agent: Agent, context: ActorContext[AgentMsg], conf: Map[String, String],
-                             transformers: Map[String, String => String]) extends AbstractBehavior[AgentMsg](context) {
+import org.linthaal.core.AgentAct.AgentMsg
 
-  import TaskWorkerManager.*
+private[core] class AgentAct(
+    agent: Agent,
+    context: ActorContext[AgentMsg],
+    conf: Map[String, String],
+    transformers: Map[String, String => String])
+    extends AbstractBehavior[AgentMsg](context) {
+
   import AgentAct.*
+  import TaskWorkerManager.*
 
-  context.log.debug(s"Started new actor as Agent for ${agent.agentId}")
+  context.log.debug(s"Started new actor as Agent for ${agent.workerId}")
 
-  val workerSpawnAct: ActorRef[SpawnProtocol.Command] = context.spawn(WorkerSpawnAct(), s"${agent.agentId.toString}_worker_spawning")
+  val workerSpawnAct: ActorRef[SpawnProtocol.Command] = context.spawn(WorkerSpawnAct(), s"${agent.workerId.toString}_worker_spawning")
   context.log.debug(s"Started new actor to spawn workers [${workerSpawnAct.toString}]")
 
   val wtwr: ActorRef[TaskWorkerResults] = context.messageAdapter(w => WTaskWorkerResults(w))
@@ -136,9 +141,8 @@ private[core] class AgentAct(agent: Agent, context: ActorContext[AgentMsg], conf
   var taskStates: Map[String, TaskStateType] = Map.empty
   var taskResults: Map[String, Map[String, String]] = Map.empty
 
-  var transitions: Map[String, List[MaterializedTransition]] = Map.empty
-
-  var transitionStates: Map[MaterializedTransition, TransitionStatusType] = Map.empty
+  var transitions: Map[TransitionEnds, MaterializedTransition] = Map.empty
+  var transitionStates: Map[TransitionEnds, TransitionStatusType] = Map.empty
 
   def info(): String =
     s"""agentId: [${agent}] taskActors size: ${taskActors.size}
@@ -151,42 +155,42 @@ private[core] class AgentAct(agent: Agent, context: ActorContext[AgentMsg], conf
       rt ! AgentInfo(agentSummary("Added new conf. "))
       this
 
-    case NewTask(taskId, params, step, rt) =>
-      //todo improve
+    case NewTask(taskId, rt) =>
+      // todo improve
       // spawning worker actor
-      import org.apache.pekko.actor.typed.scaladsl.AskPattern._
+      import org.apache.pekko.actor.typed.scaladsl.AskPattern.*
       implicit val ec = context.executionContext
       implicit val as = context.system
       implicit val timeout: Timeout = Timeout(500.millis)
-      val worker: Future[ActorRef[WorkerMsg]] = workerSpawnAct.ask(SpawnProtocol
-        .Spawn(behavior = agent.behavior, name = s"${taskId}_worker", props = Props.empty, _))
+      val worker: Future[ActorRef[WorkerMsg]] =
+        workerSpawnAct.ask(SpawnProtocol.Spawn(behavior = agent.behavior, name = s"${taskId}_worker", props = Props.empty, _))
       context.log.debug(s"spawning actual agent worker for task: [$taskId]")
       context.pipeToSelf(worker) {
-        case Success(actRef) => WorkerSpawnSuccess(taskId, actRef, params, step, rt)
-        case Failure(ex) => WorkerSpawnFailure(taskId, ex, rt)
+        case Success(actRef) => WorkerSpawnSuccess(taskId, actRef, rt)
+        case Failure(ex)     => WorkerSpawnFailure(taskId, ex, rt)
       }
       this
 
-    case WorkerSpawnSuccess(taskId, actRef, params, step, rt) =>
+    case WorkerSpawnSuccess(taskId, actRef, rt) =>
       context.log.debug(s"spawning worker manager for [$taskId]")
-      val manager: ActorRef[TaskWorkerManagerMsg] = context.spawn(TaskWorkerManager.apply(configuration, taskId, actRef), s"${taskId}_worker_manager") // todo watch
+      val manager: ActorRef[TaskWorkerManagerMsg] =
+        context.spawn(TaskWorkerManager.apply(configuration, taskId, actRef), s"${taskId}_worker_manager") // todo watch
       taskActors += taskId -> manager
-      taskStates += taskId -> TaskStateType.New
-      context.self ! AddTaskInput(taskId, params, step, context.self)
-      rt ! TaskInfo(taskId, TaskStateType.New)
+      taskStates += taskId -> TaskStateType.NewTask
+      rt ! TaskInfo(taskId, TaskStateType.NewTask)
       context.log.info(info())
       this
 
     case WorkerSpawnFailure(taskId, ex, rt) =>
       context.log.error(ex.toString)
-      rt ! TaskInfo(taskId, TaskStateType.Failed)
+      rt ! TaskInfo(taskId, TaskStateType.TaskFailure)
       this
 
-    case AddTaskInput(taskId, params, step, rt) =>
-      val act = taskActors.get(taskId)
+    case AddTaskInputData(fTaId, toTaId, params, step, rt) =>
+      val act = taskActors.get(toTaId)
       if (act.isDefined) {
         act.get ! AddTaskWorkerData(params, step, wtws)
-        rt ! DataTransferInfo("?", taskId, step, enoughButNotTooMuchInfo(params.mkString, 120))
+        rt ! DataTransferInfo(fTaId, toTaId, step, enoughButNotTooMuchInfo(params.mkString, 120))
       } else {
         context.log.error("no task actor. ")
       }
@@ -206,40 +210,42 @@ private[core] class AgentAct(agent: Agent, context: ActorContext[AgentMsg], conf
       rt ! Results(taskId, taskResults.getOrElse(taskId, Map.empty))
       this
 
-    case AddTransitions(tId, trs, rt) =>
-      val newTrans: List[MaterializedTransition] = transitions.getOrElse(tId, List.empty) ++ trs
-      transitions += tId -> newTrans
-      transitionStates ++= newTrans.map(mt => mt -> TransitionStatusType.New).toMap
-//      rt ! AgentInfo(agentSummary("transitions added. "))//todo feedback?
+    case AddTransition(matTrans, rt) =>
+      transitions += matTrans.transitionEnds -> newTrans
+      transitionStates += matTrans.transitionEnds -> TransitionStatusType.New
+      rt ! GenericFeedback(GenericInfo, "adding transition")
       this
 
     case GetTaskInfo(taskId, rt) =>
       if (taskActors.isDefinedAt(taskId)) {
         val actRef = taskActors(taskId)
-        import org.apache.pekko.actor.typed.scaladsl.AskPattern._
+        import org.apache.pekko.actor.typed.scaladsl.AskPattern
         implicit val ec = context.executionContext
         implicit val as = context.system
         implicit val timeout: Timeout = Timeout(100.millis)
         val res: Future[TaskWorkerState] = actRef.ask(ref => GetTaskWorkerState(ref))
         res.onComplete {
           case Success(wr: TaskWorkerState) => rt ! TaskInfo(taskId, workerStateToTaskState(wr.state))
-          case Failure(_)                   => rt ! TaskInfo(taskId, TaskStateType.Problem, msg = "could not retrieve task info.")
+          case Failure(_)                   => rt ! TaskInfo(taskId, TaskStateType.TaskFailure, msg = "could not retrieve task info.")
         }
       } else {
-        rt ! TaskInfo(taskId, TaskStateType.Failed, msg = "Task not defined.")
+        rt ! TaskInfo(taskId, TaskStateType.TaskFailure, msg = "Task not defined.")
       }
       this
 
     case CheckTask =>
       // go through all the tasks, check their status, if completed, start transitions
-      val completed = taskStates.filter(t => t._2 == TaskStateType.Completed)
+      val completed = taskStates.filter(t => t._2 == TaskStateType.TaskSuccess)
+
       val transitionsToTrigger = transitions.filter(t => completed.keySet.contains(t._1))
       transitionsToTrigger.map { kv =>
         kv._2.map { mt =>
-          val transActor: ActorRef[TransitionMsg] = context.spawn(TransitionActor
-            .apply(mt.blueprintTransition.toTask, mt.toAgent, transformers, context.self), UUID.randomUUID().toString) // Todo improve
+          val transActor: ActorRef[TransitionPipeMsg] = context.spawn(
+            TransitionPipe.apply(mt.blueprintTransition.toTask, mt.toAgent, transformers, context.self),
+            UUID.randomUUID().toString
+          ) // Todo improve
 
-          transActor ! OutputInput(taskResults.getOrElse(kv._1, Map.empty), DataLoad.Last)//todo later
+          transActor ! OutputInput(taskResults.getOrElse(kv._1, Map.empty), DataLoad.Last) // todo later
         }
       }
       this
@@ -264,11 +270,11 @@ private[core] class AgentAct(agent: Agent, context: ActorContext[AgentMsg], conf
 
   private def agentSummary(cmt: String = ""): AgentSummary =
     AgentSummary(
-      agent.agentId,
+      agent.workerId,
       totalTasks = taskStates.keySet.size,
-      runningTasks = taskStates.values.count(t => t == TaskStateType.Running),
-      completedTasks = taskStates.values.count(t => t == TaskStateType.Completed),
-      failedTasks = taskStates.values.count(t => t == TaskStateType.Failed),
+      runningTasks = taskStates.values.count(t => t == TaskStateType.RunningTask),
+      completedTasks = taskStates.values.count(t => t == TaskStateType.TaskSuccess),
+      failedTasks = taskStates.values.count(t => t == TaskStateType.TaskFailure),
       totalTransitions = transitionStates.values.size,
       completedTransitions = transitionStates.values.count(t => t == TransitionStatusType.Completed),
       cmt

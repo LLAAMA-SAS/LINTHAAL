@@ -16,7 +16,14 @@ package org.linthaal.core.adt
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
   */
-case class AgentId(name: String, version: String) {
+
+/**
+ * WorkerId are unique identifier for worker (unique combination of name + version)
+ * @param name
+ * @param version
+ * @param description
+ */
+case class WorkerId(name: String, version: String, description: String = "") {
   override def toString: String = s"${name}_${version}".trim.replaceAll("\\s", "_").replaceAll("\\.", "_")
 }
 

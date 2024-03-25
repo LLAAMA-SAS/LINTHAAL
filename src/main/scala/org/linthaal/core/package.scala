@@ -14,7 +14,7 @@ package org.linthaal
 package object core {
 
   enum GenericFeedbackType:
-    case Success, Failure, Info, Warning
+    case GenericSuccess, GenericFailure, GenericInfo, GenericWarning
 
   case class GenericFeedback(feedbackType: GenericFeedbackType, action: String = "", id: String = "", msg: String = "") {
     override def toString: String = s"""$feedbackType $action $id [$msg]"""

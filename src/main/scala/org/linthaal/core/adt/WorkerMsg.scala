@@ -18,6 +18,12 @@ import org.linthaal.core.adt.WorkerStateType.DataInput
   * this program. If not, see <http://www.gnu.org/licenses/>.
   */
 
+/**
+ * Workers are very specific implementations of very precisely defined tasks.
+ * 
+ * Those are the messages to communicate with workers and that need to be implemented as Behaviors.
+ * 
+ */
 trait WorkerMsg
 
 case class AddWorkerConf(config: Map[String, String]) extends WorkerMsg
@@ -30,14 +36,23 @@ case class GetWorkerResults(replyTo: ActorRef[WorkerResults]) extends WorkerMsg
 
 case class GetWorkerTransitions(blueprintTransition: List[BlueprintTransition], replyTo: ActorRef[ChosenTransitions]) extends WorkerMsg
 
+
 case object StopWorker extends WorkerMsg
 
 
-case class WorkerResults(results: Map[String, String])
-
 case class WorkerState(state: WorkerStateType = WorkerStateType.DataInput, percentCompleted: Int = 0, msg: String = "")
+
+case class WorkerResults(results: Map[String, String])
 
 case class ChosenTransitions(transitions: List[BlueprintTransition])
 
+/**
+ * A worker can be in different states
+ * 1. it expects data Input
+ * 2. once all data is available, it decides itself when it's time to start working
+ * 3. Eventually, it will either succeed, fail or succeed partially. 
+ * Afterwards, it can never be started again or change its states. 
+ * 
+ */
 enum WorkerStateType:
-  case DataInput, Running, Completed, Failed
+  case DataInput, Running, Success, Failure, PartialSuccess
