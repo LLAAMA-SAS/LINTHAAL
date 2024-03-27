@@ -22,10 +22,15 @@ object CmdArgs {
       opt[String]("ncbi_api_key").action((x, c) => c.copy(apiKeys = c.apiKeys + ("ncbi.api_key" -> x))).text("API key for NCBI"),
       opt[String]("openai_api_key").action((x, c) => c.copy(apiKeys = c.apiKeys + ("openai.api_key" -> x))).text("API key for OpenAI"),
       opt[String]("huggingface_api_key").action((x, c) => c.copy(apiKeys = c.apiKeys + ("huggingface.api_key" -> x))).text("API key for Hugging Face"),
-      opt[File]("api_keys_dir").action((x, c) => c.copy(apiKeysDir = x)).withFallback(() => new File("/home/linthaal/keys")).text("path to directory containing .api_key files"),
+      opt[File]("api_keys_dir")
+        .action((x, c) => c.copy(apiKeysDir = x))
+        .withFallback(() => new File("/home/linthaal/keys"))
+        .text("path to directory containing .api_key files")
+        .valueName("<file>"),
       opt[File]("cache_dir")
         .action((x, c) => c.copy(cacheDir = x))
         .withFallback(() => Path.of(System.getProperty("user.dir")).resolve("cache").toFile)
-        .text("path to directory containing cached files"))
+        .text("path to directory containing cached files")
+        .valueName("<file>"))
   }
 }
