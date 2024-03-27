@@ -1,5 +1,6 @@
 package org.linthaal.tot.pubmed.caching
 
+import org.linthaal.Linthaal
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.tot.pubmed.PubMedSumAct.SummarizedAbstract
@@ -22,14 +23,15 @@ import java.nio.file.{ Files, Path, StandardOpenOption }
   * this program. If not, see <http://www.gnu.org/licenses/>.
   */
 object CachePubMedResults {
-  // should add path as arg
-  val pathToCache = Path.of(System.getProperty("user.dir")).resolve("cache")
-  val cacheFolder = pathToCache.toFile
+
+  private val cacheFolder = Linthaal.cmdArgs.cacheDir
+  private val pathToCache = cacheFolder.toPath
+
   if (!cacheFolder.exists()) cacheFolder.mkdirs()
 
   val log: Logger = LoggerFactory.getLogger(getClass.toString)
 
-  log.info(s"Default cache location: $pathToCache")
+  log.info(s"Default cache location: $cacheFolder")
   log.info(s"Total cached Files at start: ${cacheFolder.listFiles.count(_.getName.endsWith("json"))}")
 
   case class CachedResults(
