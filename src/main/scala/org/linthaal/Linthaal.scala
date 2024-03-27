@@ -1,8 +1,10 @@
 package org.linthaal
 
 import org.apache.pekko.actor.typed.ActorSystem
-import org.linthaal.helpers.{ ApiKeys, Parameters }
-import org.slf4j.{ Logger, LoggerFactory }
+import org.linthaal.helpers.CmdArgs.parser
+import org.linthaal.helpers.{ApiKeys, CmdArgs, Parameters}
+import org.slf4j.{Logger, LoggerFactory}
+import scopt.OParser
 
 /** This program is free software: you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the Free
@@ -21,12 +23,15 @@ object Linthaal {
 
   val log: Logger = LoggerFactory.getLogger(getClass.toString)
 
-  var appArgs: Map[String, String] = Map.empty
+  var cmdArgs: CmdArgs = CmdArgs()
 
   def main(args: Array[String]): Unit = {
     log.info("Starting Linthaal...")
-    appArgs = Parameters.parseArgs(args)
-    log.info(s"""Args: ${appArgs.keys.mkString(" , ")}""")
-    ActorSystem[Nothing](LinthaalSupervisor(), "Linthaal-system")
+
+    OParser.parse(parser, args, CmdArgs()).foreach { cmdArgs =>
+      Linthaal.cmdArgs = cmdArgs
+
+      ActorSystem[Nothing](LinthaalSupervisor(), "Linthaal-system")
+    }
   }
 }

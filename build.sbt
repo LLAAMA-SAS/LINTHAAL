@@ -4,15 +4,7 @@ import Dependencies.*
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
-inThisBuild(
-  List(
-    organization := "org.linthaal",
-    name := "Linthaal",
-    startYear := Some(2023),
-    version := "1.3.0",
-    scalaVersion := "3.3.1",
-    fork := true,
-    dynverSeparator := "-"))
+inThisBuild(List(organization := "org.linthaal", name := "Linthaal", startYear := Some(2023), version := "1.3.0", scalaVersion := "3.3.1", fork := true, dynverSeparator := "-"))
 
 lazy val root =
   project
@@ -32,7 +24,8 @@ lazy val root =
         commonsCodec,
         neo4jDriver,
         pekkoActorTestkit,
-        scalaTest))
+        scalaTest,
+        scopt))
     .settings(run / fork := true)
     .settings(Compile / mainClass := Some("org.linthaal.Linthaal"))
     .settings(Universal / mappings ++= directory("user"))
