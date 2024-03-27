@@ -19,4 +19,5 @@ object Dependencies {
   val commonsCodec: ModuleID = "commons-codec" % "commons-codec" % "1.16.0"
   val neo4jDriver: ModuleID = "org.neo4j.driver" % "neo4j-java-driver" % "5.7.0"
   val scalaTest: ModuleID = "org.scalatest" %% "scalatest" % "3.2.16" % Test
+  val scopt: ModuleID = "com.github.scopt" %% "scopt" % "4.1.0"
 }
