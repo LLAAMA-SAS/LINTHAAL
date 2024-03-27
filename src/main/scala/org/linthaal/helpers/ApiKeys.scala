@@ -25,7 +25,7 @@ object ApiKeys {
   private val log = LoggerFactory.getLogger(getClass.toString)
 
   // keys are expected either as arguments or in the user dir, finishing with api_key
-  private val argsKeyFolder: File = new File(Linthaal.appArgs.getOrElse("api_keys", "/home/linthaal/keys"))
+  private val argsKeyFolder: File = Linthaal.cmdArgs.apiKeysDir
 
   private val keyFolder: Array[File] = if (argsKeyFolder.exists) {
     argsKeyFolder.listFiles()
@@ -33,12 +33,11 @@ object ApiKeys {
     Path.of(s"${System.getProperty("user.dir")}/keys").toFile.listFiles()
   }
 
-  private val keyFiles: List[Path] = keyFolder.filter(f => f.getName.endsWith("api_key")).map(_.toPath).toList ++
-    Linthaal.appArgs.filter(kv => kv._1.contains("api_key")).map(kv => Path.of(kv._2.trim)).filter(_.toFile.exists())
+  private val keyFiles: List[Path] = keyFolder.filter(f => f.getName.endsWith("api_key")).map(_.toPath).toList
 
   log.info(s"""api key files: ${keyFiles.mkString(" , ")}""")
 
-  private val apiKeys: Map[String, String] = keyFiles.map(kp => readKeyFile(kp)).toMap
+  private val apiKeys: Map[String, String] = keyFiles.map(kp => readKeyFile(kp)).toMap ++ Linthaal.cmdArgs.apiKeys
 
   def getKey(apiKey: String): String =
     if (apiKeys.contains(apiKey)) apiKeys(apiKey)
