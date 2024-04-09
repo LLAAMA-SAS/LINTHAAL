@@ -3,10 +3,10 @@ package org.linthaal.core
 import org.apache.pekko.actor.typed.scaladsl.{ActorContext, Behaviors}
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.linthaal.core.AgentAct.TaskStateType.{RunningTask, TaskSuccess}
-import org.linthaal.core.AgentAct.{AddTransition, AgentMsg, DataLoad, MaterializedTransition, NewTask, TaskInfo, TaskStateType, TransitionStatusType}
+import org.linthaal.core.AgentAct.{AddTransition, AgentMsg, DataLoad, GetTaskInfo, NewTask, TaskInfo, TaskStateType, TransitionStatusType}
 import org.linthaal.core.GenericFeedbackType.GenericSuccess
-import org.linthaal.core.TransitionPipe.TransitionPipeMsg
-import org.linthaal.core.SGMaterialization.{SGMatMsg, StartMat, TransitionEnds}
+import org.linthaal.core.TransitionPipe.{TransitionEnds, TransitionPipeMsg}
+import org.linthaal.core.SGMaterialization.{SGMatMsg, StartMat}
 import org.linthaal.core.adt.*
 import org.linthaal.helpers.DateAndTimeHelpers
 
@@ -37,30 +37,38 @@ object SGMaterialization {
   private case object Ticktack extends SGMatMsg
 
   case class WrapTaskInfo(taskInfo: TaskInfo) extends SGMatMsg
+  
+  case class WrapGenericFeedback(genericFeedback: GenericFeedback) extends SGMatMsg
 
-  def apply(blueprint: SGBlueprint, agents: Map[WorkerId, ActorRef[AgentMsg]]): Behavior[SGMatMsg] = {
+  def apply(blueprint: SGBlueprint, agents: Map[WorkerId, ActorRef[AgentMsg]], conf: Map[String, String]): Behavior[SGMatMsg] = {
     Behaviors.withTimers[SGMatMsg] { timers =>
       Behaviors.setup[SGMatMsg] { ctx =>
         timers.startTimerWithFixedDelay(Ticktack, 5.seconds)
         ctx.log.info("Starting Graph Materialization")
-        new SGMaterialization(blueprint, agents, ctx).init()
+        new SGMaterialization(blueprint, agents, conf, ctx).init()
       }
     }
   }
 }
 
-class SGMaterialization private (blueprint: SGBlueprint, agents: Map[WorkerId, ActorRef[AgentMsg]], context: ActorContext[SGMatMsg]) {
+class SGMaterialization private (blueprint: SGBlueprint, agents: Map[WorkerId, ActorRef[AgentMsg]],
+                                 conf: Map[String, String], context: ActorContext[SGMatMsg]) {
 
   import SGMaterialization._
 
   val uid: String = blueprint.id + "_" + DateAndTimeHelpers.getCurrentDate_ms_()
 
   val msgAdapter: ActorRef[TaskInfo] = context.messageAdapter(m => WrapTaskInfo(m))
+  
+  val genericFeedbackAdapter: ActorRef[GenericFeedback] = context.messageAdapter(m => WrapGenericFeedback(m))
 
   var materializedTasks: Map[String, BlueprintTask] = Map.empty // actual taskID to blueprint task
+
   var taskStates: Map[String, TaskStateType] = Map.empty // taskID to state
   
   var params: Map[String, String] = Map.empty
+
+  var transitionsAlreadyDefined: Set[TransitionEnds] = Set.empty
 
   private def init(): Behavior[SGMatMsg] = {
     // mismatch between available agents and requested agents.
@@ -68,8 +76,7 @@ class SGMaterialization private (blueprint: SGBlueprint, agents: Map[WorkerId, A
       context.log.error("At least one required agent is missing.")
       Behaviors.stopped
     } else {
-      materializedTasks ++= blueprint.startingTasks.map(t => UUID.randomUUID().toString -> t)
-      taskStates ++= materializedTasks.keySet.map(k => k -> TaskStateType.TaskReady)
+      blueprint.startingTasks.map(t => getMatTaskFromBlueprintName(t.name)) // just for the side effects
       starting()
     }
   }
@@ -79,9 +86,8 @@ class SGMaterialization private (blueprint: SGBlueprint, agents: Map[WorkerId, A
       case StartMat(pars, replyTo) =>
       params ++= pars 
       materializedTasks.foreach { mt =>
-        val agt = agents.get(mt._2.agent)
+        val agt = agents.get(mt._2.workerId)
         if (agt.nonEmpty) agt.get ! NewTask(mt._1, msgAdapter)
-        taskStates += (mt._1 -> TaskStateType.RunningTask)
       }
       replyTo ! GenericFeedback(GenericSuccess, action = "Starting Mat", id = uid, "Materialization started...")
       running()
@@ -99,6 +105,11 @@ class SGMaterialization private (blueprint: SGBlueprint, agents: Map[WorkerId, A
         Behaviors.same
 
       case Ticktack =>
+        // check tasks states
+        taskStates.filter(t => t._2 != TaskClosed).keys.map(k => (k, materializedTasks.get(k)))
+          .filter(kv => kv._2.nonEmpty).map(bp => (bp._1, agents.get(bp._2.get.workerId)))
+          .filter(kv => kv._2.nonEmpty).foreach(kv => kv._2.get ! GetTaskInfo(kv._1, msgAdapter))
+
         // tasks completed successfully, preparing children tasks and transitions
         val tSuccess: Set[String] = taskStates.filter(t => t._2 == TaskStateType.TaskSuccess).keySet
         
@@ -115,20 +126,20 @@ class SGMaterialization private (blueprint: SGBlueprint, agents: Map[WorkerId, A
             
             nextTks.foreach { kv =>
               val tr = TransitionEnds(t, kv._1)
-              val toAgent = agents.get(kv._2._1.agent) 
-              transitions += tr -> kv._2._2
-              transitionStates += tr -> TransitionStatusType.New
-              if (toAgent.isDefined) agents.get(tak.agent).foreach(a => a ! AddTransition(t, AgentAct.MaterializedTransition(tr, toAgent)))
+              val toAgent = agents.get(kv._2._1.workerId)
+              if (!transitionsAlreadyDefined.contains(tr) && toAgent.isDefined) {
+                transitionsAlreadyDefined += tr
+                agents.get(tak.workerId)
+                  .foreach(a => a ! AddTransition(tr, kv._2._2, toAgent.get, genericFeedbackAdapter))
+              }
             }
-
-            taskStates += t -> TaskStateType.TaskReadyForTransitions
           }
         }
-
         Behaviors.same
     }
   }
 
+  // with side effects! and modifying task states even though it should otherwise be given by the task itself
   private def getMatTaskFromBlueprintName(bpTkName: String): Option[(String, BlueprintTask)] = {
     val t = blueprint.taskByName(bpTkName)
     if (t.isDefined)
@@ -138,8 +149,8 @@ class SGMaterialization private (blueprint: SGBlueprint, agents: Map[WorkerId, A
       else
         val newTask = UUID.randomUUID.toString -> t.get
         materializedTasks += newTask
-        taskStates += newTask._1 -> TaskStateType.NewTask
-        agents.get(t.get.agent).foreach(ag => ag ! NewTask(newTask._1, msgAdapter))
+        taskStates += newTask._1 -> TaskStateType.NewlyCreatedTask
+        agents.get(t.get.workerId).foreach(ag => ag ! NewTask(newTask._1, msgAdapter))
         context.log.debug(s"adding new child task [${newTask._1}]")
         Some(newTask)
     else

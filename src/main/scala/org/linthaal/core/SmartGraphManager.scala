@@ -79,10 +79,9 @@ class SmartGraphManager private(conf: Map[String, String], ctx: ActorContext[Sma
         val bp = blueprints.find(_.id == bpId)
         if (bp.isDefined && bp.get.allNeededAgents.forall(a => agents.keySet.contains(a))) {
           val ags = agents.view.filterKeys(k => bp.get.allNeededAgents.contains(k)).toMap
-          val sgMat = ctx.spawn(SGMaterialization.apply(bp.get, ags), s"SG_Materialization_${UUID.randomUUID().toString}")
+          val sgMat = ctx.spawn(SGMaterialization.apply(bp.get, ags, conf), s"SG_Materialization_${UUID.randomUUID().toString}")
           sgMaterializations += s"${bp.get.id}_${getCurrentDate_ms_()}" -> sgMat
-          sgMat ! StartMat(conf, params, rt)
-          rt ! GenericFeedback(GenericFeedbackType.GenericSuccess, bpId, "Started Smart Graph Materialization. ")
+          sgMat ! StartMat(params, rt)
         } else {
           rt ! GenericFeedback(GenericFeedbackType.GenericFailure, bpId, "Failed starting materialization. ")
         }

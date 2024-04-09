@@ -22,8 +22,8 @@ import org.linthaal.helpers.enoughButNotTooMuchInfo
   */
 object WorkerExamples {
 
-  val upperCase: Behavior[WorkerMsg] = {
-    def dataInput(conf: Map[String, String], data: Map[String, String]): Behavior[WorkerMsg] = {
+  val upperCase: Behavior[WorkerCommand] = {
+    def dataInput(conf: Map[String, String], data: Map[String, String]): Behavior[WorkerCommand] = {
       Behaviors.receive { (ctx, msg) =>
         msg match
           case AddWorkerConf(c) =>
@@ -31,16 +31,14 @@ object WorkerExamples {
             ctx.log.debug(s"""added conf: ${c.mkString(",")}""")
             dataInput(nconf, data)
 
-          case AddWorkerData(d, i, rt) =>
+          case AddWorkerData(d, i) =>
             val nd = data ++ d
             if (i == DataLoad.Last)
-              rt ! WorkerState(WorkerStateType.Running, 20, "all Data provided, starting processing. ")
               ctx.log.info("WORKING...")
               // do the work here (could spawn another actor and manage it from here
               val results = data.map(kv => kv._1 -> kv._2.toUpperCase)
               completed(results)
             else
-              rt ! WorkerState(WorkerStateType.DataInput, 10, "adding data in progress...")
               dataInput(conf, nd)
 
           case GetWorkerState(rt) =>
@@ -53,7 +51,7 @@ object WorkerExamples {
       }
     }
 
-    def completed(results: Map[String, String]): Behavior[WorkerMsg] = {
+    def completed(results: Map[String, String]): Behavior[WorkerCommand] = {
       Behaviors.receiveMessage {
         case GetWorkerResults(rt) =>
           rt ! WorkerResults(results)

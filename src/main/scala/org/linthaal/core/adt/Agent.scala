@@ -19,7 +19,7 @@ import org.linthaal.helpers
   */
 case class Agent(
                   workerId: WorkerId,
-                  behavior: Behavior[WorkerMsg],
+                  behavior: Behavior[WorkerCommand],
                   mandatoryConf: List[String] = List.empty, // initialization params are like configuration to start the agent
                   optionalConf: List[String] = List.empty,
                   mandatoryStartTaskParams: List[String] = List.empty, // the parameters to start the task
