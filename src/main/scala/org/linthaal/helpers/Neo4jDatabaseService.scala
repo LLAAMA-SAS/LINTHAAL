@@ -6,21 +6,21 @@ import org.neo4j.driver.{ AuthTokens, GraphDatabase }
 import scala.jdk.CollectionConverters.*
 
 /** This program is free software: you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program. If not, see <http://www.gnu.org/licenses/>.
- */
+  * under the terms of the GNU General Public License as published by the Free
+  * Software Foundation, either version 3 of the License, or (at your option)
+  * any later version.
+  *
+  * This program is distributed in the hope that it will be useful, but WITHOUT
+  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+  * more details.
+  *
+  * You should have received a copy of the GNU General Public License along with
+  * this program. If not, see <http://www.gnu.org/licenses/>.
+  */
 object Neo4jDatabaseService {
   val authToken = AuthTokens.basic("neo4j", "password")
-  val driver = GraphDatabase.driver("bolt://localhost:7687", authToken)
+  val driver = GraphDatabase.driver(sys.env.getOrElse("NEO4J_URI", "bolt://localhost:7687"), authToken)
 
   val schema: String = {
     val nodeProperties = executeQuery(nodePropertiesQuery)

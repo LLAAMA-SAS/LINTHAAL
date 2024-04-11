@@ -1,0 +1,50 @@
+services:
+  linthaal:
+    container_name: linthaal
+    image: llaamasas/linthaal:latest
+    ports:
+      - 7847:7847
+    volumes:
+      - $HOME/linthaal:/home/linthaal
+    environment:
+      NEO4J_URI: bolt://primekg:7687
+    networks:
+      - linthaal-network
+    depends_on:
+      - primekg
+  primekg:
+    container_name: primekg
+    image: neo4j:latest
+    ports:
+      - 7474:7474
+      - 7687:7687
+    volumes:
+      - $HOME/neo4j/data:/data
+      - $HOME/neo4j/logs:/logs
+      - $HOME/neo4j/import:/var/lib/neo4j/import
+      - $HOME/neo4j/plugins:/plugins
+    environment:
+      NEO4J_apoc_export_file_enabled: true
+      NEO4J_apoc_import_file_enabled: true
+      NEO4J_apoc_import_file_use__neo4j__config: true
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+      NEO4JLABS_PLUGINS: \[\"apoc\"\]
+      NEO4J_AUTH: neo4j/password
+    networks:
+      - linthaal-network
+  linthaal-client:
+    container_name: linthaal-client
+    build:
+      context: ./linthaal-client
+    environment:
+      LINTHAAL_HOST: http://linthaal:7847
+    restart: always
+    ports:
+      - 3000:3000
+    networks:
+      - linthaal-network
+    depends_on:
+      - linthaal
+
+networks:
+  linthaal-network:
