@@ -23,7 +23,7 @@ import java.nio.file.{ Files, Path, StandardOpenOption }
   */
 object CachePubMedResults {
   // should add path as arg
-  val pathToCache = Path.of(System.getProperty("user.dir")).resolve("cache")
+  val pathToCache = Path.of(System.getProperty("user.dir"))
   val cacheFolder = pathToCache.toFile
   if (!cacheFolder.exists()) cacheFolder.mkdirs()
 

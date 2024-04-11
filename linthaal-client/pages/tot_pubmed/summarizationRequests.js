@@ -34,7 +34,7 @@ export default function SummmarizationRequests({data}) {
   
 export async function getServerSideProps() {
   // Fetch data from external API
-  const res = await fetch(`http://localhost:7847/tot_pubmed`)
+  const res = await fetch(`${process.env.LINTHAAL_HOST}/tot_pubmed`)
   const data = await res.json()
   // Pass data to the page via props
   return { props: { data } }

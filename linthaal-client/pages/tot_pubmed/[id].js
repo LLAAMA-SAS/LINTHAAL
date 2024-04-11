@@ -24,7 +24,7 @@ export default function SummarizationRequestView(response) {
 
 export async function getServerSideProps(context) {
   const id = context?.params?.id;
-  const res = await fetch(`http://localhost:7847/tot_pubmed/${id}`)
+  const res = await fetch(`${process.env.LINTHAAL_HOST}/tot_pubmed/${id}`)
 
   const data = await res.json();
   return { props: { data } } 
