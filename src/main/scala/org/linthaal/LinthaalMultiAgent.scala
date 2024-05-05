@@ -1,8 +1,8 @@
 package org.linthaal
 
 import org.apache.pekko.actor.typed.ActorSystem
-import org.linthaal.core.SmartGraphManager
-import org.linthaal.core.SmartGraphManager.SmartGraphMsg
+import org.linthaal.core.Materializations
+import org.linthaal.core.Materializations.MaterializationCommand
 import org.linthaal.helpers.{ApiKeys, Parameters}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -19,14 +19,14 @@ import org.slf4j.{Logger, LoggerFactory}
   * You should have received a copy of the GNU General Public License along with
   * this program. If not, see <http://www.gnu.org/licenses/>.
   */
-object LinthaalSmartGraph {
+object LinthaalMultiAgent {
 
   val log: Logger = LoggerFactory.getLogger(getClass.toString)
   
   def main(args: Array[String]): Unit = {
-    log.info("Starting Linthaal SmartGraph...")
+    log.info("Starting Linthaal Multi Agents...")
     val appArgs = Parameters.parseArgs(args)
     log.info(s"""Args: ${appArgs.keys.mkString(" , ")}""")
-    ActorSystem[SmartGraphMsg](SmartGraphManager(appArgs), "Linthaal-system")
+    ActorSystem[MaterializationCommand](Materializations(appArgs), "Linthaal-system")
   }
 }

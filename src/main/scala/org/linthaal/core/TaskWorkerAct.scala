@@ -3,7 +3,7 @@ package org.linthaal.core
 import org.apache.pekko.actor.typed.scaladsl.{ ActorContext, Behaviors, StashBuffer }
 import org.apache.pekko.actor.typed.{ ActorRef, ActorSystem, Behavior, Props, SpawnProtocol }
 import org.apache.pekko.util.Timeout
-import org.linthaal.core.AgentAct.{ AgentMsg, DataLoad, TaskInfo }
+import org.linthaal.core.AgentAct.{ AgentMsg, TaskInfo }
 import org.linthaal.core.adt.*
 
 import scala.concurrent.{ ExecutionContext, Future }
@@ -20,20 +20,24 @@ import scala.util.{ Failure, Success }
   *
   * You should have received a copy of the GNU General Public License along with this program. If
   * not, see <http://www.gnu.org/licenses/>.
+  *
+  * A TaskWorkerAct is a short living actor that links a unique task (taskId) to an instance of the
+  * worker Actor that will proceed with the work.
   */
-object TaskWorkerManager {
+object TaskWorkerAct {
 
-  sealed trait TaskWorkMngCommand
+  sealed trait TaskWorkerCommand
 
-  case class AddTaskWorkerData(data: Map[String, String], inputStep: DataLoad = DataLoad.Last) extends TaskWorkMngCommand
-  case class GetTaskWorkerState(replyTo: ActorRef[TaskWorkerState]) extends TaskWorkMngCommand
-  case class GetTaskWorkerResults(replyTo: ActorRef[TaskWorkerResults]) extends TaskWorkMngCommand
-  case class GetTaskWorkerTransitions(blueprintTransition: List[BlueprintTransition], replyTo: ActorRef[TaskChosenTransitions])
-      extends TaskWorkMngCommand
-  case class StartWorking(replyTo: ActorRef[GenericFeedback]) extends TaskWorkMngCommand
-  case class StopWorking(replyTo: ActorRef[GenericFeedback]) extends TaskWorkMngCommand
+  case class SetTaskWorkerData(data: Map[String, String]) extends TaskWorkerCommand
 
-  case class WrapWorkerState(ws: WorkerState) extends TaskWorkMngCommand
+  case class GetTaskWorkerState(replyTo: ActorRef[TaskWorkerState]) extends TaskWorkerCommand
+  case class GetTaskWorkerResults(replyTo: ActorRef[TaskWorkerResults]) extends TaskWorkerCommand
+  case class GetTaskWorkerChannels(blueprintChannels: List[FromToDispatchBlueprint], replyTo: ActorRef[TaskChosenChannels])
+      extends TaskWorkerCommand
+  case class StartWorking(replyTo: ActorRef[GenericFeedback]) extends TaskWorkerCommand
+  case class StopWorking(replyTo: ActorRef[GenericFeedback]) extends TaskWorkerCommand
+
+  case class WrapWorkerState(ws: WorkerState) extends TaskWorkerCommand
 
   case class TaskWorkerResults(taskId: String, results: Map[String, String], cmt: String = "")
 
@@ -43,41 +47,41 @@ object TaskWorkerManager {
       percentCompleted: Int = 0,
       msg: String = "")
 
-  case class TaskChosenTransitions(taskId: String, transitions: List[BlueprintTransition], cmt: String = "")
+  case class TaskChosenChannels(taskId: String, channels: List[FromToDispatchBlueprint], cmt: String = "")
 
-
-  def apply(conf: Map[String, String], taskId: String, taskWBehavior: Behavior[WorkerCommand]): Behavior[TaskWorkMngCommand] = {
-    Behaviors.withStash[TaskWorkMngCommand] { buffer =>
-    Behaviors.setup[TaskWorkMngCommand] { ctx =>
-      val worker: ActorRef[WorkerCommand] = ctx.spawn(taskWBehavior, s"${taskId}_worker")
-      new TaskWorkerManager(conf, taskId, worker, buffer, ctx).init()
+  def apply(conf: Map[String, String], taskId: String, workerBehavior: Behavior[WorkerCommand]): Behavior[TaskWorkerCommand] = {
+    Behaviors.withStash(20) { buffer =>
+      Behaviors.setup[TaskWorkerCommand] { ctx =>
+        val worker: ActorRef[WorkerCommand] = ctx.spawn(workerBehavior, s"${taskId}_worker")
+        new TaskWorkerAct(conf, taskId, worker, buffer, ctx).init()
+      }
     }
-  }}
+  }
 }
 
-import org.linthaal.core.TaskWorkerManager.TaskWorkMngCommand
-class TaskWorkerManager private (
+import org.linthaal.core.TaskWorkerAct.TaskWorkerCommand
+class TaskWorkerAct private (
     conf: Map[String, String],
     taskId: String,
     worker: ActorRef[WorkerCommand],
-    buffer: StashBuffer[TaskWorkMngCommand],
-    ctx: ActorContext[TaskWorkMngCommand]) {
+    buffer: StashBuffer[TaskWorkerCommand],
+    ctx: ActorContext[TaskWorkerCommand]) {
 
-  import TaskWorkerManager.*
+  import TaskWorkerAct.*
 
   import org.apache.pekko.actor.typed.scaladsl.AskPattern._
   given ec: ExecutionContext = ctx.executionContext
   given as: ActorSystem[_] = ctx.system
   given timeout: Timeout = Timeout(100.millis)
 
-  val stateAdapter:ActorRef[WorkerState] = ctx.messageAdapter(m => WrapWorkerState(m))
+  val stateAdapter: ActorRef[WorkerState] = ctx.messageAdapter(m => WrapWorkerState(m))
 
-  private def init(): Behavior[TaskWorkMngCommand] = {
+  private def init(): Behavior[TaskWorkerCommand] = {
     worker ! AddWorkerConf(conf, stateAdapter)
     Behaviors.receiveMessage {
       case WrapWorkerState(ws) =>
         if (ws.state == WorkerStateType.Ready)
-          buffer.unstashAll(gettingData())
+          buffer.unstashAll(addingData())
         else throw RuntimeException("error")
 
       case other =>
@@ -86,23 +90,21 @@ class TaskWorkerManager private (
     }
   }
 
-  private def gettingData(): Behavior[TaskWorkMngCommand] = {
+  private def addingData(): Behavior[TaskWorkerCommand] = {
     Behaviors.receiveMessage {
-      case AddTaskWorkerData() =>
+      case SetTaskWorkerData(d) =>
+        worker ! AddWorkerData(d)
+        inProgress()
       case other =>
         ctx.log.warn(s"not processing msg: $other")
         Behaviors.same
     }
+  }
 
-  private def inProgress(): Behavior[TaskWorkMngCommand] = {
+  private def inProgress(): Behavior[TaskWorkerCommand] = {
     Behaviors.receiveMessage {
-
-      case AddTaskWorkerData(d, i) =>
-        taskWBehavior ! AddWorkerData(d, i)
-        Behaviors.same
-
       case GetTaskWorkerState(rt) =>
-        val res: Future[WorkerState] = taskWBehavior.ask(ref => GetWorkerState(ref))
+        val res: Future[WorkerState] = worker.ask(ref => GetWorkerState(ref))
         res.onComplete {
           case Success(wt: WorkerState) => rt ! TaskWorkerState(taskId, wt.state, wt.percentCompleted, wt.msg)
           case Failure(_)               => rt ! TaskWorkerState(taskId, WorkerStateType.Failure, 0, "worker not responding properly.")
@@ -110,30 +112,30 @@ class TaskWorkerManager private (
         Behaviors.same
 
       case GetTaskWorkerResults(rt) =>
-        val res: Future[WorkerResults] = taskWBehavior.ask(ref => GetWorkerResults(ref))
+        val res: Future[WorkerResults] = worker.ask(ref => GetWorkerResults(ref))
         res.onComplete {
           case Success(wr: WorkerResults) => rt ! TaskWorkerResults(taskId, wr.results)
           case Failure(_)                 => rt ! TaskWorkerResults(taskId, Map.empty, "Failed retrieving results")
         }
         Behaviors.same
 
-      case GetTaskWorkerTransitions(trans, rt) =>
-        val res: Future[ChosenTransitions] = taskWBehavior.ask(ref => GetWorkerTransitions(trans, ref))
+      case GetTaskWorkerChannels(trans, rt) =>
+        val res: Future[PickedUpChannels] = worker.ask(ref => GetWorkerChannels(trans, ref))
         res.onComplete {
-          case Success(wr: ChosenTransitions) => rt ! TaskChosenTransitions(taskId, wr.transitions)
-          case Failure(_)                     => rt ! TaskChosenTransitions(taskId, List.empty, "Failed retrieving chosen transitions")
+          case Success(wr: PickedUpChannels) => rt ! TaskChosenChannels(taskId, wr.channels)
+          case Failure(_)                    => rt ! TaskChosenChannels(taskId, List.empty, "Failed retrieving chosen transitions")
         }
         Behaviors.same
 
       case StopWorking(rt) =>
-        taskWBehavior ! StopWorker(rt)
+        worker ! StopWorker(rt)
         Behaviors.same
 
       case StartWorking(rt) =>
-        taskWBehavior ! StartWorker(rt)
+        worker ! StartWorker(rt)
         Behaviors.same
-
     }
   }
-}
 
+  // private def completed(): Behavior[TaskWorkMngCommand]
+}

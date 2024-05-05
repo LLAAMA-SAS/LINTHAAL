@@ -3,9 +3,9 @@ package org.linthaal.agents.pubmed
 import org.apache.pekko.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.linthaal.core.AgentAct.AgentMsg
-import org.linthaal.core.TransitionPipe
+import org.linthaal.core.DispatchPipe
 import org.linthaal.core.adt.Agent.*
-import org.linthaal.core.TransitionPipe.TransitionPipeMsg
+import org.linthaal.core.DispatchPipe.DispatchPipeMsg
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.helpers.ncbi.eutils.PMActor.{NotSoGraceFullShutdown, PMAbstracts, PMCommand, GetStatus as PMGetStatus}
 import org.linthaal.helpers.ncbi.eutils.{EutilsADT, EutilsCalls, PMActor}
