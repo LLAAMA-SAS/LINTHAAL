@@ -13,11 +13,12 @@ import org.linthaal.core.GenericFeedback
   *
   * You should have received a copy of the GNU General Public License along with this program. If
   * not, see <http://www.gnu.org/licenses/>.
-  */
-
-/** Workers are very specific implementations of very precisely defined tasks.
   *
-  * Those are the messages to communicate with workers and that need to be implemented as Behaviors.
+  * Workers are specific implementations of precisely defined tasks. They should be able to
+  * accomplish one task and stop afterwards. They can spawn their own actors hierarchy and maintain
+  * a state until the work is completed. Once finished, they should never start again.
+  *
+  * Their behavior is defined by the following commands.
   */
 trait WorkerCommand
 
@@ -30,10 +31,6 @@ case class AddWorkerConf(config: Map[String, String], replyTo: ActorRef[WorkerSt
   * @param data
   */
 case class AddWorkerData(data: Map[String, String]) extends WorkerCommand
-
-/** No more data will be passed on to Worker, the worker can decide to start
-  */
-case object AddingDataCompleted extends WorkerCommand
 
 /** ask for the current state of the worker
   * @param replyTo
@@ -58,12 +55,12 @@ case class GetWorkerChannels(blueprintChannels: List[FromToDispatchBlueprint], r
   * be asked to start. It's up to the worker to decide what prevails.
   * @param replyTo
   */
-case class StartWorker(replyTo: ActorRef[GenericFeedback]) extends WorkerCommand
+case class StartWorker(replyTo: ActorRef[WorkerState]) extends WorkerCommand
 
 /** The worker should stop itself once it's finished but it can be forced to stop as well.
   * @param replyTo
   */
-case class StopWorker(replyTo: ActorRef[GenericFeedback]) extends WorkerCommand
+case class StopWorker(replyTo: ActorRef[WorkerState]) extends WorkerCommand
 
 sealed trait WorkerResp
 
@@ -76,9 +73,8 @@ case class WorkerState(state: WorkerStateType = WorkerStateType.Ready, percentCo
 
 /** all or a chunk of the results produced by the worker
   * @param results
-  * @param chunck
   */
-case class WorkerResults(results: Map[String, String], chunck: WorkerResultChunck = WorkerResultChunck.Last) extends WorkerResp
+case class WorkerResults(results: Map[String, String]) extends WorkerResp
 
 /** what are the transitions to be triggered after this worker has been completed. if nothing is
   * returned, it will assume all.
@@ -95,6 +91,3 @@ case class PickedUpChannels(channels: List[FromToDispatchBlueprint]) extends Wor
   */
 enum WorkerStateType:
   case Ready, DataInput, Running, Success, Failure, PartialSuccess
-
-enum WorkerResultChunck:
-  case More, Last

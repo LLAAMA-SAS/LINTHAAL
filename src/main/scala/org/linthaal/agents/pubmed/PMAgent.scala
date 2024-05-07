@@ -2,7 +2,7 @@ package org.linthaal.agents.pubmed
 
 import org.apache.pekko.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
-import org.linthaal.core.AgentAct.AgentMsg
+import org.linthaal.core.AgentAct.AgentCommand
 import org.linthaal.core.DispatchPipe
 import org.linthaal.core.adt.Agent.*
 import org.linthaal.core.DispatchPipe.DispatchPipeMsg

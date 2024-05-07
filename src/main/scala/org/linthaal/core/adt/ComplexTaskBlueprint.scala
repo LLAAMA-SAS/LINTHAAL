@@ -19,9 +19,9 @@ import scala.concurrent.duration.{DurationInt, FiniteDuration}
   */
 
 /**
- * A task blueprint defines a real task done by a worker. 
- * Its name must be unique and another task using the same worker should have have another name. 
- * 
+ * A task blueprint defines a real task done by a worker.
+ * Its name must be unique and another task using the same worker should have have another name.
+ *
  * @param name
  * @param workerId
  * @param timeOut
@@ -31,10 +31,10 @@ case class TaskBlueprint(name: String, workerId: WorkerId, timeOut: FiniteDurati
 }
 
 /**
- * Results produced by a task can be used as input by another task, this transmission channel is defined by 
- * the FromToDispatchBlueprint. 
- * A transformer key can be given to transform the output format through a transformer function. 
- * 
+ * Results produced by a task can be used as input by another task, this transmission channel is defined by
+ * the FromToDispatchBlueprint.
+ * A transformer key can be given to transform the output format through a transformer function.
+ *
  * @param fromTask
  * @param toTask
  * @param transformer
@@ -45,18 +45,18 @@ case class FromToDispatchBlueprint(fromTask: String, toTask: String, transformer
 
 /**
  * A graph of agents is defined as a set of tasks and a set of transmission channels.
- * It's defined as a blue print and can eventually be materialized. 
- * 
+ * It's defined as a blue print and can eventually be materialized.
+ *
  * @param name
  * @param description
  * @param version
  * @param tasks
  * @param channels
  */
-case class ComplexTaskBlueprint(name: String, description: String = "", version: String = "",
+case class ComplexTaskBlueprint(name: String, description: String = "", version: String = "0.1",
                                 tasks: List[TaskBlueprint], channels: List[FromToDispatchBlueprint]) {
 
-  val id = s"${name}_${version}".trim.replaceAll("\\s", "_")
+  val id = s"${name}_${version}".trim.replaceAll("\\s", "_").replaceAll("\\.", "_").replaceAll("-", "_")
 
   /**
    * checks the consistency of the blueprint

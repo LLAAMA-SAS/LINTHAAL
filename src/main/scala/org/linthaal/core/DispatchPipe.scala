@@ -4,7 +4,7 @@ import org.apache.pekko.actor.Actor
 import org.apache.pekko.actor.typed.scaladsl.AbstractBehavior
 import org.apache.pekko.actor.typed.{ ActorRef, Behavior }
 import org.apache.pekko.actor.typed.scaladsl.{ ActorContext, Behaviors }
-import org.linthaal.core.AgentAct.{ AddTaskInputData, AgentMsg, Results, TaskInfo }
+import org.linthaal.core.AgentAct.{ AddTaskInputData, AgentCommand, Results, TaskInfo }
 import org.linthaal.core.DispatchPipe.PipeStateType.Completed
 import org.linthaal.core.DispatchPipe.{ DispatchPipeMsg, DispatchPipeState, FromToDispatch, GetState, OutputInput }
 
@@ -43,10 +43,10 @@ object DispatchPipe {
     case New, TransferringData, Completed
 
   def apply(
-      fromTo: FromToDispatch,
-      toAgent: ActorRef[AgentMsg],
-      transformers: Map[String, String => String] = Map.empty,
-      supervise: ActorRef[DispatchPipeState]): Behavior[DispatchPipeMsg] = {
+             fromTo: FromToDispatch,
+             toAgent: ActorRef[AgentCommand],
+             transformers: Map[String, String => String] = Map.empty,
+             supervise: ActorRef[DispatchPipeState]): Behavior[DispatchPipeMsg] = {
     Behaviors.setup { ctx =>
       new DispatchPipe(fromTo, toAgent, transformers, supervise, ctx).transferring()
     }
@@ -54,11 +54,11 @@ object DispatchPipe {
 }
 
 class DispatchPipe private (
-    fromTo: FromToDispatch,
-    toAgent: ActorRef[AgentMsg],
-    transformers: Map[String, String => String] = Map.empty,
-    supervise: ActorRef[DispatchPipeState],
-    ctx: ActorContext[DispatchPipeMsg]) {
+                             fromTo: FromToDispatch,
+                             toAgent: ActorRef[AgentCommand],
+                             transformers: Map[String, String => String] = Map.empty,
+                             supervise: ActorRef[DispatchPipeState],
+                             ctx: ActorContext[DispatchPipeMsg]) {
 
   import DispatchPipe.*
   import PipeStateType.*

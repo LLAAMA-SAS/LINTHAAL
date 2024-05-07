@@ -2,7 +2,7 @@ package org.linthaal.core
 
 import org.apache.pekko.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import org.linthaal.agents.helpers.WorkerExamples
-import org.linthaal.core.Materializations.{AddBlueprint, StartAgent, StartMaterialization}
+import org.linthaal.core.Materializations.{AddBlueprint, StartAgent, NewMaterialization}
 import org.linthaal.core.adt.{TaskBlueprint, ComplexTaskBlueprint}
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -41,7 +41,7 @@ class AgentsManagerTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
       underTest.tell(AddBlueprint(bp, replyTo1.ref))
       replyTo1.expectMessageType[GenericFeedback](timeout)
 
-      underTest.tell(StartMaterialization(bp.id, Map.empty, Map("hello" -> "world"), replyTo = replyTo1.ref))
+      underTest.tell(NewMaterialization(bp.id, Map.empty, Map("hello" -> "world"), replyTo = replyTo1.ref))
       replyTo1.expectMessageType[GenericFeedback](timeout)
 
     }

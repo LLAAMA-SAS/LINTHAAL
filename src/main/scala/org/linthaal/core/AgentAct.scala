@@ -34,25 +34,26 @@ object AgentAct {
 
   case class AgentInfo(msg: AgentSummary, agentInfoType: AgentInfoType = AgentInfoType.Info)
 
-  sealed trait AgentMsg
+  sealed trait AgentCommand
 
-  case class AddConf(conf: Map[String, String], replyTo: ActorRef[AgentInfo]) extends AgentMsg
-  case class GetAgentInfo(replyTo: ActorRef[AgentInfo]) extends AgentMsg
-  case class NewTask(taskId: String, data: Map[String, String], replyTo: ActorRef[TaskInfo]) extends AgentMsg
-  case class AddTaskInputData(fromTo: FromToDispatch, data: Map[String, String]) extends AgentMsg
-  case class GetResults(taskId: String, replyTo: ActorRef[Results]) extends AgentMsg
-  case class GetTaskInfo(taskId: String, replyTo: ActorRef[TaskInfo]) extends AgentMsg
+  case class AddConf(conf: Map[String, String], replyTo: ActorRef[AgentInfo]) extends AgentCommand
+  case class GetAgentInfo(replyTo: ActorRef[AgentInfo]) extends AgentCommand
+  case class CreateTask(taskId: String, data: Map[String, String], replyTo: ActorRef[TaskInfo]) extends AgentCommand
+  case class AddTaskInputData(fromTo: FromToDispatch, data: Map[String, String]) extends AgentCommand
+  case class TaskReadyToRun(taskId: String, replyTo: ActorRef[TaskInfo]) extends AgentCommand
+  case class GetResults(taskId: String, replyTo: ActorRef[Results]) extends AgentCommand
+  case class GetTaskInfo(taskId: String, replyTo: ActorRef[TaskInfo]) extends AgentCommand
   case class AddFromToDispatch(
       fromTo: FromToDispatch,
       blueprintTransition: FromToDispatchBlueprint,
-      toAgent: ActorRef[AgentMsg],
+      toAgent: ActorRef[AgentCommand],
       supervisor: ActorRef[GenericFeedback])
-      extends AgentMsg
+      extends AgentCommand
 
   // internal communication
-  private case object Ticktack extends AgentMsg
+  private case object Ticktack extends AgentCommand
 
-  private[core] case class AddResults(taskId: String, results: Map[String, String]) extends AgentMsg
+  private[core] case class AddResults(taskId: String, results: Map[String, String]) extends AgentCommand
 
   case class AgentSummary(
       agentId: WorkerId,
@@ -77,12 +78,12 @@ object AgentAct {
   case class Results(taskId: String, results: Map[String, String])
 
   enum TaskStateType:
-    case NewlyCreatedTask, TaskReadyToStart, RunningTask, TaskSuccess, TaskFailure, TaskPartialSuccess,
+    case TaskCreated, TaskReadyToStart, RunningTask, TaskSuccess, TaskFailure, TaskPartialSuccess,
       TaskReadyForResultsDispatch, TaskClosed // todo replace by a FSM
 
   def workerStateToTaskState(ws: WorkerStateType): TaskStateType = {
     ws match {
-      case WorkerStateType.DataInput => TaskStateType.NewlyCreatedTask
+      case WorkerStateType.DataInput => TaskStateType.TaskCreated
       case WorkerStateType.Success   => TaskStateType.TaskSuccess
       case WorkerStateType.Running   => TaskStateType.RunningTask
       case WorkerStateType.Failure   => TaskStateType.TaskFailure
@@ -92,32 +93,32 @@ object AgentAct {
   enum ChannelStatusType:
     case New, Completed, Failed, NotSelected
 
-  private case class WTaskWorkerResults(twr: TaskWorkerResults) extends AgentMsg
-  private case class WTaskWorkerState(tws: TaskWorkerState) extends AgentMsg
-  private case class WTaskChosenChannels(tct: TaskChosenChannels) extends AgentMsg
+  private case class WTaskWorkerResults(twr: TaskWorkerResults) extends AgentCommand
+  private case class WTaskWorkerState(tws: TaskWorkerState) extends AgentCommand
+  private case class WTaskChosenChannels(tct: TaskChosenChannels) extends AgentCommand
 
-  private case class WChannelState(channelState: DispatchPipeState) extends AgentMsg
+  private case class WChannelState(channelState: DispatchPipeState) extends AgentCommand
 
   def apply(
       agent: Agent,
       conf: Map[String, String] = Map.empty,
-      transformers: Map[String, String => String] = Map.empty): Behavior[AgentMsg] =
-    Behaviors.withTimers[AgentMsg] { timers =>
-      Behaviors.setup[AgentMsg] { ctx =>
+      transformers: Map[String, String => String] = Map.empty): Behavior[AgentCommand] =
+    Behaviors.withTimers[AgentCommand] { timers =>
+      Behaviors.setup[AgentCommand] { ctx =>
         timers.startTimerWithFixedDelay(Ticktack, 1000.millis)
         new AgentAct(agent, ctx, conf, transformers)
       }
     }
 }
 
-import org.linthaal.core.AgentAct.AgentMsg
+import org.linthaal.core.AgentAct.AgentCommand
 
 private[core] class AgentAct(
     agent: Agent,
-    context: ActorContext[AgentMsg],
+    context: ActorContext[AgentCommand],
     conf: Map[String, String],
     transformers: Map[String, String => String])
-    extends AbstractBehavior[AgentMsg](context) {
+    extends AbstractBehavior[AgentCommand](context) {
 
   import AgentAct.*
   import TaskWorkerAct.*
@@ -132,7 +133,7 @@ private[core] class AgentAct(
 
   val wtp: ActorRef[DispatchPipeState] = context.messageAdapter(w => WChannelState(w))
 
-  //todo could improve separating configuration for Agent and for worker 
+  // todo could improve separating configuration for Agent and for worker
   var configuration: Map[String, String] = conf
 
   // Following maps have the taskId as key
@@ -148,28 +149,44 @@ private[core] class AgentAct(
        | transitions size: ${transitions.size}
        | results size: ${taskResults.size}""".stripMargin
 
-  override def onMessage(msg: AgentMsg): Behavior[AgentMsg] = msg match {
+  override def onMessage(msg: AgentCommand): Behavior[AgentCommand] = msg match {
     case AddConf(conf, rt) =>
       configuration ++= conf
       rt ! AgentInfo(agentSummary("Added new conf. "))
       this
 
-    case NewTask(taskId, data, rt) =>
-      context.log.debug(s"spawning worker [${agent.workerId}] manager for taskId: [$taskId]")
-      val taskWorker: ActorRef[TaskWorkerCommand] =
-        context.spawn(TaskWorkerAct.apply(configuration, taskId, agent.behavior), s"${taskId}_worker_manager") // todo watch
-      taskActors += taskId -> taskWorker
-      taskStates += taskId -> TaskStateType.NewlyCreatedTask
-      rt ! TaskInfo(taskId, TaskStateType.NewlyCreatedTask)
-      context.log.info(info())
+    case CreateTask(taskId, data, rt) =>
+      if (!taskActors.contains(taskId)) {
+        context.log.debug(s"spawning worker [${agent.workerId}] manager for taskId: [$taskId]")
+        val taskWorker: ActorRef[TaskWorkerCommand] =
+          context.spawn(TaskWorkerAct.apply(configuration, taskId, agent.behavior), s"${taskId}_worker_manager") // todo watch
+        taskActors += taskId -> taskWorker
+        taskStates += taskId -> TaskStateType.TaskCreated
+        if (data.nonEmpty) taskWorker ! AddTaskWorkerData(data)
+        rt ! TaskInfo(taskId, TaskStateType.TaskCreated)
+        context.log.info(info())
+      } else {
+        context.log.info("Task already created. ")
+      }
       this
 
-    case AddTaskInputData(fromTo, params) =>
+    case AddTaskInputData(fromTo, data) =>
       val act = taskActors.get(fromTo.fromTask)
       if (act.isDefined) {
-        act.get ! SetTaskWorkerData(params)
+        act.get ! AddTaskWorkerData(data)
       } else {
         context.log.error("no task actor. ")
+      }
+      this
+
+    case TaskReadyToRun(tId, rt) =>
+      context.log.info(s"Task $tId is ready to run.")
+      val act = taskActors.get(tId)
+      if (act.isDefined) {
+        if (taskStates.isDefinedAt(tId) && taskStates(tId) == TaskCreated) {
+          taskStates += tId -> TaskStateType.TaskReadyToStart
+          act.get ! StartWorking(wtws)
+        }
       }
       this
 
@@ -205,7 +222,7 @@ private[core] class AgentAct(
         implicit val timeout: Timeout = Timeout(100.millis)
         val res: Future[TaskWorkerState] = actRef.ask(ref => GetTaskWorkerState(ref))
         res.onComplete {
-          case Success(wr: TaskWorkerState) => rt ! TaskInfo(taskId, workerStateToTaskState(wr.state))
+          case Success(wr: TaskWorkerState) => rt ! TaskInfo(taskId, workerStateToTaskState(wr.workerState.state))
           case Failure(_)                   => rt ! TaskInfo(taskId, TaskFailure, msg = "could not retrieve task info.")
         }
       } else {

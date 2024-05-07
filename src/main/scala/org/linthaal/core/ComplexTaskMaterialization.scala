@@ -5,11 +5,12 @@ import org.apache.pekko.actor.typed.{ ActorRef, Behavior }
 import org.linthaal.core.AgentAct.TaskStateType.{ RunningTask, TaskSuccess }
 import org.linthaal.core.AgentAct.{
   AddFromToDispatch,
-  AgentMsg,
+  AgentCommand,
   ChannelStatusType,
+  CreateTask,
   GetTaskInfo,
-  NewTask,
   TaskInfo,
+  TaskReadyToRun,
   TaskStateType
 }
 import org.linthaal.core.GenericFeedbackType.GenericSuccess
@@ -48,15 +49,17 @@ object ComplexTaskMaterialization {
 
   case class WrapGenericFeedback(genericFeedback: GenericFeedback) extends ComplexTaskCommand
 
+  // todo add state and final results
+
   def apply(
       blueprint: ComplexTaskBlueprint,
-      agents: Map[WorkerId, ActorRef[AgentMsg]],
+      agents: Map[WorkerId, ActorRef[AgentCommand]],
       conf: Map[String, String],
       params: Map[String, String]): Behavior[ComplexTaskCommand] = {
     Behaviors.withTimers[ComplexTaskCommand] { timers =>
       Behaviors.setup[ComplexTaskCommand] { ctx =>
         timers.startTimerWithFixedDelay(Ticktack, 5.seconds)
-        ctx.log.info("Starting Complex Tasks Materialization")
+        ctx.log.info(s"starting complex task materialization [${blueprint.id}]")
         new ComplexTaskMaterialization(blueprint, agents, conf, params, ctx).init()
       }
     }
@@ -65,7 +68,7 @@ object ComplexTaskMaterialization {
 
 class ComplexTaskMaterialization private (
     blueprint: ComplexTaskBlueprint,
-    agents: Map[WorkerId, ActorRef[AgentMsg]],
+    agents: Map[WorkerId, ActorRef[AgentCommand]],
     conf: Map[String, String],
     params: Map[String, String],
     context: ActorContext[ComplexTaskCommand]) {
@@ -93,8 +96,8 @@ class ComplexTaskMaterialization private (
       blueprint.startingTasks.foreach { t =>
         val taskId = UUID.randomUUID.toString
         materializedTasks += taskId -> t
-        taskStates += taskId -> TaskStateType.NewlyCreatedTask
-        agents.get(t.workerId).foreach(ag => ag ! NewTask(taskId, params, msgAdapter))
+        taskStates += taskId -> TaskStateType.TaskCreated
+        agents.get(t.workerId).foreach(ag => ag ! CreateTask(taskId, params, msgAdapter))
         context.log.debug(s"adding new child task [$taskId]")
       }
       starting()
@@ -102,13 +105,20 @@ class ComplexTaskMaterialization private (
   }
 
   private def starting(): Behavior[ComplexTaskCommand] = {
-    Behaviors.receiveMessage { case StartMat(replyTo) =>
-      materializedTasks.foreach { mt =>
-        val agt = agents.get(mt._2.workerId)
-        if (agt.nonEmpty) agt.get ! NewTask(mt._1, params, msgAdapter)
-      }
-      replyTo ! GenericFeedback(GenericSuccess, action = "Starting Mat", id = uid, "Materialization started...")
-      running()
+
+    Behaviors.receiveMessage {
+      case StartMat(replyTo) =>
+        context.log.info(s"materializing complex task [${blueprint.id}]")
+        materializedTasks.foreach { mt =>
+          val agt = agents.get(mt._2.workerId)
+          if (agt.nonEmpty) agt.get ! TaskReadyToRun(mt._1, msgAdapter)
+        }
+        replyTo ! GenericFeedback(GenericSuccess, action = "Starting Mat", id = uid, "Materialization started...")
+        running()
+
+      case other =>
+        context.log.warn(s"(starting) not processing message: $other")
+        Behaviors.same
     }
   }
 
@@ -173,7 +183,7 @@ class ComplexTaskMaterialization private (
       else
         val newTask = UUID.randomUUID.toString -> t.get
         materializedTasks += newTask
-        taskStates += newTask._1 -> TaskStateType.NewlyCreatedTask
+        taskStates += newTask._1 -> TaskStateType.TaskCreated
 //        agents.get(t.get.workerId).foreach(ag => ag ! NewTask(newTask._1, msgAdapter))
         context.log.debug(s"adding new child task [${newTask._1}]")
         Some(newTask)

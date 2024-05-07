@@ -34,8 +34,8 @@ object WorkerExamples {
             ctx.log.debug(s"""added more worker data: ${d.mkString(",")}""")
             dataInput(conf, nd)
 
-          case AddingDataCompleted =>
-            ctx.log.info("Adding data completed, starting working...")
+          case StartWorker(rt) =>
+            ctx.log.info(s"starting working on data: ${enoughButNotTooMuchInfo(data.mkString(","), 30)}")
             // do the work here (could spawn a actor hierarchy and manage it from here)
             val results = data.map(kv => kv._1 -> kv._2.toUpperCase)
             ctx.log.info(s"results: ${results.mkString(", ")}")
