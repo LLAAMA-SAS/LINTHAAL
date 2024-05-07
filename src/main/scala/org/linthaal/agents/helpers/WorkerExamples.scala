@@ -2,8 +2,8 @@ package org.linthaal.agents.helpers
 
 import org.apache.pekko.actor.typed.Behavior
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
-import org.linthaal.core.adt.*
-import org.linthaal.core.adt.WorkerStateType.DataInput
+import org.linthaal.core.withblueprint.adt.{AddWorkerConf, AddWorkerData, Agent, GetWorkerChannels, GetWorkerResults, GetWorkerState, PickedUpChannels, StartWorker, WorkerCommand, WorkerId, WorkerResults, WorkerState, WorkerStateType}
+import org.linthaal.core.withblueprint.adt.WorkerStateType.DataInput
 import org.linthaal.helpers.enoughButNotTooMuchInfo
 
 /** This program is free software: you can redistribute it and/or modify it under the terms of the

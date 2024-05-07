@@ -4,7 +4,7 @@ import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.linthaal.helpers.enoughButNotTooMuchInfo
 import EutilsADT.{PMAbstract, PMIdSearchResults}
-import org.linthaal.core.AgentAct.AgentCommand
+import org.linthaal.core.withblueprint.AgentAct.AgentCommand
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}

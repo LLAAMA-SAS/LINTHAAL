@@ -1,12 +1,13 @@
-package org.linthaal.core
+package org.linthaal.core.withblueprint
 
 import org.apache.pekko.actor.typed.scaladsl.{ActorContext, Behaviors}
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
-import org.linthaal.core.AgentAct.AgentCommand
-import org.linthaal.core.Materializations.MaterializationCommand
-import org.linthaal.core.ComplexTaskMaterialization.{ComplexTaskCommand, StartMat}
+import org.linthaal.core.{GenericFeedback, GenericFeedbackType}
+import org.linthaal.core.withblueprint.AgentAct.AgentCommand
+import org.linthaal.core.withblueprint.Materializations.MaterializationCommand
+import org.linthaal.core.withblueprint.ComplexTaskMaterialization.{ComplexTaskCommand, StartMat}
 import org.linthaal.core.GenericFeedbackType.{GenericFailure, GenericSuccess, GenericWarning}
-import org.linthaal.core.adt.{Agent, ComplexTaskBlueprint, WorkerId}
+import org.linthaal.core.withblueprint.adt.{Agent, ComplexTaskBlueprint, WorkerId}
 import org.linthaal.helpers.DateAndTimeHelpers.getCurrentDate_ms_
 
 import java.util.UUID

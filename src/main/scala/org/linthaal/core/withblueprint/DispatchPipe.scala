@@ -1,12 +1,12 @@
-package org.linthaal.core
+package org.linthaal.core.withblueprint
 
 import org.apache.pekko.actor.Actor
 import org.apache.pekko.actor.typed.scaladsl.AbstractBehavior
 import org.apache.pekko.actor.typed.{ ActorRef, Behavior }
 import org.apache.pekko.actor.typed.scaladsl.{ ActorContext, Behaviors }
-import org.linthaal.core.AgentAct.{ AddTaskInputData, AgentCommand, Results, TaskInfo }
-import org.linthaal.core.DispatchPipe.PipeStateType.Completed
-import org.linthaal.core.DispatchPipe.{ DispatchPipeMsg, DispatchPipeState, FromToDispatch, GetState, OutputInput }
+import org.linthaal.core.withblueprint.AgentAct.{ AddTaskInputData, AgentCommand, Results, TaskInfo }
+import org.linthaal.core.withblueprint.DispatchPipe.PipeStateType.Completed
+import org.linthaal.core.withblueprint.DispatchPipe.{ DispatchPipeMsg, DispatchPipeState, FromToDispatch, GetState, OutputInput }
 
 /** This program is free software: you can redistribute it and/or modify it under the terms of the
   * GNU General Public License as published by the Free Software Foundation, either version 3 of the

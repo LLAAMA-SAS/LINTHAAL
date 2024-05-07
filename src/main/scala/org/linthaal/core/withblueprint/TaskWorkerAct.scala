@@ -1,9 +1,10 @@
-package org.linthaal.core
+package org.linthaal.core.withblueprint
 
 import org.apache.pekko.actor.typed.scaladsl.{ActorContext, Behaviors}
 import org.apache.pekko.actor.typed.{ActorRef, ActorSystem, Behavior}
 import org.apache.pekko.util.Timeout
-import org.linthaal.core.adt.*
+import org.linthaal.core.withblueprint.TaskWorkerAct.TaskWorkerCommand
+import org.linthaal.core.withblueprint.adt.*
 
 import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future}
@@ -50,8 +51,6 @@ object TaskWorkerAct {
     }
   }
 }
-
-import org.linthaal.core.TaskWorkerAct.TaskWorkerCommand
 class TaskWorkerAct private (
     conf: Map[String, String],
     taskId: String,

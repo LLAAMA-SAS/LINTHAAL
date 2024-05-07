@@ -1,17 +1,18 @@
-package org.linthaal.core
+package org.linthaal.core.withblueprint
 
-import org.apache.pekko.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors }
-import org.apache.pekko.actor.typed.{ ActorRef, Behavior, Props, SpawnProtocol }
+import org.apache.pekko.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
+import org.apache.pekko.actor.typed.{ActorRef, Behavior, Props, SpawnProtocol}
 import org.apache.pekko.util.Timeout
-import org.linthaal.core.AgentAct.TaskStateType.TaskFailure
-import org.linthaal.core.TaskWorkerAct.{ TaskChosenChannels, TaskWorkerResults, TaskWorkerState }
-import org.linthaal.core.DispatchPipe.{ DispatchPipeMsg, DispatchPipeState, FromToDispatch, OutputInput }
-import org.linthaal.core.adt.*
+import org.linthaal.core.{GenericFeedback, stringForActorName}
+import org.linthaal.core.withblueprint.AgentAct.TaskStateType.TaskFailure
+import org.linthaal.core.withblueprint.TaskWorkerAct.{TaskChosenChannels, TaskWorkerResults, TaskWorkerState}
+import org.linthaal.core.withblueprint.DispatchPipe.{DispatchPipeMsg, DispatchPipeState, FromToDispatch, OutputInput}
+import org.linthaal.core.withblueprint.adt.{Agent, FromToDispatchBlueprint, WorkerId, WorkerStateType}
 import org.linthaal.helpers.*
 
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
-import scala.util.{ Failure, Success }
+import scala.util.{Failure, Success}
 
 /** This program is free software: you can redistribute it and/or modify it under the terms of the
   * GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -111,7 +112,7 @@ object AgentAct {
     }
 }
 
-import org.linthaal.core.AgentAct.AgentCommand
+import org.linthaal.core.withblueprint.AgentAct.AgentCommand
 
 private[core] class AgentAct(
     agent: Agent,
@@ -122,7 +123,7 @@ private[core] class AgentAct(
 
   import AgentAct.*
   import TaskWorkerAct.*
-  import GenericFeedbackType.*
+  import org.linthaal.core.GenericFeedbackType.*
   import TaskStateType.*
 
   context.log.debug(s"Started new actor as Agent for ${agent.workerId}")

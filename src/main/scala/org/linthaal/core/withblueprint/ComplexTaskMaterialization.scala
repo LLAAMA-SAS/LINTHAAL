@@ -1,22 +1,14 @@
-package org.linthaal.core
+package org.linthaal.core.withblueprint
 
-import org.apache.pekko.actor.typed.scaladsl.{ ActorContext, Behaviors }
-import org.apache.pekko.actor.typed.{ ActorRef, Behavior }
-import org.linthaal.core.AgentAct.TaskStateType.{ RunningTask, TaskSuccess }
-import org.linthaal.core.AgentAct.{
-  AddFromToDispatch,
-  AgentCommand,
-  ChannelStatusType,
-  CreateTask,
-  GetTaskInfo,
-  TaskInfo,
-  TaskReadyToRun,
-  TaskStateType
-}
+import org.apache.pekko.actor.typed.scaladsl.{ActorContext, Behaviors}
+import org.apache.pekko.actor.typed.{ActorRef, Behavior}
+import org.linthaal.core.GenericFeedback
+import org.linthaal.core.withblueprint.AgentAct.TaskStateType.{RunningTask, TaskSuccess}
+import org.linthaal.core.withblueprint.AgentAct.{AddFromToDispatch, AgentCommand, ChannelStatusType, CreateTask, GetTaskInfo, TaskInfo, TaskReadyToRun, TaskStateType}
 import org.linthaal.core.GenericFeedbackType.GenericSuccess
-import org.linthaal.core.DispatchPipe.{ DispatchPipeMsg, FromToDispatch }
-import org.linthaal.core.ComplexTaskMaterialization.{ ComplexTaskCommand, StartMat }
-import org.linthaal.core.adt.*
+import org.linthaal.core.withblueprint.DispatchPipe.{DispatchPipeMsg, FromToDispatch}
+import org.linthaal.core.withblueprint.ComplexTaskMaterialization.{ComplexTaskCommand, StartMat}
+import org.linthaal.core.withblueprint.adt.{ComplexTaskBlueprint, FromToDispatchBlueprint, TaskBlueprint, WorkerId}
 import org.linthaal.helpers.DateAndTimeHelpers
 
 import java.util.UUID

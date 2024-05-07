@@ -1,4 +1,4 @@
-package org.linthaal.core.adt
+package org.linthaal.core.withblueprint.adt
 
 import org.linthaal.helpers
 

@@ -20,5 +20,5 @@ package object core {
     override def toString: String = s"""$feedbackType $action $id [$msg]"""
   }
   
-  def stringForActorName(string: String) = string.trim.replaceAll("\\s", "_").replaceAll("\\.", "_").replaceAll("\\-", "_") //todo test?
+  def stringForActorName(string: String) = string.trim.replaceAll("\\s", "_").replaceAll("\\.", "_").replaceAll("-", "_") //todo test?
 }

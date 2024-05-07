@@ -1,9 +1,10 @@
-package org.linthaal.core
+package org.linthaal.core.withblueprint
 
 import org.apache.pekko.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import org.linthaal.agents.helpers.WorkerExamples
-import org.linthaal.core.Materializations.{AddBlueprint, StartAgent, NewMaterialization}
-import org.linthaal.core.adt.{TaskBlueprint, ComplexTaskBlueprint}
+import org.linthaal.core.withblueprint.Materializations.{AddBlueprint, NewMaterialization, StartAgent}
+import org.linthaal.core.withblueprint.adt.{ComplexTaskBlueprint, TaskBlueprint}
+import org.linthaal.core.{GenericFeedback}
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.duration.DurationInt

@@ -1,4 +1,4 @@
-package org.linthaal.core.adt
+package org.linthaal.core.withblueprint.adt
 
 import org.apache.pekko.actor.typed.ActorRef
 import org.linthaal.core.GenericFeedback

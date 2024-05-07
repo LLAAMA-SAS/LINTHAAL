@@ -1,7 +1,7 @@
-package org.linthaal.core.adt
+package org.linthaal.core.withblueprint.adt
 
 import org.apache.pekko.actor.typed.{ ActorRef, Behavior }
-import org.linthaal.core.adt.Agent.CheckedParams
+import Agent.CheckedParams
 import org.linthaal.helpers
 
 /** This program is free software: you can redistribute it and/or modify it under the terms of the
