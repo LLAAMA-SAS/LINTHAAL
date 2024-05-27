@@ -1,13 +1,13 @@
 package org.linthaal.api.routes
 
-import org.apache.pekko.actor.typed.scaladsl.AskPattern.*
-import org.apache.pekko.actor.typed.{ ActorRef, ActorSystem }
-import org.apache.pekko.util.Timeout
+import akka.actor.typed.scaladsl.AskPattern.*
+import akka.actor.typed.{ ActorRef, ActorSystem }
+import akka.util.Timeout
 
 import scala.concurrent.Future
-import org.apache.pekko.http.scaladsl.model.StatusCodes
-import org.apache.pekko.http.scaladsl.server.Directives.*
-import org.apache.pekko.http.scaladsl.server.Route
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Directives.*
+import akka.http.scaladsl.server.Route
 import org.linthaal.qa.primekg.PrimeKGQA.PrimeKGAnswer
 import org.linthaal.qa.primekg.PrimeKGQARouter
 import org.linthaal.qa.primekg.PrimeKGQARouter.StartQA
@@ -27,7 +27,7 @@ import org.linthaal.qa.primekg.PrimeKGQARouter.StartQA
  */
 final class PrimeKGQARoutes(primeKGQARouter: ActorRef[PrimeKGQARouter.Command])(implicit val system: ActorSystem[_]) {
 
-  import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
+  import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
   import org.linthaal.api.protocols.APIJsonFormats.*
 
   private implicit val timeout: Timeout = Timeout.create(system.settings.config.getDuration("linthaal.routes.ask-timeout"))

@@ -1,6 +1,6 @@
 package org.linthaal
 
-import org.apache.pekko.actor.typed.ActorSystem
+import akka.actor.typed.ActorSystem
 import org.linthaal.core.withblueprint.Materializations
 import org.linthaal.core.withblueprint.Materializations.MaterializationCommand
 import org.linthaal.helpers.{ApiKeys, Parameters}

@@ -1,7 +1,7 @@
 package org.linthaal.tot.pubmed.caching
 
-import org.apache.pekko.actor.typed.Behavior
-import org.apache.pekko.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.Behavior
+import akka.actor.typed.scaladsl.Behaviors
 import org.linthaal.tot.pubmed.caching.CachePubMedResults.CachedResults
 
 /** This program is free software: you can redistribute it and/or modify it

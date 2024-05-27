@@ -21,4 +21,7 @@ package object core {
   }
   
   def stringForActorName(string: String) = string.trim.replaceAll("\\s", "_").replaceAll("\\.", "_").replaceAll("-", "_") //todo test?
+  
+  enum GenericTaskStateType: 
+    case Running, Failed, Succeeded  
 }

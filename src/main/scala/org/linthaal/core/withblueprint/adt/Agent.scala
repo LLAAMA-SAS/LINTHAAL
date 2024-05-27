@@ -1,6 +1,6 @@
 package org.linthaal.core.withblueprint.adt
 
-import org.apache.pekko.actor.typed.{ ActorRef, Behavior }
+import akka.actor.typed.{ ActorRef, Behavior }
 import Agent.CheckedParams
 import org.linthaal.helpers
 

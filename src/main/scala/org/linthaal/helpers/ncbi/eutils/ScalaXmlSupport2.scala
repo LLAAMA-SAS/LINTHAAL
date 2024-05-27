@@ -24,9 +24,9 @@ import java.io.{ ByteArrayInputStream, InputStreamReader }
 import javax.xml.parsers.{ SAXParser, SAXParserFactory }
 import scala.collection.immutable
 import scala.xml.{ NodeSeq, XML }
-import org.apache.pekko.http.scaladsl.unmarshalling._
-import org.apache.pekko.http.scaladsl.marshalling._
-import org.apache.pekko.http.scaladsl.model._
+import akka.http.scaladsl.unmarshalling._
+import akka.http.scaladsl.marshalling._
+import akka.http.scaladsl.model._
 import MediaTypes._
 
 trait ScalaXmlSupport2 {

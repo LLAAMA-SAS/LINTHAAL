@@ -1,16 +1,16 @@
 package org.linthaal.ai.services.huggingface
 
-import org.apache.pekko.actor.typed.ActorSystem
+import akka.actor.typed.ActorSystem
 import org.linthaal.ai.services.huggingface.HuggingFaceInferencePromptService.*
 import org.linthaal.helpers.ApiKeys
 import spray.json._
-import org.apache.pekko.actor.typed.ActorSystem
-import org.apache.pekko.http.scaladsl.Http
-import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
-import org.apache.pekko.http.scaladsl.model._
-import org.apache.pekko.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
-import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
-import org.apache.pekko.stream.scaladsl.{ Sink, Source }
+import akka.actor.typed.ActorSystem
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
+import akka.http.scaladsl.unmarshalling.Unmarshal
+import akka.stream.scaladsl.{ Sink, Source }
 import org.linthaal.ai.services.huggingface.SimplePromptJsonProt
 
 import scala.concurrent.Future

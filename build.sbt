@@ -1,6 +1,5 @@
 import BuildHelper.*
 import com.typesafe.sbt.SbtNativePackager.autoImport.NativePackagerHelper.*
-import Dependencies.*
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
@@ -20,20 +19,8 @@ lazy val root =
     .enablePlugins(JavaAppPackaging, DockerPlugin, DockerSpotifyClientPlugin)
     .settings(scalaVersion := "3.3.1")
     .settings(scalacOptions := stdOptions)
-    .settings(
-      libraryDependencies ++= Seq(
-        pekkoActor,
-        pekkoStream,
-        pekkoHttp,
-        pekkoSprayJson,
-        pekkoHttpXml,
-        logbackClassic,
-        scalaUri,
-        commonsCodec,
-        neo4jDriver,
-        pekkoActorTestkit,
-        scalaTest,
-        upickle))
+    .settings(resolvers ++= ExtResolvers.extRes)
+    .settings(libraryDependencies ++=Dependencies.linthaalDeps)
     .settings(run / fork := true)
     .settings(Compile / mainClass := Some("org.linthaal.Linthaal"))
     .settings(Universal / mappings ++= directory("user"))

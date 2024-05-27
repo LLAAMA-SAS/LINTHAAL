@@ -1,7 +1,7 @@
 package org.linthaal.ai.services.huggingface
 
-import org.apache.pekko.actor.typed.scaladsl.Behaviors
-import org.apache.pekko.actor.typed.{ ActorRef, Behavior }
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ ActorRef, Behavior }
 import org.linthaal.ai.services.AIResponse
 
 import scala.concurrent.Future

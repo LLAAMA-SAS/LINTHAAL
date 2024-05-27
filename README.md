@@ -19,7 +19,7 @@ caching data, pre-processed data or results or acting as endpoints for external 
 
 Linthaal can build graph-of-thought with thousands of agents distributed over multiple machines. 
 
-Linthaal is written in Scala and using the Apache Pekko library for Actors, clustering, etc.
+Linthaal is written in Scala and using the Apache akka library for Actors, clustering, etc.
 
 The library provides agents for common task related to Computational Biology and interacting with LLMs.
 

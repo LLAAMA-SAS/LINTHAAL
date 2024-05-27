@@ -33,13 +33,13 @@ case class TaskBlueprint(name: String, workerId: WorkerId, timeOut: FiniteDurati
 /**
  * Results produced by a task can be used as input by another task, this transmission channel is defined by
  * the FromToDispatchBlueprint.
- * A transformer key can be given to transform the output format through a transformer function.
+ * A transformer function can be given to transform the output format to another. 
  *
  * @param fromTask
  * @param toTask
  * @param transformer
  */
-case class FromToDispatchBlueprint(fromTask: String, toTask: String, transformer: String = "") {
+case class FromToDispatchBlueprint(fromTask: String, toTask: String, transformer:Option[String => String] = None) {
   override def toString: String = s"[$fromTask]~>[$transformer]~>[$toTask]"
 }
 

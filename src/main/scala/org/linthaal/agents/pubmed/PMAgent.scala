@@ -1,10 +1,10 @@
 package org.linthaal.agents.pubmed
 
-import org.apache.pekko.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import org.apache.pekko.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
+import akka.actor.typed.{ActorRef, Behavior}
 import org.linthaal.core.withblueprint.AgentAct.AgentCommand
 import org.linthaal.core.withblueprint.DispatchPipe
-import org.linthaal.core.withblueprint.DispatchPipe.DispatchPipeMsg
+import org.linthaal.core.withblueprint.DispatchPipe.DispatchPipeCmd
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.helpers.ncbi.eutils.PMActor.{NotSoGraceFullShutdown, PMAbstracts, PMCommand, GetStatus as PMGetStatus}
 import org.linthaal.helpers.ncbi.eutils.{EutilsADT, EutilsCalls, PMActor}

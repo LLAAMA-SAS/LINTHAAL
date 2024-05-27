@@ -1,18 +1,18 @@
 package org.linthaal.core.withblueprint
 
-import org.apache.pekko.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import org.apache.pekko.actor.typed.{ActorRef, Behavior, Props, SpawnProtocol}
-import org.apache.pekko.util.Timeout
+import akka.actor.typed.scaladsl.TimerScheduler
+import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
+import akka.actor.typed.{ActorRef, Behavior, Props, SpawnProtocol}
+import akka.util.Timeout
+import org.linthaal.core.withblueprint.AgentAct.AgentCmdAndTWorkResp
 import org.linthaal.core.{GenericFeedback, stringForActorName}
-import org.linthaal.core.withblueprint.AgentAct.TaskStateType.TaskFailure
-import org.linthaal.core.withblueprint.TaskWorkerAct.{TaskChosenChannels, TaskWorkerResults, TaskWorkerState}
-import org.linthaal.core.withblueprint.DispatchPipe.{DispatchPipeMsg, DispatchPipeState, FromToDispatch, OutputInput}
-import org.linthaal.core.withblueprint.adt.{Agent, FromToDispatchBlueprint, WorkerId, WorkerStateType}
+import org.linthaal.core.withblueprint.TaskWorkerAct.{TaskWorkerResp, TaskWorkerResults, TaskWorkerState}
+import org.linthaal.core.withblueprint.DispatchPipe.{DispatchPipeCmd, DispatchPipeState, FromToDispatch, OutputInput, PipeStateType}
+import org.linthaal.core.withblueprint.adt.{Agent, FromToDispatchBlueprint, WorkerId, WorkerState, WorkerStateType}
 import org.linthaal.helpers.*
 
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
-import scala.util.{Failure, Success}
 
 /** This program is free software: you can redistribute it and/or modify it under the terms of the
   * GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -30,141 +30,108 @@ import scala.util.{Failure, Success}
   */
 object AgentAct {
 
-  enum AgentInfoType:
-    case Info, Warning, Failing
-
-  case class AgentInfo(msg: AgentSummary, agentInfoType: AgentInfoType = AgentInfoType.Info)
-
   sealed trait AgentCommand
 
-  case class AddConf(conf: Map[String, String], replyTo: ActorRef[AgentInfo]) extends AgentCommand
+  case class AddConf(conf: Map[String, String]) extends AgentCommand
   case class GetAgentInfo(replyTo: ActorRef[AgentInfo]) extends AgentCommand
-  case class CreateTask(taskId: String, data: Map[String, String], replyTo: ActorRef[TaskInfo]) extends AgentCommand
-  case class AddTaskInputData(fromTo: FromToDispatch, data: Map[String, String]) extends AgentCommand
-  case class TaskReadyToRun(taskId: String, replyTo: ActorRef[TaskInfo]) extends AgentCommand
-  case class GetResults(taskId: String, replyTo: ActorRef[Results]) extends AgentCommand
-  case class GetTaskInfo(taskId: String, replyTo: ActorRef[TaskInfo]) extends AgentCommand
-  case class AddFromToDispatch(
-      fromTo: FromToDispatch,
-      blueprintTransition: FromToDispatchBlueprint,
-      toAgent: ActorRef[AgentCommand],
-      supervisor: ActorRef[GenericFeedback])
+
+  case class CreateTask(taskId: String, data: Map[String, String]) extends AgentCommand
+  case class TaskReadyToRun(taskId: String) extends AgentCommand
+  case class GetResults(taskId: String, replyTo: ActorRef[TaskResults]) extends AgentCommand
+  case class GetLastTaskStatus(taskId: String, replyTo: ActorRef[TaskInfo]) extends AgentCommand
+
+  case class AddFromToDispatch(fromTo: FromToDispatch, dispatchBlueprint: FromToDispatchBlueprint, toAgent: ActorRef[AgentCommand])
       extends AgentCommand
 
+  case class AddTaskInputData(fromTo: FromToDispatch, data: Map[String, String]) extends AgentCommand
+
   // internal communication
-  private case object Ticktack extends AgentCommand
+  private case object AgentTick extends AgentCommand
 
-  private[core] case class AddResults(taskId: String, results: Map[String, String]) extends AgentCommand
+  private type AgentCmdAndTWorkResp = AgentCommand | TaskWorkerResp | DispatchPipeState
 
-  case class AgentSummary(
-      agentId: WorkerId,
-      totalTasks: Int,
-      runningTasks: Int,
-      completedTasks: Int,
-      failedTasks: Int,
-      totalTransitions: Int,
-      completedTransitions: Int,
-      comment: String = "") {
+  case class AgentInfo(agentId: WorkerId, totalTasks: Int, openTasks: Int, closedTasks: Int, comment: String = "") {
     override def toString: String =
       s"""[ID: $agentId]-[$comment] total Tasks: $totalTasks,
-         |Running Tasks: $runningTasks, Completed Tasks: $completedTasks,
-         |Failed Tasks: $failedTasks, Transitions: $totalTransitions, Completed Transitions: $completedTransitions""".stripMargin
+         |Open Tasks: $openTasks, Closed Tasks: $closedTasks,
+         """.stripMargin
   }
 
-  case class TaskInfo(taskId: String, state: TaskStateType, percentCompleted: Int = 0, transitions: Int = 0, msg: String = "") {
-    override def toString: String =
-      s"""task: ${taskId} - state: $state - % $percentCompleted - transitions: $transitions - ${enoughButNotTooMuchInfo(msg)}"""
+  enum AgentTaskStateType:
+    case Open, Closed
+
+  sealed trait AgentResponse
+
+  case class TaskInfo(
+      agentId: String,
+      taskWorkerState: TaskWorkerState = TaskWorkerState(),
+      state: AgentTaskStateType = AgentTaskStateType.Open)
+      extends AgentResponse {
+    override def toString: String = s"Agent: [$agentId] - State: [$state] - WorkerState: ${taskWorkerState.toString}}"
   }
 
-  case class Results(taskId: String, results: Map[String, String])
-
-  enum TaskStateType:
-    case TaskCreated, TaskReadyToStart, RunningTask, TaskSuccess, TaskFailure, TaskPartialSuccess,
-      TaskReadyForResultsDispatch, TaskClosed // todo replace by a FSM
-
-  def workerStateToTaskState(ws: WorkerStateType): TaskStateType = {
-    ws match {
-      case WorkerStateType.DataInput => TaskStateType.TaskCreated
-      case WorkerStateType.Success   => TaskStateType.TaskSuccess
-      case WorkerStateType.Running   => TaskStateType.RunningTask
-      case WorkerStateType.Failure   => TaskStateType.TaskFailure
-    }
-  }
-
-  enum ChannelStatusType:
-    case New, Completed, Failed, NotSelected
-
-  private case class WTaskWorkerResults(twr: TaskWorkerResults) extends AgentCommand
-  private case class WTaskWorkerState(tws: TaskWorkerState) extends AgentCommand
-  private case class WTaskChosenChannels(tct: TaskChosenChannels) extends AgentCommand
-
-  private case class WChannelState(channelState: DispatchPipeState) extends AgentCommand
+  case class TaskResults(taskId: String, results: Map[String, String]) extends AgentResponse
 
   def apply(
       agent: Agent,
       conf: Map[String, String] = Map.empty,
       transformers: Map[String, String => String] = Map.empty): Behavior[AgentCommand] =
-    Behaviors.withTimers[AgentCommand] { timers =>
-      Behaviors.setup[AgentCommand] { ctx =>
-        timers.startTimerWithFixedDelay(Ticktack, 1000.millis)
-        new AgentAct(agent, ctx, conf, transformers)
+    Behaviors
+      .setup[AgentCmdAndTWorkResp] { ctx =>
+        Behaviors.withTimers[AgentCmdAndTWorkResp] { timers =>
+          new AgentAct(agent, ctx, timers, conf, transformers)
+        }
       }
-    }
+      .narrow
 }
-
-import org.linthaal.core.withblueprint.AgentAct.AgentCommand
 
 private[core] class AgentAct(
     agent: Agent,
-    context: ActorContext[AgentCommand],
+    context: ActorContext[AgentCmdAndTWorkResp],
+    timers: TimerScheduler[AgentCmdAndTWorkResp],
     conf: Map[String, String],
     transformers: Map[String, String => String])
-    extends AbstractBehavior[AgentCommand](context) {
+    extends AbstractBehavior[AgentCmdAndTWorkResp](context) {
 
   import AgentAct.*
   import TaskWorkerAct.*
   import org.linthaal.core.GenericFeedbackType.*
-  import TaskStateType.*
+  import AgentTaskStateType.*
 
   context.log.debug(s"Started new actor as Agent for ${agent.workerId}")
 
-  val wtwr: ActorRef[TaskWorkerResults] = context.messageAdapter(w => WTaskWorkerResults(w))
-  val wtws: ActorRef[TaskWorkerState] = context.messageAdapter(w => WTaskWorkerState(w))
-  val wtct: ActorRef[TaskChosenChannels] = context.messageAdapter(w => WTaskChosenChannels(w))
-
-  val wtp: ActorRef[DispatchPipeState] = context.messageAdapter(w => WChannelState(w))
-
   // todo could improve separating configuration for Agent and for worker
-  var configuration: Map[String, String] = conf
+  private var configuration: Map[String, String] = conf
 
-  // Following maps have the taskId as key
-  var taskActors: Map[String, ActorRef[TaskWorkerCommand]] = Map.empty
-  var taskStates: Map[String, TaskStateType] = Map.empty
-  var taskResults: Map[String, Map[String, String]] = Map.empty
+  // Following maps have taskId as key
+  private var taskActors: Map[String, ActorRef[TaskWorkerCommand]] = Map.empty
+  private var taskStates: Map[String, (AgentTaskStateType, TaskWorkerState)] = Map.empty // state at agent level and worker level
+  private var taskResults: Map[String, Map[String, String]] = Map.empty
 
-  var transitions: Map[FromToDispatch, (FromToDispatchBlueprint, ActorRef[DispatchPipeMsg])] = Map.empty
-  var transitionStates: Map[FromToDispatch, ChannelStatusType] = Map.empty
+  private var transitions: Map[FromToDispatch, (FromToDispatchBlueprint, ActorRef[DispatchPipeCmd])] = Map.empty
+  private var transitionStates: Map[FromToDispatch, PipeStateType] = Map.empty
+
+  timers.startTimerWithFixedDelay(AgentTick, 5.seconds)
 
   def info(): String =
-    s"""agentId: [${agent}] taskActors size: ${taskActors.size}
-       | transitions size: ${transitions.size}
+    s"""agentId: [${agent.workerId}] taskActors size: ${taskActors.size}
        | results size: ${taskResults.size}""".stripMargin
 
-  override def onMessage(msg: AgentCommand): Behavior[AgentCommand] = msg match {
-    case AddConf(conf, rt) =>
+  override def onMessage(msg: AgentCommand): Behavior[AgentCmdAndTWorkResp] = msg match {
+    case AddConf(conf) =>
       configuration ++= conf
-      rt ! AgentInfo(agentSummary("Added new conf. "))
       this
 
-    case CreateTask(taskId, data, rt) =>
+    case CreateTask(taskId, data) =>
       if (!taskActors.contains(taskId)) {
         context.log.debug(s"spawning worker [${agent.workerId}] manager for taskId: [$taskId]")
         val taskWorker: ActorRef[TaskWorkerCommand] =
-          context.spawn(TaskWorkerAct.apply(configuration, taskId, agent.behavior), s"${taskId}_worker_manager") // todo watch
+          context.spawn(TaskWorkerAct.apply(taskId, configuration, List.empty, agent.behavior), s"${taskId}_worker_manager") // todo fix
         taskActors += taskId -> taskWorker
-        taskStates += taskId -> TaskStateType.TaskCreated
+        taskStates += taskId -> (Open, TaskWorkerState(
+          taskId,
+          WorkerState(state = WorkerStateType.Ready, msg = "New task. taskId: $taskId ")))
         if (data.nonEmpty) taskWorker ! AddTaskWorkerData(data)
-        rt ! TaskInfo(taskId, TaskStateType.TaskCreated)
         context.log.info(info())
       } else {
         context.log.info("Task already created. ")
@@ -172,7 +139,7 @@ private[core] class AgentAct(
       this
 
     case AddTaskInputData(fromTo, data) =>
-      val act = taskActors.get(fromTo.fromTask)
+      val act = taskActors.get(fromTo.toTask)
       if (act.isDefined) {
         act.get ! AddTaskWorkerData(data)
       } else {
@@ -180,90 +147,86 @@ private[core] class AgentAct(
       }
       this
 
-    case TaskReadyToRun(tId, rt) =>
+    case TaskReadyToRun(tId) =>
       context.log.info(s"Task $tId is ready to run.")
       val act = taskActors.get(tId)
       if (act.isDefined) {
-        if (taskStates.isDefinedAt(tId) && taskStates(tId) == TaskCreated) {
-          taskStates += tId -> TaskStateType.TaskReadyToStart
-          act.get ! StartWorking(wtws)
-        }
+        act.get ! StartWorking(context.self)
       }
       this
 
     case GetAgentInfo(rt) =>
-      rt ! AgentInfo(agentSummary())
-      this
-
-    case AddResults(tId, results) =>
-      val existingRes = taskResults.getOrElse(tId, Map.empty)
-      val newRes = existingRes ++ results
-      taskResults += tId -> newRes
+      rt ! agentSummary()
       this
 
     case GetResults(taskId, rt) =>
-      rt ! Results(taskId, taskResults.getOrElse(taskId, Map.empty))
+      rt ! TaskResults(taskId, taskResults.getOrElse(taskId, Map.empty))
       this
 
-    case AddFromToDispatch(fromTo, bpTrans, toAgent, rt) =>
-      val transActor: ActorRef[DispatchPipeMsg] =
-        context.spawn(DispatchPipe.apply(fromTo, toAgent, transformers, wtp), stringForActorName(fromTo.toString))
+    case AddFromToDispatch(fromTo, fromToBlueprint, toAgent) =>
+      val transActor: ActorRef[DispatchPipeCmd] =
+        context.spawn(DispatchPipe.apply(fromTo, toAgent, transformers, context.self),
+          stringForActorName(fromTo.toString))
 
-      transitions += fromTo -> (bpTrans, transActor)
-      transitionStates += fromTo -> ChannelStatusType.New
-      rt ! GenericFeedback(GenericInfo, "adding transition ")
+      transitions += fromTo -> (fromToBlueprint, transActor)
+      transitionStates += fromTo -> PipeStateType.New
       this
 
-    case GetTaskInfo(taskId, rt) =>
-      if (taskActors.isDefinedAt(taskId)) {
-        val actRef = taskActors(taskId)
-        import org.apache.pekko.actor.typed.scaladsl.AskPattern._
-        implicit val ec = context.executionContext
-        implicit val as = context.system
-        implicit val timeout: Timeout = Timeout(100.millis)
-        val res: Future[TaskWorkerState] = actRef.ask(ref => GetTaskWorkerState(ref))
-        res.onComplete {
-          case Success(wr: TaskWorkerState) => rt ! TaskInfo(taskId, workerStateToTaskState(wr.workerState.state))
-          case Failure(_)                   => rt ! TaskInfo(taskId, TaskFailure, msg = "could not retrieve task info.")
-        }
-      } else {
-        rt ! TaskInfo(taskId, TaskFailure, msg = "Task not defined.")
+    case GetLastTaskStatus(taskId, rt) =>
+      context.log.debug(s"getting task info for taskId: $taskId")
+      if (taskStates.contains(taskId)) {
+        val ts = taskStates(taskId)
+        rt ! TaskInfo(taskId, ts._2, ts._1)
+      } else
+        context.log.error(s"taskId: $taskId does not seem to exist.")
+      this
+
+    case AgentTick =>
+      context.log.debug("Tick in Agent. ")
+
+      // request state from supposedly running tasks
+      val openT = openRunningTasks()
+      taskActors.filter(ta => openT.contains(ta._1)).foreach(a => a._2 ! GetTaskWorkerState(context.self))
+      this
+
+    case twr: TaskWorkerResp =>
+      twr match {
+        case TaskWorkerResults(taskId, results) =>
+          context.log.debug(s"taskId: $taskId results: ${enoughButNotTooMuchInfo(results.mkString)}")
+          taskResults += taskId -> results
+          
+
+        case TaskWorkerState(taskId, state) =>
+          context.log.debug(s"taksId: $taskId state: $state")
+
       }
       this
-
-    case Ticktack =>
-      // go through all the tasks, check their status, if success or partial success, ....start transitions
-      val successTasks = taskStates.filter(t => t._2 == TaskSuccess || t._2 == TaskPartialSuccess)
-
-      val transitionsToTrigger = transitions.filter(t => successTasks.keySet.contains(t._1.fromTask))
-      transitionsToTrigger.foreach { kv =>
-        kv._2._2 ! OutputInput(taskResults.getOrElse(kv._1.fromTask, Map.empty))
-      }
-      this
-
-    case WTaskWorkerResults(twr) =>
-      context.log.debug(twr.toString)
-      this
-
-    case WTaskWorkerState(tws) =>
-      context.log.debug(tws.toString)
-      this
-
-    case WTaskChosenChannels(twct) =>
-      context.log.debug(twct.toString)
-      this
-
   }
 
-  private def agentSummary(cmt: String = ""): AgentSummary =
-    AgentSummary(
+  import WorkerStateType.*
+
+  private def openRunningTasks(): Set[String] =
+    taskStates
+      .filter(ts =>
+        ts._2._1 == Open && (ts._2._2.state.state == Ready ||
+          ts._2._2.state.state == DataInput ||
+          ts._2._2.state.state == Running))
+      .keySet
+
+  private def openSuccessfulTasks(): Set[String] =
+    taskStates
+      .filter(ts =>
+        ts._2._1 == Open && (ts._2._2.state.state == Success ||
+          ts._2._2.state.state == PartialSuccess ||
+          ts._2._2.state.state == Stopped))
+      .keySet
+
+  private def agentSummary(cmt: String = ""): AgentInfo =
+    AgentInfo(
       agent.workerId,
       totalTasks = taskStates.keySet.size,
-      runningTasks = taskStates.values.count(t => t == TaskStateType.RunningTask),
-      completedTasks = taskStates.values.count(t => t == TaskStateType.TaskSuccess),
-      failedTasks = taskStates.values.count(t => t == TaskStateType.TaskFailure),
-      totalTransitions = transitionStates.values.size,
-      completedTransitions = transitionStates.values.count(t => t == ChannelStatusType.Completed),
+      openTasks = taskStates.values.count(t => t._1 == Open),
+      closedTasks = taskStates.values.count(t => t._1 == Closed),
       cmt
     ) // todo improve agent state comment
 }

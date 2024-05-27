@@ -1,7 +1,11 @@
 package org.linthaal.core.withblueprint.adt
 
-import org.apache.pekko.actor.typed.ActorRef
+import akka.actor.typed.ActorRef
 import org.linthaal.core.GenericFeedback
+import org.linthaal.helpers.DateAndTimeHelpers.dateToString
+import org.linthaal.helpers.{dateToIsoString, enoughButNotTooMuchInfo}
+
+import java.util.Date
 
 /** This program is free software: you can redistribute it and/or modify it under the terms of the
   * GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -42,15 +46,6 @@ case class GetWorkerState(replyTo: ActorRef[WorkerState]) extends WorkerCommand
   */
 case class GetWorkerResults(replyTo: ActorRef[WorkerResults]) extends WorkerCommand
 
-/** The transitions to be applied once the worker is completed. As default it will return all
-  * transitions, but it's possible for the worker to select transitions to be applied based on the
-  * results produced (like a decision on which branch to follow up).
-  *
-  * @param blueprintChannels
-  * @param replyTo
-  */
-case class GetWorkerChannels(blueprintChannels: List[FromToDispatchBlueprint], replyTo: ActorRef[PickedUpChannels]) extends WorkerCommand
-
 /** A worker can decide to start itself when it has all the input data it needs. However it can also
   * be asked to start. It's up to the worker to decide what prevails.
   * @param replyTo
@@ -62,32 +57,39 @@ case class StartWorker(replyTo: ActorRef[WorkerState]) extends WorkerCommand
   */
 case class StopWorker(replyTo: ActorRef[WorkerState]) extends WorkerCommand
 
-sealed trait WorkerResp
+sealed trait WorkerResponse
 
 /** Current worker state with info about the current steps if possible
   * @param state
   * @param percentCompleted
   * @param msg
   */
-case class WorkerState(state: WorkerStateType = WorkerStateType.Ready, percentCompleted: Int = 0, msg: String = "") extends WorkerResp
+case class WorkerState(state: WorkerStateType = WorkerStateType.Unknown,
+                       percentCompleted: Int = 0, msg: String = "Unknown state",
+                       date: Date = new Date) extends WorkerResponse {
+  override def toString: String = {
+    s"""state: ${state.toString} - % completed: ${percentCompleted}
+       |- msg: ${enoughButNotTooMuchInfo(msg)} - date: ${dateToString(date)}""".stripMargin
+  }
+}
 
 /** all or a chunk of the results produced by the worker
   * @param results
   */
-case class WorkerResults(results: Map[String, String]) extends WorkerResp
+case class WorkerResults(results: Map[String, String]) extends WorkerResponse
 
-/** what are the transitions to be triggered after this worker has been completed. if nothing is
-  * returned, it will assume all.
-  * @param channels
-  */
-case class PickedUpChannels(channels: List[FromToDispatchBlueprint]) extends WorkerResp
 
 /** A worker can be in different states
-  *   1. it expects data Input 2. once all data is available, it decides itself when it's time to
-  *      start working, or it's asked to start 3. Eventually, it will either succeed, succeed
-  *      partially or fail.
+  *   1. it expects data Input
+  *
+  * 2. once all data is available, it decides itself when it's time to start working, or it's asked
+  * to start
+  *
+  * 3. Eventually, it will either succeed, succeed partially or fail. An worker that did not stop
+  * naturally (stopped from outside) is automatically considered as partially succeeded.
   *
   * Afterwards, it can never be started again or change its states.
   */
+
 enum WorkerStateType:
-  case Ready, DataInput, Running, Success, Failure, PartialSuccess
+  case Ready, DataInput, Running, Success, Failure, Stopped, PartialSuccess, Unknown

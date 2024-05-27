@@ -1,7 +1,7 @@
 package org.linthaal.agents.pubmed
 
-import org.apache.pekko.actor.typed.scaladsl.Behaviors
-import org.apache.pekko.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, Behavior}
 import org.linthaal.helpers.enoughButNotTooMuchInfo
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.{PMAbstract, PMIdSearchResults}
 import org.linthaal.helpers.ncbi.eutils.{EutilsADT, EutilsCalls}

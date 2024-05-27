@@ -1,7 +1,7 @@
 package org.linthaal.tot.pubmed
 
-import org.apache.pekko.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors }
-import org.apache.pekko.actor.typed.{ ActorRef, Behavior }
+import akka.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors }
+import akka.actor.typed.{ ActorRef, Behavior }
 import org.linthaal.api.routes.PubMedAISumReq
 import org.linthaal.helpers
 import org.linthaal.tot.pubmed.PubMedSumAct.{ AISumOfSums, GetResults, GetSummaryOfSummaries, SummarizedAbstracts, SummaryOfSummaries }
@@ -53,7 +53,7 @@ object PubMedToTManager {
 
 final class PubMedToTManager(ctx: ActorContext[PubMedToTManager.Command], results: List[CachedResults]) extends AbstractBehavior[PubMedToTManager.Command](ctx) {
 
-  import org.apache.pekko.actor.typed.scaladsl.AskPattern.*
+  import akka.actor.typed.scaladsl.AskPattern.*
 
   private var sumAIActors: Map[String, ActorRef[PubMedSumAct.PMSumCmd]] = Map.empty
   private var allReq: Map[String, PubMedAISumReq] = Map.empty

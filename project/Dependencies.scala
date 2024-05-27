@@ -4,18 +4,20 @@ import sbt.*
 object Dependencies {
 
   object Versions {
-    lazy val pekkoVersion = "1.0.2"
-    lazy val pekkoHttpVersion = "1.0.0"
+    lazy val akkaVersion = "2.9.3"
+    lazy val akkaHttpVersion = "10.6.3"
   }
 
   val scalaTest: ModuleID = "org.scalatest" %% "scalatest" % "3.2.16" % Test
 
-  val pekkoActor: ModuleID = "org.apache.pekko" %% "pekko-actor-typed" % pekkoVersion
-  val pekkoStream: ModuleID = "org.apache.pekko" %% "pekko-stream" % pekkoVersion
-  val pekkoHttp: ModuleID = "org.apache.pekko" %% "pekko-http" % pekkoHttpVersion
-  val pekkoSprayJson: ModuleID = "org.apache.pekko" %% "pekko-http-spray-json" % pekkoHttpVersion
-  val pekkoHttpXml: ModuleID = "org.apache.pekko" %% "pekko-http-xml" % pekkoHttpVersion
-  val pekkoActorTestkit: ModuleID = "org.apache.pekko" %% "pekko-actor-testkit-typed" % pekkoVersion % Test
+  val akkaActor: ModuleID = "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion
+  val akkaStream: ModuleID = "com.typesafe.akka" %% "akka-stream" % akkaVersion
+
+  val akkaHttp: ModuleID = "com.typesafe.akka" %% "akka-http" % akkaHttpVersion
+  val akkaSprayJson: ModuleID = "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpVersion
+  val akkaHttpXml: ModuleID = "com.typesafe.akka" %% "akka-http-xml" % akkaHttpVersion
+
+  val akkaActorTestkit: ModuleID = "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test
 
   val logbackClassic: ModuleID = "ch.qos.logback" % "logback-classic" % "1.4.7"
 
@@ -26,4 +28,18 @@ object Dependencies {
   val neo4jDriver: ModuleID = "org.neo4j.driver" % "neo4j-java-driver" % "5.7.0"
 
   val upickle: ModuleID = "com.lihaoyi" % "upickle_3" % "3.2.0"
+
+  val linthaalDeps = Seq(
+    akkaActor,
+    akkaStream,
+    akkaHttp,
+    akkaSprayJson,
+    akkaHttpXml,
+    logbackClassic,
+    scalaUri,
+    commonsCodec,
+    neo4jDriver,
+    akkaActorTestkit,
+    scalaTest,
+    upickle)
 }

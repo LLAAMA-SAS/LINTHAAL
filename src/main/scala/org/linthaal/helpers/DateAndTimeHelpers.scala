@@ -21,12 +21,12 @@ import scala.util.Try
 
 object DateAndTimeHelpers {
   val dateDefaultFormatter = new SimpleDateFormat("yyyy/MM/dd-HH:mm:ss")
-  val dateFormatter__ = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss")
-  val dateFormatter_ms_ = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss_SSS")
+  val dateFormatter = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss")
+  val dateFormatter_ms = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss_SSS")
 
   def getCurrentDateAsString(): String = dateDefaultFormatter.format(new Date())
-  def getCurrentDate__(): String = dateFormatter__.format(new Date())
-  def getCurrentDate_ms_(): String = dateFormatter_ms_.format(new Date())
+  def getCurrentDate(): String = dateFormatter.format(new Date())
+  def getCurrentDate_ms(): String = dateFormatter_ms.format(new Date())
 
   // date <-> string
   val localDateFormatter = new ThreadLocal[SimpleDateFormat] {
