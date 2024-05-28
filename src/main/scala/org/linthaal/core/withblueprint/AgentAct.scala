@@ -58,7 +58,7 @@ object AgentAct {
   }
 
   enum AgentTaskStateType:
-    case Open, Closed
+    case Open, Completed, Closed
 
   sealed trait AgentResponse
 
@@ -187,6 +187,11 @@ private[core] class AgentAct(
       // request state from supposedly running tasks
       val openT = openRunningTasks()
       taskActors.filter(ta => openT.contains(ta._1)).foreach(a => a._2 ! GetTaskWorkerState(context.self))
+      
+      // successful tasks 
+      val successT = openSuccessfulTasks()
+      taskActors.filter(ta => successT.contains(ta._1)).foreach(a => a._2 ! GetTaskWorkerResults(context.self))
+      
       this
 
     case twr: TaskWorkerResp =>
@@ -195,9 +200,9 @@ private[core] class AgentAct(
           context.log.debug(s"taskId: $taskId results: ${enoughButNotTooMuchInfo(results.mkString)}")
           taskResults += taskId -> results
           
-
-        case TaskWorkerState(taskId, state) =>
-          context.log.debug(s"taksId: $taskId state: $state")
+        case tws @ TaskWorkerState(taskId, state) =>
+          context.log.debug(s"taskId: $taskId state: $state")
+          taskStates += taskId -> (Open, tws)
 
       }
       this
