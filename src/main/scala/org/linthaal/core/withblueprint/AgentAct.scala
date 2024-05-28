@@ -1,14 +1,14 @@
 package org.linthaal.core.withblueprint
 
 import akka.actor.typed.scaladsl.TimerScheduler
-import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import akka.actor.typed.{ActorRef, Behavior, Props, SpawnProtocol}
+import akka.actor.typed.scaladsl.{ AbstractBehavior, ActorContext, Behaviors }
+import akka.actor.typed.{ ActorRef, Behavior, Props, SpawnProtocol }
 import akka.util.Timeout
 import org.linthaal.core.withblueprint.AgentAct.AgentCmdAndTWorkResp
-import org.linthaal.core.{GenericFeedback, stringForActorName}
-import org.linthaal.core.withblueprint.TaskWorkerAct.{TaskWorkerResp, TaskWorkerResults, TaskWorkerState}
-import org.linthaal.core.withblueprint.DispatchPipe.{DispatchPipeCmd, DispatchPipeState, FromToDispatch, OutputInput, PipeStateType}
-import org.linthaal.core.withblueprint.adt.{Agent, FromToDispatchBlueprint, WorkerId, WorkerState, WorkerStateType}
+import org.linthaal.core.{ stringForActorName, GenericFeedback }
+import org.linthaal.core.withblueprint.TaskWorkerAct.{ TaskWorkerResp, TaskWorkerResults, TaskWorkerState }
+import org.linthaal.core.withblueprint.DispatchPipe.{ DispatchPipeCmd, DispatchPipeState, FromToDispatch, OutputInput, PipeStateType }
+import org.linthaal.core.withblueprint.adt.{ Agent, FromToDispatchBlueprint, WorkerId, WorkerState, WorkerStateType }
 import org.linthaal.helpers.*
 
 import scala.concurrent.Future
@@ -105,11 +105,13 @@ private[core] class AgentAct(
 
   // Following maps have taskId as key
   private var taskActors: Map[String, ActorRef[TaskWorkerCommand]] = Map.empty
-  private var taskStates: Map[String, (AgentTaskStateType, TaskWorkerState)] = Map.empty // state at agent level and worker level
+  private var taskWorkerStates: Map[String, TaskWorkerState] = Map.empty // state at agent level and worker level
+  private var taskStates: Map[String, AgentTaskStateType] = Map.empty
   private var taskResults: Map[String, Map[String, String]] = Map.empty
 
-  private var transitions: Map[FromToDispatch, (FromToDispatchBlueprint, ActorRef[DispatchPipeCmd])] = Map.empty
-  private var transitionStates: Map[FromToDispatch, PipeStateType] = Map.empty
+  private var fromToDispBlueP: Map[FromToDispatch, FromToDispatchBlueprint] = Map.empty
+  private var fromToDispPipe: Map[FromToDispatch, ActorRef[DispatchPipeCmd]] = Map.empty
+  private var fromToDispStates: Map[FromToDispatch, PipeStateType] = Map.empty
 
   timers.startTimerWithFixedDelay(AgentTick, 5.seconds)
 
@@ -128,9 +130,11 @@ private[core] class AgentAct(
         val taskWorker: ActorRef[TaskWorkerCommand] =
           context.spawn(TaskWorkerAct.apply(taskId, configuration, List.empty, agent.behavior), s"${taskId}_worker_manager") // todo fix
         taskActors += taskId -> taskWorker
-        taskStates += taskId -> (Open, TaskWorkerState(
+        taskWorkerStates += taskId -> TaskWorkerState(
           taskId,
-          WorkerState(state = WorkerStateType.Ready, msg = "New task. taskId: $taskId ")))
+          WorkerState(state = WorkerStateType.Ready, msg = "New task. taskId: $taskId "))
+
+        taskStates += taskId -> Open
         if (data.nonEmpty) taskWorker ! AddTaskWorkerData(data)
         context.log.info(info())
       } else {
@@ -165,18 +169,18 @@ private[core] class AgentAct(
 
     case AddFromToDispatch(fromTo, fromToBlueprint, toAgent) =>
       val transActor: ActorRef[DispatchPipeCmd] =
-        context.spawn(DispatchPipe.apply(fromTo, toAgent, transformers, context.self),
-          stringForActorName(fromTo.toString))
-
-      transitions += fromTo -> (fromToBlueprint, transActor)
-      transitionStates += fromTo -> PipeStateType.New
+        context.spawn(DispatchPipe.apply(fromTo, toAgent, transformers, context.self), stringForActorName(fromTo.toString))
+      fromToDispBlueP += fromTo -> fromToBlueprint
+      fromToDispPipe += fromTo -> transActor
+      fromToDispStates += fromTo -> PipeStateType.New
       this
 
     case GetLastTaskStatus(taskId, rt) =>
       context.log.debug(s"getting task info for taskId: $taskId")
-      if (taskStates.contains(taskId)) {
+      if (taskWorkerStates.contains(taskId)) {
+        val tws = taskWorkerStates(taskId)
         val ts = taskStates(taskId)
-        rt ! TaskInfo(taskId, ts._2, ts._1)
+        rt ! TaskInfo(taskId, tws, ts)
       } else
         context.log.error(s"taskId: $taskId does not seem to exist.")
       this
@@ -187,10 +191,15 @@ private[core] class AgentAct(
       // request state from supposedly running tasks
       val openT = openRunningTasks()
       taskActors.filter(ta => openT.contains(ta._1)).foreach(a => a._2 ! GetTaskWorkerState(context.self))
-      
-      // successful tasks 
+
+      // request results from successful tasks
       val successT = openSuccessfulTasks()
       taskActors.filter(ta => successT.contains(ta._1)).foreach(a => a._2 ! GetTaskWorkerResults(context.self))
+
+      val completed = taskStates.filter(_._2 == Completed).keySet
+      
+      fromToDispPipe.filter(ft => completed.contains(ft._1.fromTask))
+        .foreach(fta => fta._2 ! OutputInput(taskResults.getOrElse(fta._1.fromTask, Map.empty)))
       
       this
 
@@ -199,10 +208,11 @@ private[core] class AgentAct(
         case TaskWorkerResults(taskId, results) =>
           context.log.debug(s"taskId: $taskId results: ${enoughButNotTooMuchInfo(results.mkString)}")
           taskResults += taskId -> results
-          
+          taskStates += taskId -> Completed
+
         case tws @ TaskWorkerState(taskId, state) =>
           context.log.debug(s"taskId: $taskId state: $state")
-          taskStates += taskId -> (Open, tws)
+          taskWorkerStates += taskId -> tws
 
       }
       this
@@ -210,28 +220,30 @@ private[core] class AgentAct(
 
   import WorkerStateType.*
 
+  private def openTasks(): Set[String] = taskStates.filter(_._2 == Open).keySet 
+    
   private def openRunningTasks(): Set[String] =
-    taskStates
-      .filter(ts =>
-        ts._2._1 == Open && (ts._2._2.state.state == Ready ||
-          ts._2._2.state.state == DataInput ||
-          ts._2._2.state.state == Running))
+    taskWorkerStates
+      .filter(ts => openTasks().contains(ts._1))
+      .filter(ts => ts._2.state.state == Ready ||
+          ts._2.state.state == DataInput ||
+          ts._2.state.state == Running)
       .keySet
 
   private def openSuccessfulTasks(): Set[String] =
-    taskStates
-      .filter(ts =>
-        ts._2._1 == Open && (ts._2._2.state.state == Success ||
-          ts._2._2.state.state == PartialSuccess ||
-          ts._2._2.state.state == Stopped))
+    taskWorkerStates
+      .filter(ts => openTasks().contains(ts._1))
+      .filter(ts => ts._2.state.state == Success ||
+          ts._2.state.state == PartialSuccess ||
+          ts._2.state.state == Stopped)
       .keySet
 
   private def agentSummary(cmt: String = ""): AgentInfo =
     AgentInfo(
       agent.workerId,
       totalTasks = taskStates.keySet.size,
-      openTasks = taskStates.values.count(t => t._1 == Open),
-      closedTasks = taskStates.values.count(t => t._1 == Closed),
+      openTasks = taskStates.values.count(_ == Open),
+      closedTasks = taskStates.values.count(_ == Closed),
       cmt
     ) // todo improve agent state comment
 }
