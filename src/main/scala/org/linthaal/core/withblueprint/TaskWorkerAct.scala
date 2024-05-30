@@ -114,7 +114,6 @@ class TaskWorkerAct private (
         worker ! StopWorker(ctx.self)
         val wStates = WorkerState(WorkerStateType.Stopped, msg = "Stop requested from outside. ") +: workerStates
         worker ! GetWorkerResults(ctx.self)
-        worker ! GetWorkerChannels(blueprintChannels, ctx.self)
         completed(wStates)
 
       case TWTick =>

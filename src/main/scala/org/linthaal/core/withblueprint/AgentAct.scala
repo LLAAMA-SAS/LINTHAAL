@@ -119,7 +119,7 @@ private[core] class AgentAct(
     s"""agentId: [${agent.workerId}] taskActors size: ${taskActors.size}
        | results size: ${taskResults.size}""".stripMargin
 
-  override def onMessage(msg: AgentCommand): Behavior[AgentCmdAndTWorkResp] = msg match {
+  override def onMessage(msg: AgentCmdAndTWorkResp): Behavior[AgentCmdAndTWorkResp] = msg match {
     case AddConf(conf) =>
       configuration ++= conf
       this

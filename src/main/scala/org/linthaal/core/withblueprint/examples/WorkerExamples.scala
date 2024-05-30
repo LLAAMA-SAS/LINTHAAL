@@ -61,11 +61,6 @@ object WorkerExamples {
         case GetWorkerState(rt) =>
           rt ! WorkerState(WorkerStateType.Success, 100, s"results = ${enoughButNotTooMuchInfo(results.mkString)}")
           completed(results)
-
-        case GetWorkerChannels(bpTs, rt) =>
-          // todo could decide based on decision rules which transitions to trigger.
-          rt ! PickedUpChannels(bpTs)
-          completed(results)
       }
     }
 
@@ -121,10 +116,6 @@ object WorkerExamples {
           rt ! WorkerState(WorkerStateType.Success, 100, s"results = ${enoughButNotTooMuchInfo(results.mkString)}")
           completed(results)
 
-        case GetWorkerChannels(bpTs, rt) =>
-          // todo could decide based on decision rules which transitions to trigger.
-          rt ! PickedUpChannels(bpTs)
-          completed(results)
       }
     }
 
