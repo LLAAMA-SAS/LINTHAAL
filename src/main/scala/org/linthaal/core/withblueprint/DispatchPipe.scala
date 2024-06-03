@@ -2,11 +2,14 @@ package org.linthaal.core.withblueprint
 
 import akka.actor.Actor
 import akka.actor.typed.scaladsl.AbstractBehavior
-import akka.actor.typed.{ ActorRef, Behavior }
-import akka.actor.typed.scaladsl.{ ActorContext, Behaviors }
-import org.linthaal.core.withblueprint.AgentAct.{ AddTaskInputData, AgentCommand, TaskResults, TaskInfo }
+import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
+import org.linthaal.core.withblueprint.AgentAct.{AddTaskInputData, AgentCommand, TaskInfo, TaskResults}
 import org.linthaal.core.withblueprint.DispatchPipe.PipeStateType.Completed
-import org.linthaal.core.withblueprint.DispatchPipe.{ DispatchPipeCmd, DispatchPipeState, FromToDispatch, GetState, OutputInput }
+import org.linthaal.core.withblueprint.DispatchPipe.{DispatchPipeCmd, DispatchPipeState, FromToDispatch, GetState, OutputInput}
+import org.linthaal.helpers.UniqueReadableId
+
+import java.util.UUID
 
 /** This program is free software: you can redistribute it and/or modify it under the terms of the
   * GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -28,7 +31,9 @@ import org.linthaal.core.withblueprint.DispatchPipe.{ DispatchPipeCmd, DispatchP
 object DispatchPipe {
 
   case class FromToDispatch(fromTask: String, toTask: String) {
-    override def toString: String = s"[$fromTask] --> [$toTask]"
+    override def toString: String = s"[${UniqueReadableId.getName(fromTask)} --> [${UniqueReadableId.getName(toTask)}]"
+
+    def actorName: String = s"${UniqueReadableId.getName(fromTask).substring(10)}__${UniqueReadableId.getName(toTask).substring(10)}_${UUID.randomUUID().toString}"
   }
 
   sealed trait DispatchPipeCmd
@@ -71,7 +76,7 @@ class DispatchPipe private (
 
       case OutputInput(data) =>
         val datat = data.map(kv => if (transformers.isDefinedAt(kv._1)) kv._1 -> transformers(kv._1)(kv._2) else kv._1 -> kv._2)
-        ctx.log.debug(s"data transfer from ${fromTo.fromTask} to ${fromTo.toTask}")
+        ctx.log.debug(s"data transfer from ${UniqueReadableId.getName(fromTo.fromTask)}  TO  ${UniqueReadableId.getName(fromTo.toTask)}")
         toAgent ! AddTaskInputData(fromTo, datat)
         completed()
     }

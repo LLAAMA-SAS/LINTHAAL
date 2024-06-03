@@ -9,6 +9,7 @@ import org.linthaal.core.withblueprint.ComplexTaskMaterialization.CTCmdAndAgentR
 import org.linthaal.core.withblueprint.DispatchPipe.FromToDispatch
 import org.linthaal.core.withblueprint.TaskWorkerAct.TaskWorkerState
 import org.linthaal.core.withblueprint.adt.*
+import org.linthaal.helpers.{ AlmostUniqueNameGen, UniqueReadableId }
 
 import java.util.UUID
 import scala.collection.mutable.ListBuffer
@@ -40,27 +41,33 @@ object ComplexTaskMaterialization {
 
   private type CTCmdAndAgentResp = ComplexTaskCommand | AgentResponse
 
+  enum ComplexTaskStateType:
+    case Running, Completed
+
   sealed trait ComplexTaskResponse
 
   case class ComplexTaskState(
-      matId: String = "unknown",
-      blueprint: String = "unknown",
-      state: GenericTaskStateType = Running,
-      percentCompleted: Int = 0,
+      matId: String,
+      blueprint: String,
+      state: ComplexTaskStateType,
+      totalTasks: Int,
+      successfulTasks: Int,
+      failedTasks: Int,
       msg: String = "")
       extends ComplexTaskResponse {
-    override def toString: String = s"""ID=[$matId] blueprint=[$blueprint] state=[$state] completion=$percentCompleted% [$msg]"""
+    override def toString: String =
+      s"""ID=[$matId] blueprint=[$blueprint] state=[$state] Total tasks: $totalTasks successful: $successfulTasks failed: $failedTasks message: [$msg]"""
   }
 
   enum MatTaskStateType:
-    case Active, UnderlyingCompleted, Completed, Failed
+    case Active, TaskCompleted, ChildrenTasksInformed, Completed, Failed
 
   private def fromWorkerStToMatTaskSt(state: WorkerStateType): MatTaskStateType = state match {
     case WorkerStateType.Ready | WorkerStateType.DataInput | WorkerStateType.Running | WorkerStateType.Unknown =>
       MatTaskStateType.Active
 
     case WorkerStateType.Success | WorkerStateType.Stopped | WorkerStateType.PartialSuccess =>
-      MatTaskStateType.UnderlyingCompleted
+      MatTaskStateType.TaskCompleted
 
     case WorkerStateType.Failure => MatTaskStateType.Failed
 
@@ -75,7 +82,7 @@ object ComplexTaskMaterialization {
     Behaviors
       .setup[CTCmdAndAgentResp] { ctx =>
         Behaviors.withTimers[CTCmdAndAgentResp] { timers =>
-          ctx.log.info(s"starting complex task materialization [${blueprint.id}]")
+          ctx.log.info(s"starting complex task materialization [${matId}]")
           new ComplexTaskMaterialization(blueprint, matId, agents, conf, params, timers, ctx).init()
         }
       }
@@ -98,16 +105,21 @@ class ComplexTaskMaterialization private (
 
   private var taskStates: Map[String, MatTaskStateType] = Map.empty // taskID to state
 
-  var fromToAlreadyDefined: Set[FromToDispatch] = Set.empty // to make sure we do not define them twice
+  private var currentState: ComplexTaskState = ComplexTaskState(matId, blueprint.id, GenericTaskStateType.Running, 10, "running...")
+
+  enum FromToStateType:
+    case New, Completed
+
+  var fromToStates: Map[FromToDispatch, FromToStateType] = Map.empty // to know whether they have been processed
 
   private def init(): Behavior[CTCmdAndAgentResp] = {
     blueprint.startingTasks.foreach { t => // adding all starting blueprint tasks to materializedTasks
-      val taskId = UUID.randomUUID.toString
+      val taskId = UniqueReadableId().getUIdString
       materializedTasks += taskId -> t
       taskStates += taskId -> MatTaskStateType.Active
       agents.get(t.workerId).foreach { ag =>
         ag ! CreateTask(taskId, params)
-        context.log.debug(s"adding initial task: [$taskId]")
+        context.log.debug(s"adding initial task: [${UniqueReadableId.getName(taskId)}]")
       }
     }
     starting()
@@ -116,13 +128,13 @@ class ComplexTaskMaterialization private (
   private def starting(): Behavior[CTCmdAndAgentResp] = {
     Behaviors.receiveMessage {
       case StartMat =>
-        context.log.info(s"materializing complex tasks of blueprint: [${blueprint.id}]")
+        context.log.info(s"Starting materializing [$matId]")
         materializedTasks.foreach { mt =>
           agents.get(mt._2.workerId).foreach { g =>
             g ! TaskReadyToRun(mt._1)
           }
         }
-        timers.startTimerWithFixedDelay(TickComplexTaskMat, 2.seconds)
+        timers.startTimerWithFixedDelay(TickComplexTaskMat, 3.seconds)
         running()
 
       case other =>
@@ -138,7 +150,7 @@ class ComplexTaskMaterialization private (
       case ti @ TaskInfo(agentId, taskWorkerState, state) =>
         val taskId = taskWorkerState.taskId
         context.log.debug(s"receiving task info: ${ti.toString}")
-        taskStates += taskId -> fromWorkerStToMatTaskSt(taskWorkerState.state.state)
+        if (taskWorkerState.isNotUnknown) taskStates += taskId -> fromWorkerStToMatTaskSt(taskWorkerState.state.state)
         Behaviors.same
 
       case TickComplexTaskMat =>
@@ -154,11 +166,11 @@ class ComplexTaskMaterialization private (
           .filter(kv => kv._2.nonEmpty)
           .foreach(kv => kv._2.get ! GetLastTaskStatus(kv._1, context.self))
 
-        // take successfully completed tasks,
-        // preparing children tasks and transitions
-        val tSuccess: Set[String] = taskStates.filter(t => t._2 == MatTaskStateType.UnderlyingCompleted).keySet
-        context.log.debug(s"succeeded tasks: ${tSuccess.mkString(", ")}")
+        // take successfully completed tasks
+        val tSuccess: Set[String] = taskStates.filter(t => t._2 == MatTaskStateType.TaskCompleted).keySet
+        context.log.debug(s"succeeded tasks: ${tSuccess.map(t => UniqueReadableId.getName(t)).mkString(", ")}")
 
+        // preparing children tasks and transitions
         tSuccess.foreach { t =>
           materializedTasks.get(t).foreach { tak =>
             val from: List[FromToDispatchBlueprint] =
@@ -166,27 +178,40 @@ class ComplexTaskMaterialization private (
 
             // next materialized taskIds with blueprint and blueprintDispatch
             from.map { bpd =>
-              blueprint.taskByName(bpd).foreach { tbn =>
-                val newTask = UUID.randomUUID.toString -> tbn
-                materializedTasks += newTask
-                taskStates += newTask._1 -> MatTaskStateType.Active
-                agents.get(tbn.workerId).foreach(ag => ag ! NewTask(newTask._1))
-                context.log.debug(s"adding new child task [${newTask._1}]")
-                val tr = FromToDispatch(t, newTask)
+              blueprint.taskByName(bpd.toTask).foreach { tbn =>
+                val newTaskId = UniqueReadableId().getUIdString
+                materializedTasks += newTaskId -> tbn
+                taskStates += newTaskId -> MatTaskStateType.Active
+                agents.get(tbn.workerId).foreach(ag => ag ! CreateTask(newTaskId))
+                context.log.debug(s"adding new child task [${UniqueReadableId.getName(newTaskId)}]")
+                val tr = FromToDispatch(t, newTaskId)
                 val toAgent = agents.get(tbn.workerId)
-                if (!fromToAlreadyDefined.contains(tr) && toAgent.isDefined) {
-                  fromToAlreadyDefined += tr
-                  agents.get(tak.workerId).foreach(a => a ! AddFromToDispatch(tr, kv._2._2, toAgent.get))
-                  taskStates += kv._1 -> MatTaskStateType.Completed
+                if (!fromToStates.keySet.contains(tr) && toAgent.isDefined) {
+                  fromToStates += tr -> FromToStateType.New
+                  agents.get(tak.workerId).foreach(a => a ! AddFromToDispatch(tr, bpd, toAgent.get, context.self))
                 }
               }
             }
           }
+          taskStates += t -> MatTaskStateType.ChildrenTasksInformed
         }
+
+        // check FromToStates and close task if all children have been informed
+        val childInformedTasks = taskStates.filter(ts => ts._2 == MatTaskStateType.ChildrenTasksInformed).keySet
+        childInformedTasks.foreach { t =>
+          if (!fromToStates.exists(fts => fts._1.fromTask == t && fts._2 == FromToStateType.New)) {
+            taskStates += t -> MatTaskStateType.Completed
+          }
+        }
+
+        Behaviors.same
+
+      case DispatchCompleted(fromTo) =>
+        fromToStates += fromTo -> FromToStateType.Completed
         Behaviors.same
 
       case GetComplexTaskState(replyTo) =>
-        replyTo ! ComplexTaskState(matId, blueprint.id, GenericTaskStateType.Running, 10, "running...")
+        replyTo ! currentState
         Behaviors.same
     }
   }

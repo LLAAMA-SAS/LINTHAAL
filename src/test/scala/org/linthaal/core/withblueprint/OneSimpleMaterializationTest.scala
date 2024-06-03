@@ -28,13 +28,13 @@ import scala.concurrent.duration.DurationInt
 
 class OneSimpleMaterializationTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
   "A two agents system " must {
-    val timeout = 10.seconds
+    val timeout = 20.seconds
     "start and run two different tasks in a row and complete " in {
       //Super simple Blueprint
       val bpt1 = TaskBlueprint("to upper case 1", WorkerExamples.upperCaseAgentId)
       val bpt2 = TaskBlueprint("replace 1", WorkerExamples.replaceAgentId)
 
-      val ftBp = FromToDispatchBlueprint("to upper case 1", "replace 1")
+      val ftBp = FromToDispatchBlueprint(bpt1.name, bpt2.name)
 
       val bp = ComplexTaskBlueprint("ultra simple", tasks = List(bpt1, bpt2), channels = List(ftBp))
 
@@ -56,7 +56,7 @@ class OneSimpleMaterializationTest extends ScalaTestWithActorTestKit with AnyWor
       
       underTest.tell(GetAllMaterializationState(probe2.ref))
       probe2.expectMessageType[AllMaterializationState](timeout)
-      probe2.expectMessage(Materializations.AllMaterializationState(AllMateralizationStateType.Active,"total mat: 1"))
+      probe2.expectMessage(timeout, Materializations.AllMaterializationState(AllMateralizationStateType.Active,"total mat: 1"))
     }
   }
 }

@@ -9,6 +9,7 @@ import org.linthaal.core.withblueprint.ComplexTaskMaterialization.*
 import org.linthaal.core.withblueprint.Materializations.MatCmdAndMatResp
 import org.linthaal.core.withblueprint.adt.{Agent, ComplexTaskBlueprint, WorkerId}
 import org.linthaal.core.{GenericFeedback, GenericFeedbackType, GenericTaskStateType}
+import org.linthaal.helpers.AlmostUniqueNameGen
 import org.linthaal.helpers.DateAndTimeHelpers.getCurrentDate_ms
 
 import java.util.{Date, UUID}
@@ -120,16 +121,16 @@ class Materializations private (conf: Map[String, String], ctx: ActorContext[Mat
 
       case NewMaterialization(bpId, conf, params, rt) =>
         val bp = blueprints.find(_.id == bpId)
-        ctx.log.info(s"creating new materialization for blueprint: ${bp.fold("")(bp => bp.id)}")
         if (bp.isDefined && bp.get.requiredWorkers.forall(a => agents.keySet.contains(a))) {
           val ags = agents.view.filterKeys(k => bp.get.requiredWorkers.contains(k)).toMap
-          val matId = s"${bp.get.id}_${getCurrentDate_ms()}"
-          val sgMat = ctx.spawn(ComplexTaskMaterialization(bp.get, matId, ags, conf, params), s"agents_mat_${UUID.randomUUID().toString}")
+          val matId = s"tasks_mat_${bp.get.id}_${AlmostUniqueNameGen.randomNameWithTime}"
+          ctx.log.info(s"creating new materialization $matId")
+          val sgMat = ctx.spawn(ComplexTaskMaterialization(bp.get, matId, ags, conf, params), matId)
           materializations += matId -> sgMat
           materializationsStates += matId -> MaterializationState(ComplexTaskState(msg = "materialization created. "), new Date())
           sgMat ! StartMat
           rt ! GenericFeedback(GenericFeedbackType.GenericInfo, matId, s"Added new materialization for blueprint: $bpId")
-          ctx.log.info(s"started materialization for [$bpId] with params: [${params.mkString(", ")}]")
+          ctx.log.info(s"materialization params: [${params.mkString(", ")}]")
         } else {
           ctx.log.error(s"could not create new materialization (missing required workers?)")
           rt ! GenericFeedback(GenericFeedbackType.GenericFailure, bpId, "Failed starting materialization. ")

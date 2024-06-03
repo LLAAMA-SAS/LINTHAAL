@@ -3,7 +3,7 @@ package org.linthaal.core.withblueprint.adt
 import akka.actor.typed.ActorRef
 import org.linthaal.core.GenericFeedback
 import org.linthaal.helpers.DateAndTimeHelpers.dateToString
-import org.linthaal.helpers.{dateToIsoString, enoughButNotTooMuchInfo}
+import org.linthaal.helpers.{ dateToIsoString, enoughButNotTooMuchInfo }
 
 import java.util.Date
 
@@ -64,12 +64,14 @@ sealed trait WorkerResponse
   * @param percentCompleted
   * @param msg
   */
-case class WorkerState(state: WorkerStateType = WorkerStateType.Unknown,
-                       percentCompleted: Int = 0, msg: String = "Unknown state",
-                       date: Date = new Date) extends WorkerResponse {
+case class WorkerState(
+    state: WorkerStateType = WorkerStateType.Unknown,
+    percentCompleted: Int = 0,
+    msg: String = "Unknown state",
+    date: Date = new Date)
+    extends WorkerResponse {
   override def toString: String = {
-    s"""state: ${state.toString} - % completed: ${percentCompleted}
-       |- msg: ${enoughButNotTooMuchInfo(msg)} - date: ${dateToString(date)}""".stripMargin
+    s"""state: ${state.toString} - % completed: ${percentCompleted} - msg: ${enoughButNotTooMuchInfo(msg)} - date: ${dateToString(date)}"""
   }
 }
 
@@ -77,7 +79,6 @@ case class WorkerState(state: WorkerStateType = WorkerStateType.Unknown,
   * @param results
   */
 case class WorkerResults(results: Map[String, String]) extends WorkerResponse
-
 
 /** A worker can be in different states
   *   1. it expects data Input

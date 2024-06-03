@@ -43,6 +43,7 @@ case class FromToDispatchBlueprint(fromTask: String, toTask: String, transformer
   override def toString: String = s"[$fromTask]~>[$transformer]~>[$toTask]"
 }
 
+
 /**
  * A graph of agents is defined as a set of tasks and a set of transmission channels.
  * It's defined as a blue print and can eventually be materialized.
