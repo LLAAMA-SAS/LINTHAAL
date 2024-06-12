@@ -1,13 +1,11 @@
 package org.linthaal.core.withblueprint
 
-import akka.actor.Actor
-import akka.actor.typed.scaladsl.AbstractBehavior
-import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
-import org.linthaal.core.withblueprint.AgentAct.{AddTaskInputData, AgentCommand, TaskInfo, TaskResults}
-import org.linthaal.core.withblueprint.DispatchPipe.PipeStateType.Completed
-import org.linthaal.core.withblueprint.DispatchPipe.{DispatchPipeCmd, DispatchPipeState, FromToDispatch, GetState, OutputInput}
-import org.linthaal.helpers.UniqueReadableId
+import akka.actor.typed.{ActorRef, Behavior}
+import org.linthaal.core.withblueprint.AgentAct.{AddTaskInputData, AgentCommand}
+import org.linthaal.core.withblueprint.DispatchPipe.{DispatchPipeCmd, FromToDispatch}
+import org.linthaal.core.withblueprint.TaskWorkerAct.DispatchCompleted
+import org.linthaal.helpers.UniqueName
 
 import java.util.UUID
 
@@ -31,29 +29,22 @@ import java.util.UUID
 object DispatchPipe {
 
   case class FromToDispatch(fromTask: String, toTask: String) {
-    override def toString: String = s"[${UniqueReadableId.getName(fromTask)} --> [${UniqueReadableId.getName(toTask)}]"
+    override def toString: String = s"[${fromTask} --> ${toTask}]"
 
-    def actorName: String = s"${UniqueReadableId.getName(fromTask).substring(10)}__${UniqueReadableId.getName(toTask).substring(10)}_${UUID.randomUUID().toString}"
+    def actorName: String = s"${fromTask}__$toTask"
   }
 
   sealed trait DispatchPipeCmd
 
   case class OutputInput(data: Map[String, String]) extends DispatchPipeCmd
 
-  case object GetState extends DispatchPipeCmd
-
-  case class DispatchPipeState(state: PipeStateType, msg: String = "")
-
-  enum PipeStateType:
-    case New, Completed, Failed
-
   def apply(
       fromTo: FromToDispatch,
       toAgent: ActorRef[AgentCommand],
-      transformers: Map[String, String => String] = Map.empty,
-      supervise: ActorRef[DispatchPipeState]): Behavior[DispatchPipeCmd] = {
+      source: ActorRef[DispatchCompleted],
+      transformers: Map[String, String => String] = Map.empty): Behavior[DispatchPipeCmd] = {
     Behaviors.setup { ctx =>
-      new DispatchPipe(fromTo, toAgent, transformers, supervise, ctx).transferring()
+      new DispatchPipe(fromTo, toAgent, source, transformers, ctx).transferring()
     }
   }
 }
@@ -61,32 +52,21 @@ object DispatchPipe {
 class DispatchPipe private (
     fromTo: FromToDispatch,
     toAgent: ActorRef[AgentCommand],
+    source: ActorRef[DispatchCompleted],
     transformers: Map[String, String => String] = Map.empty,
-    supervise: ActorRef[DispatchPipeState],
     ctx: ActorContext[DispatchPipeCmd]) {
 
+  ctx.log.debug(s"Creating dispatch pipe: $fromTo")
+  
   import DispatchPipe.*
-  import PipeStateType.*
 
   private def transferring(): Behavior[DispatchPipeCmd] =
     Behaviors.receiveMessage {
-      case GetState =>
-        supervise ! DispatchPipeState(New)
-        Behaviors.same
 
       case OutputInput(data) =>
         val datat = data.map(kv => if (transformers.isDefinedAt(kv._1)) kv._1 -> transformers(kv._1)(kv._2) else kv._1 -> kv._2)
-        ctx.log.debug(s"data transfer from ${UniqueReadableId.getName(fromTo.fromTask)}  TO  ${UniqueReadableId.getName(fromTo.toTask)}")
-        toAgent ! AddTaskInputData(fromTo, datat)
-        completed()
-    }
-
-  private def completed(): Behavior[DispatchPipeCmd] =
-    Behaviors.receiveMessage {
-      case GetState =>
-        supervise ! DispatchPipeState(Completed, s"Data transferred.")
-        Behaviors.same
-      case _ =>
-        Behaviors.same
+        ctx.log.debug(s"data transfer from ${fromTo.fromTask} --->> ${fromTo.toTask}")
+        toAgent ! AddTaskInputData(datat, fromTo, source)
+        Behaviors.stopped
     }
 }

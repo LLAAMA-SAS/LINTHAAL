@@ -1,17 +1,13 @@
 package org.linthaal.core.withblueprint
 
-import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, TimerScheduler }
-import akka.actor.typed.{ ActorRef, ActorSystem, Behavior, SupervisorStrategy }
-import akka.util.Timeout
-import org.linthaal.core.withblueprint.TaskWorkerAct.{ TWCmdOrWRes, TaskWorkerCommand }
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors, TimerScheduler}
+import akka.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
+import org.linthaal.core.withblueprint.DispatchPipe.FromToDispatch
+import org.linthaal.core.withblueprint.TaskWorkerAct.TWCmdOrWRes
 import org.linthaal.core.withblueprint.adt.*
-import org.linthaal.core.withblueprint.adt.WorkerStateType.Ready
-import org.linthaal.helpers.UniqueReadableId
 
 import scala.compiletime.ops.any.!=
 import scala.concurrent.duration.*
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Failure, Success }
 
 /** This program is free software: you can redistribute it and/or modify it under the terms of the
   * GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -31,7 +27,9 @@ object TaskWorkerAct {
 
   sealed trait TaskWorkerCommand
 
-  case class AddTaskWorkerData(data: Map[String, String]) extends TaskWorkerCommand
+  case class AddSimpleTaskWorkerData(data: Map[String, String]) extends TaskWorkerCommand
+  
+  case class AddTaskWorkerData(data: Map[String, String], fromTo: FromToDispatch, replyTo: ActorRef[DispatchCompleted]) extends TaskWorkerCommand
 
   case object StartWorking extends TaskWorkerCommand
   case object StopWorking extends TaskWorkerCommand
@@ -39,7 +37,7 @@ object TaskWorkerAct {
   case class GetTaskWorkerState(replyTo: ActorRef[TaskWorkerState]) extends TaskWorkerCommand
   case class GetTaskWorkerResults(replyTo: ActorRef[TaskWorkerResults]) extends TaskWorkerCommand
 
-  case object TWTick extends TaskWorkerCommand
+  private case object TWTick extends TaskWorkerCommand
 
   private type TWCmdOrWRes = TaskWorkerCommand | WorkerResponse
 
@@ -47,7 +45,7 @@ object TaskWorkerAct {
 
   case class TaskWorkerState(taskId: String = "unknown", state: WorkerState = WorkerState()) extends TaskWorkerResp {
     override def toString: String = {
-      s"taskId: [${UniqueReadableId.getName(taskId)}] current state: [$state]"
+      s"taskId: [${taskId}] current state: [$state]"
     }
 
     def isNotUnknown: Boolean = state.state != WorkerStateType.Unknown
@@ -59,6 +57,8 @@ object TaskWorkerAct {
       state.state == WorkerStateType.PartialSuccess || state.state == WorkerStateType.Failure
   }
   case class TaskWorkerResults(taskId: String, results: Map[String, String]) extends TaskWorkerResp
+
+  case class DispatchCompleted(fromTo: FromToDispatch) extends TaskWorkerResp
 
   def apply(
       taskId: String,
@@ -93,18 +93,25 @@ class TaskWorkerAct private (
     worker ! AddWorkerConf(conf, ctx.self)
 
     Behaviors.receiveMessage[TWCmdOrWRes] {
-      case AddTaskWorkerData(d) =>
+      case AddSimpleTaskWorkerData(d) =>
+        ctx.log.debug(s"Receiving initial data for $taskId")
         worker ! AddWorkerData(d)
         Behaviors.same
 
+      case AddTaskWorkerData(d, ft, rt) =>
+        ctx.log.debug(s"Receiving data through $ft")
+        worker ! AddWorkerData(d)
+        rt ! DispatchCompleted(ft)
+        Behaviors.same
+
       case StartWorking =>
-        ctx.log.info(s"Starting worker for task: ${UniqueReadableId.getName(taskId)}")
+        ctx.log.info(s"Starting worker for task: $taskId")
         worker ! StartWorker(ctx.self)
         timers.startTimerWithFixedDelay(TWTick, 1.seconds)
         running()
 
       case GetTaskWorkerState(rt) =>
-        ctx.log.debug(s"(init) Returning worker state for worker/task: [${UniqueReadableId.getName(taskId)}]")
+        ctx.log.debug(s"(init) Returning worker state for worker/task: [${taskId}]")
         rt ! TaskWorkerState(taskId)
         Behaviors.same
 
@@ -114,40 +121,43 @@ class TaskWorkerAct private (
     }
   }
 
-  private def running(workerStates: List[WorkerState] = List.empty): Behavior[TWCmdOrWRes] = {
+  private def running(workerStates: List[WorkerState] = WorkerState() :: Nil): Behavior[TWCmdOrWRes] = {
 
     Behaviors.receiveMessage[TWCmdOrWRes] {
       case GetTaskWorkerState(rt) =>
-        ctx.log.debug(s"Returning last known task worker state for worker/task: [${UniqueReadableId.getName(taskId)}]")
+        ctx.log.debug(s"got request for last known task/worker state for [${taskId}]")
         worker ! GetWorkerState(ctx.self)
         rt ! TaskWorkerState(taskId, workerStates.head)
         running(workerStates)
 
       case StopWorking =>
         worker ! StopWorker(ctx.self)
-        ctx.log.info(s"Stopping task worker [${UniqueReadableId.getName(taskId)}]")
+        ctx.log.info(s"Stopping task worker [${taskId}]")
         completed(workerStates)
 
       case TWTick =>
         worker ! GetWorkerState(ctx.self)
-        ctx.log.debug(s"(Tick) Asking worker/task [${UniqueReadableId.getName(taskId)}] for its state.")
+        ctx.log.debug(s"(Tick) Asking worker/task [${taskId}] for its state.")
         Behaviors.same
 
       case ws @ WorkerState(state, _, _, _) =>
-        ctx.log.debug(s"getting last state from worker/task [${UniqueReadableId.getName(taskId)}], state: ${ws.toString} ")
+        ctx.log.debug(s"getting last state from worker/task [${taskId}], state: ${ws.toString} ")
         state match
           case WorkerStateType.Success | WorkerStateType.PartialSuccess =>
             worker ! GetWorkerResults(ctx.self)
+            ctx.log.debug(s"STATE: SUCCESS for $taskId")
             completed(ws +: workerStates)
 
           case WorkerStateType.Failure =>
+            ctx.log.debug(s"STATE: FAILURE for $taskId")
             finished(ws +: workerStates)
 
-          case _ =>
-            finished(workerStates)
+          case other =>
+            ctx.log.debug(s"STATE: $other for $taskId")
+            running(workerStates)
 
       case other =>
-        ctx.log.warn(s"(running) not processing msg: $other")
+        ctx.log.warn(s"(running $taskId) not processing msg: $other")
         finished(workerStates)
     }
   }
@@ -155,12 +165,12 @@ class TaskWorkerAct private (
   private def completed(workerStates: List[WorkerState]): Behavior[TWCmdOrWRes] = {
     Behaviors.receiveMessage[TWCmdOrWRes] {
       case GetTaskWorkerState(rt) =>
-        ctx.log.debug(s"(completed) returning last known task worker state for worker/task: [${UniqueReadableId.getName(taskId)}]")
+        ctx.log.debug(s"(completed) returning last known task worker state for worker/task: [${taskId}]")
         rt ! TaskWorkerState(taskId, workerStates.head)
         completed(workerStates)
 
       case ws: WorkerResults =>
-        ctx.log.debug(s"getting results from worker/task [${UniqueReadableId.getName(taskId)}]")
+        ctx.log.debug(s"getting results from worker/task [${taskId}]")
         finished(workerStates, ws.results)
 
       case other =>
@@ -174,17 +184,17 @@ class TaskWorkerAct private (
 
     Behaviors.receiveMessage[TWCmdOrWRes] {
       case GetTaskWorkerResults(rt) =>
-        ctx.log.debug(s"(finished) returning known results for worker/task: [${UniqueReadableId.getName(taskId)}]")
+        ctx.log.debug(s"(finished) returning known results for worker/task: [${taskId}]")
         rt ! TaskWorkerResults(taskId, res)
         finished(workerStates, res)
 
       case GetTaskWorkerState(rt) =>
-        ctx.log.debug(s"(finished) returning last known task worker state for worker/task: [${UniqueReadableId.getName(taskId)}]")
+        ctx.log.debug(s"(finished) returning last known task worker state for worker/task: [${taskId}]")
         rt ! TaskWorkerState(taskId, workerStates.head)
         finished(workerStates, res)
 
       case other =>
-        ctx.log.warn(s"(finished) not processing msg: $other")
+        ctx.log.warn(s"(finished $taskId) not processing msg: $other")
         finished(workerStates, res)
     }
   }

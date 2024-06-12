@@ -5,7 +5,7 @@ import akka.actor.typed.{ActorRef, Behavior}
 import org.linthaal.core.stringForActorName
 import org.linthaal.core.withblueprint.AgentAct.AgentCmdAndTWorkResp
 import org.linthaal.core.withblueprint.DispatchPipe.*
-import org.linthaal.core.withblueprint.TaskWorkerAct.{TaskWorkerResp, TaskWorkerState}
+import org.linthaal.core.withblueprint.TaskWorkerAct.{DispatchCompleted, TaskWorkerResp, TaskWorkerState}
 import org.linthaal.core.withblueprint.adt.*
 import org.linthaal.helpers.*
 
@@ -37,15 +37,15 @@ object AgentAct {
   case class GetResults(taskId: String, replyTo: ActorRef[TaskResults]) extends AgentCommand
   case class GetLastTaskStatus(taskId: String, replyTo: ActorRef[TaskInfo]) extends AgentCommand
 
-  case class AddFromToDispatch(fromTo: FromToDispatch, dispatchBlueprint: FromToDispatchBlueprint, 
-                               toAgent: ActorRef[AgentCommand], replyTo: ActorRef[DispatchCompleted]) extends AgentCommand
+  case class AddFromToDispatch(fromTo: FromToDispatch, dispatchBlueprint: FromToDispatchBlueprint,
+                               toAgent: ActorRef[AgentCommand], supervisor: ActorRef[DispatchCompleted]) extends AgentCommand
 
-  case class AddTaskInputData(fromTo: FromToDispatch, data: Map[String, String]) extends AgentCommand
+  case class AddTaskInputData(data: Map[String, String], fromTo: FromToDispatch, replyTo: ActorRef[DispatchCompleted]) extends AgentCommand
 
   // internal communication
   private case object AgentTick extends AgentCommand
 
-  private type AgentCmdAndTWorkResp = AgentCommand | TaskWorkerResp | DispatchPipeState
+  private type AgentCmdAndTWorkResp = AgentCommand | TaskWorkerResp
 
   case class AgentInfo(agentId: WorkerId, totalTasks: Int, openTasks: Int, closedTasks: Int, comment: String = "") {
     override def toString: String =
@@ -54,23 +54,27 @@ object AgentAct {
          """.stripMargin
   }
 
+  /**
+   * From the Agent point of view the state of the worker taking care of a given task
+   * Running: the worker is active and the task is not yet completed
+   * Completed: the worker is finished and the results have been propagated to the agent (here)
+   * Closed: 
+   */
   enum AgentTaskStateType:
-    case Open, Completed, Closed
+    case Running, Completed, Closed
 
   sealed trait AgentResponse
 
   case class TaskInfo(
       agentId: String,
       taskWorkerState: TaskWorkerState = TaskWorkerState(),
-      state: AgentTaskStateType = AgentTaskStateType.Open)
+      state: AgentTaskStateType = AgentTaskStateType.Running)
       extends AgentResponse {
-    override def toString: String = s"Agent: [$agentId] - AgentState: [$state] - WorkerState: [${taskWorkerState.toString}]"
+    override def toString: String = s"WorkerState: [${taskWorkerState.toString}] - Agent: [$agentId] - AgentState: [$state]"
   }
 
   case class TaskResults(taskId: String, results: Map[String, String]) extends AgentResponse
-  
-  case class DispatchCompleted(fromTo: FromToDispatch) extends AgentResponse
-
+                                         
   def apply(
       agent: Agent,
       conf: Map[String, String] = Map.empty,
@@ -103,22 +107,19 @@ private[core] class AgentAct(
 
   // Following maps have taskId as key
   private var taskActors: Map[String, ActorRef[TaskWorkerCommand]] = Map.empty
-  private var taskWorkerStates: Map[String, TaskWorkerState] = Map.empty // state at agent level and worker level
-  private var taskStates: Map[String, AgentTaskStateType] = Map.empty
+  private var taskWorkerStates: Map[String, TaskWorkerState] = Map.empty // state of task at worker level
+  private var taskStates: Map[String, AgentTaskStateType] = Map.empty // state of task at agent level 
   private var taskResults: Map[String, Map[String, String]] = Map.empty
 
   private var fromToDispBlueP: Map[FromToDispatch, FromToDispatchBlueprint] = Map.empty
   private var fromToDispPipe: Map[FromToDispatch, ActorRef[DispatchPipeCmd]] = Map.empty
-  private var fromToDispStates: Map[FromToDispatch, PipeStateType] = Map.empty
-  private var fromToDispInform: Map[FromToDispatch, ActorRef[DisptachCompleted]] = Map.empty
-  
-  private var fromToStash: Map[FromToDispatch, Map[String, String]] = Map.empty
+
+  private var fromToStash: Map[FromToDispatch, (Map[String, String], ActorRef[DispatchCompleted])] = Map.empty
 
   timers.startTimerWithFixedDelay(AgentTick, 2.seconds)
 
-  def info(): String =
-    s"""agentId: [${agent.workerId}] taskActors size: ${taskActors.size}
-       | results size: ${taskResults.size}""".stripMargin
+  def info: String =
+    s"""agentId: [${agent.workerId}] taskActors size: ${taskActors.size} results size: ${taskResults.size}"""
 
   override def onMessage(msg: AgentCmdAndTWorkResp): Behavior[AgentCmdAndTWorkResp] = msg match {
     case AddConf(conf) =>
@@ -127,39 +128,37 @@ private[core] class AgentAct(
 
     case CreateTask(taskId, data) =>
       if (!taskActors.contains(taskId)) {
-        context.log.debug(s"spawning worker [${agent.workerId}] taking care of taskId: [${UniqueReadableId.getName(taskId)}]")
+        val wname = s"${taskId}_worker_manager" 
+        context.log.debug(s"Agent [${agent.workerId}] spawning worker $wname")
         val taskWorker: ActorRef[TaskWorkerCommand] =
-          context.spawn(TaskWorkerAct.apply(taskId, configuration, List.empty, agent.behavior), s"${taskId}_worker_manager") // todo fix
+          context.spawn(TaskWorkerAct.apply(taskId, configuration, List.empty, agent.behavior), wname) // todo fix
         taskActors += taskId -> taskWorker
         taskWorkerStates += taskId -> TaskWorkerState(
           taskId,
-          WorkerState(state = WorkerStateType.Ready, msg = s"New task. taskId: ${UniqueReadableId.getName(taskId)}"))
+          WorkerState(state = WorkerStateType.Ready, msg = s"New task. taskId: ${taskId}"))
 
-        taskStates += taskId -> Open
-        if (data.nonEmpty) taskWorker ! AddTaskWorkerData(data)
-        context.log.info(info())
+        taskStates += taskId -> Running
+        if (data.nonEmpty) taskWorker ! AddSimpleTaskWorkerData(data)
+        context.log.info(info)
       } else {
         context.log.info("Task already created. ")
       }
       this
 
-    case AddTaskInputData(fromTo, data) =>
+    case AddTaskInputData(data, fromTo, replyTo: ActorRef[DispatchCompleted]) =>
       val act = taskActors.get(fromTo.toTask)
       if (act.isDefined) {
-        act.get ! AddTaskWorkerData(data)
-        fromToDispInform.get(fromTo).foreach(a => a ! DispatchCompleted(fromTo))
-        fromToDispInform -= fT
+        act.get ! AddTaskWorkerData(data, fromTo, replyTo)
       } else {
-        context.log.error("no task actor, stashing. ") // todo implement stashing.
-        fromToStash += fromTo -> data
+        context.log.error("no task actor, stashing. ")
+        fromToStash += fromTo -> (data, replyTo)
       }
       this
 
     case TaskReadyToRun(tId) =>
-      context.log.info(s"Task ${UniqueReadableId.getName(tId)} is ready to run.")
-      val act = taskActors.get(tId)
-      if (act.isDefined) {
-        act.get ! StartWorking
+      taskActors.get(tId).foreach{ a =>
+        context.log.debug(s"Task ${tId} is ready to run, StartWorking message sent to  [$a]")
+        a ! StartWorking
       }
       this
 
@@ -171,27 +170,25 @@ private[core] class AgentAct(
       rt ! TaskResults(taskId, taskResults.getOrElse(taskId, Map.empty))
       this
 
-    case AddFromToDispatch(fromTo, fromToBlueprint, toAgent, rt) =>
+    case AddFromToDispatch(fromTo, fromToBlueprint, toAgent, supervisor) =>
       val transActor: ActorRef[DispatchPipeCmd] =
-        context.spawn(DispatchPipe.apply(fromTo, toAgent, transformers, context.self), fromTo.actorName)
+        context.spawn(DispatchPipe.apply(fromTo, toAgent, supervisor, transformers), fromTo.actorName)
       fromToDispBlueP += fromTo -> fromToBlueprint
       fromToDispPipe += fromTo -> transActor
-      fromToDispStates += fromTo -> PipeStateType.New
-      fromToDispInform += fromTo -> rt
       this
 
     case GetLastTaskStatus(taskId, rt) =>
-      context.log.debug(s"got request for task info for taskId: ${UniqueReadableId.getName(taskId)}")
+      context.log.debug(s"got request for task info for taskId: ${taskId}")
       if (taskWorkerStates.contains(taskId)) {
         val tws = taskWorkerStates(taskId)
         val ts = taskStates(taskId)
         rt ! TaskInfo(agent.workerId.toString, tws, ts)
       } else
-        context.log.error(s"taskId: ${UniqueReadableId.getName(taskId)} does not seem to exist.")
+        context.log.error(s"Unknown taskId: [${taskId}] in this agent [${agent.workerId}]")
       this
 
     case AgentTick =>
-      context.log.debug("Tick in Agent. ")
+      context.log.debug(s"Tick in Agent [${agent.workerId}]")
 
       // request state from supposedly running tasks
       val openT = openRunningTasks()
@@ -202,19 +199,20 @@ private[core] class AgentAct(
       taskActors.filter(ta => successT.contains(ta._1)).foreach(a => a._2 ! GetTaskWorkerResults(context.self))
 
       val completed = taskStates.filter(_._2 == Completed).keySet
-      
-      fromToDispPipe.filter(ft => completed.contains(ft._1.fromTask))
-        .foreach(fta => fta._2 ! OutputInput(taskResults.getOrElse(fta._1.fromTask, Map.empty)))
-      
+      val pipes2Trigger =  fromToDispPipe.filter(ft => completed.contains(ft._1.fromTask))
+
+      pipes2Trigger.foreach { fta =>
+        fta._2 ! OutputInput(taskResults.getOrElse(fta._1.fromTask, Map.empty))
+        fromToDispPipe -= fta._1
+      }
+
       //fromTo Stash
       fromToStash.keySet.foreach { fT =>
-        val act = taskActors.get(fT.toTask)
-        if (act.isDefined) {
+        taskActors.get(fT.toTask).foreach { a =>
           context.log.debug(s"unstashing add data for $fT")
-          act.get ! AddTaskWorkerData(fromToStash(fT))
+          val stashed = fromToStash(fT)
+          a ! AddTaskWorkerData(stashed._1, fT, stashed._2)
           fromToStash -= fT
-          fromToDispInform.get(fromTo).foreach(a => a ! DispatchCompleted(fromTo))
-          fromToDispInform -= fT
         }
       }
       this
@@ -222,12 +220,12 @@ private[core] class AgentAct(
     case twr: TaskWorkerResp =>
       twr match {
         case TaskWorkerResults(taskId, results) =>
-          context.log.debug(s"taskId: ${UniqueReadableId.getName(taskId)} results: ${enoughButNotTooMuchInfo(results.mkString)}")
+          context.log.debug(s"taskId: ${taskId} results: ${enoughButNotTooMuchInfo(results.mkString)}")
           taskResults += taskId -> results
           taskStates += taskId -> Completed
 
         case tws @ TaskWorkerState(taskId, state) =>
-          context.log.debug(s"taskId: ${UniqueReadableId.getName(taskId)} state: $state")
+          context.log.debug(s"taskId: ${taskId} state: $state")
           taskWorkerStates += taskId -> tws
 
       }
@@ -236,30 +234,30 @@ private[core] class AgentAct(
 
   import WorkerStateType.*
 
-  private def openTasks(): Set[String] = taskStates.filter(_._2 == Open).keySet 
+  private def openTasks(): Set[String] = taskStates.filter(_._2 == AgentTaskStateType.Running).keySet 
     
   private def openRunningTasks(): Set[String] =
     taskWorkerStates
       .filter(ts => openTasks().contains(ts._1))
-      .filter(ts => ts._2.state.state == Ready ||
-          ts._2.state.state == DataInput ||
-          ts._2.state.state == Running)
+      .filter(ts => ts._2.state.state == WorkerStateType.Ready ||
+          ts._2.state.state == WorkerStateType.DataInput ||
+          ts._2.state.state == WorkerStateType.Running)
       .keySet
 
   private def openSuccessfulTasks(): Set[String] =
     taskWorkerStates
       .filter(ts => openTasks().contains(ts._1))
-      .filter(ts => ts._2.state.state == Success ||
-          ts._2.state.state == PartialSuccess ||
-          ts._2.state.state == Stopped)
+      .filter(ts => ts._2.state.state == WorkerStateType.Success ||
+          ts._2.state.state == WorkerStateType.PartialSuccess ||
+          ts._2.state.state == WorkerStateType.Stopped)
       .keySet
 
   private def agentSummary(cmt: String = ""): AgentInfo =
     AgentInfo(
       agent.workerId,
       totalTasks = taskStates.keySet.size,
-      openTasks = taskStates.values.count(_ == Open),
-      closedTasks = taskStates.values.count(_ == Closed),
+      openTasks = taskStates.values.count(_ == AgentTaskStateType.Running),
+      closedTasks = taskStates.values.count(_ == AgentTaskStateType.Closed),
       cmt
     ) // todo improve agent state comment
 }

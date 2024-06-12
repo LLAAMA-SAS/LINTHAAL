@@ -341,7 +341,6 @@ goldenrod
 granny_smith_apple
 gray
 gray_asparagus
-gray_html_css_gray
 gray_gray
 green_crayola
 green_munsell
@@ -468,7 +467,6 @@ mango_tango
 mantis
 mardi_gras
 maroon_crayola
-maroon_html_css
 maroon
 mauve
 mauve_taupe
@@ -638,7 +636,6 @@ psychedelic_purple
 puce
 pumpkin
 purple_heart
-purple_html_css
 purple_mountain_majesty
 purple_munsell
 purple_pizzazz

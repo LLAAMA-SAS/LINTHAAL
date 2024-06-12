@@ -9,7 +9,7 @@ import org.linthaal.core.withblueprint.ComplexTaskMaterialization.*
 import org.linthaal.core.withblueprint.Materializations.MatCmdAndMatResp
 import org.linthaal.core.withblueprint.adt.{Agent, ComplexTaskBlueprint, WorkerId}
 import org.linthaal.core.{GenericFeedback, GenericFeedbackType, GenericTaskStateType}
-import org.linthaal.helpers.AlmostUniqueNameGen
+import org.linthaal.helpers.UniqueName
 import org.linthaal.helpers.DateAndTimeHelpers.getCurrentDate_ms
 
 import java.util.{Date, UUID}
@@ -53,7 +53,10 @@ object Materializations {
 
   case class GetAllMaterializationState(replyTo: ActorRef[AllMaterializationState]) extends MaterializationCommand
 
-  case object TickTack extends MaterializationCommand
+  private case object TickMat extends MaterializationCommand
+  
+  case class GetMatFinalResults(matId: String, replyTo: ActorRef[FinalResults]) extends MaterializationCommand
+  
 
   private type MatCmdAndMatResp = MaterializationCommand | ComplexTaskResponse
 
@@ -69,6 +72,7 @@ object Materializations {
   case class AllMaterializations(matIds: Set[String]) extends MatResponse
 
   case class AllMaterializationState(state: AllMateralizationStateType, msg: String = "") extends MatResponse
+  
 
   def apply(conf: Map[String, String] = Map.empty): Behavior[MaterializationCommand] =
     Behaviors.setup[MatCmdAndMatResp] { ctx =>
@@ -87,10 +91,11 @@ class Materializations private (conf: Map[String, String], ctx: ActorContext[Mat
   var agents: Map[WorkerId, ActorRef[AgentCommand]] = Map.empty
 
   var materializations: Map[String, ActorRef[ComplexTaskCommand]] = Map.empty
+  
   var materializationsStates: Map[String, MaterializationState] = Map.empty
 
   def running(): Behavior[MatCmdAndMatResp] = {
-    timers.startTimerWithFixedDelay(TickTack, 5.seconds)
+    timers.startTimerWithFixedDelay(TickMat, 5.seconds)
     Behaviors.receiveMessage {
       case AddAgent(agent, rt) =>
         // check conf
@@ -123,7 +128,7 @@ class Materializations private (conf: Map[String, String], ctx: ActorContext[Mat
         val bp = blueprints.find(_.id == bpId)
         if (bp.isDefined && bp.get.requiredWorkers.forall(a => agents.keySet.contains(a))) {
           val ags = agents.view.filterKeys(k => bp.get.requiredWorkers.contains(k)).toMap
-          val matId = s"tasks_mat_${bp.get.id}_${AlmostUniqueNameGen.randomNameWithTime}"
+          val matId = s"tasks_mat_${bp.get.id}_${UniqueName.getName}"
           ctx.log.info(s"creating new materialization $matId")
           val sgMat = ctx.spawn(ComplexTaskMaterialization(bp.get, matId, ags, conf, params), matId)
           materializations += matId -> sgMat
@@ -155,8 +160,8 @@ class Materializations private (conf: Map[String, String], ctx: ActorContext[Mat
 
       // todo case receiving info of created Materialization
 
-      case TickTack =>
-        ctx.log.debug("TickTack in Materializations")
+      case TickMat =>
+        ctx.log.debug("Tick in Materializations")
         val actives = materializationsStates.filter(m => m._2.state == Running).keySet
         materializations.filter(m => actives.contains(m._1)).foreach(m => m._2 ! GetComplexTaskState(ctx.self))
         Behaviors.same
@@ -169,11 +174,18 @@ class Materializations private (conf: Map[String, String], ctx: ActorContext[Mat
         rt ! retV
         Behaviors.same
 
+      case GetMatFinalResults(matId, replyTo) =>
+        materializations.get(matId).foreach(a => a ! GetFinalResults(replyTo))
+        Behaviors.same
+        
       case ctr: ComplexTaskResponse =>
         ctr match {
           case cts: ComplexTaskState =>
             ctx.log.info(s"Complex Task State: $cts")
             materializationsStates += cts.matId -> MaterializationState(cts, new Date())
+
+          case finalResults: FinalResults => 
+            ctx.log.info(s"Results= ${finalResults.results}")
         }
         Behaviors.same
     }

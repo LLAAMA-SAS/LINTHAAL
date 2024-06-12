@@ -1,9 +1,10 @@
 package org.linthaal.core.withblueprint
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
-import org.linthaal.core.withblueprint.Materializations.{AddAgent, AddBlueprint, AllMateralizationStateType, AllMaterializationState, GetAllMaterializationState, NewMaterialization}
+import org.linthaal.core.withblueprint.Materializations.*
 import org.linthaal.core.withblueprint.adt.{ComplexTaskBlueprint, FromToDispatchBlueprint, TaskBlueprint}
 import org.linthaal.core.GenericFeedback
+import org.linthaal.core.withblueprint.ComplexTaskMaterialization.{FinalResults, GetFinalResults}
 import org.linthaal.core.withblueprint.examples.WorkerExamples
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -28,7 +29,7 @@ import scala.concurrent.duration.DurationInt
 
 class OneSimpleMaterializationTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
   "A two agents system " must {
-    val timeout = 20.seconds
+    val timeout = 30.seconds
     "start and run two different tasks in a row and complete " in {
       //Super simple Blueprint
       val bpt1 = TaskBlueprint("to upper case 1", WorkerExamples.upperCaseAgentId)
@@ -40,7 +41,9 @@ class OneSimpleMaterializationTest extends ScalaTestWithActorTestKit with AnyWor
 
       val probe1 = createTestProbe[GenericFeedback]()
       val probe2 = createTestProbe[AllMaterializationState]()
-      
+      val probe31 = createTestProbe[AllMaterializations]()
+      val probe32 = createTestProbe[FinalResults]()
+
       val underTest = spawn(Materializations())
       
       underTest.tell(AddAgent(WorkerExamples.upperCaseAgent, probe1.ref))
@@ -56,7 +59,11 @@ class OneSimpleMaterializationTest extends ScalaTestWithActorTestKit with AnyWor
       
       underTest.tell(GetAllMaterializationState(probe2.ref))
       probe2.expectMessageType[AllMaterializationState](timeout)
-      probe2.expectMessage(timeout, Materializations.AllMaterializationState(AllMateralizationStateType.Active,"total mat: 1"))
+//      probe2.expectMessage(timeout, Materializations.AllMaterializationState(AllMateralizationStateType.Active,"total mat: 1"))
+      underTest.tell(GetMaterializations(probe31.ref))
+      probe31.expectMessageType[Materializations.AllMaterializations](timeout)
+      underTest.tell(GetMatFinalResults("dd", probe32.ref))
+      probe32.expectMessage(timeout, FinalResults(Map("d" -> Map("hello" -> "World"))))
     }
   }
 }

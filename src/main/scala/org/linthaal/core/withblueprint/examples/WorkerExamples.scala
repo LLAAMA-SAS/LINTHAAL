@@ -31,7 +31,7 @@ object WorkerExamples {
 
           case AddWorkerData(d) =>
             val nd = data ++ d
-            ctx.log.debug(s"""added more worker data: ${d.mkString(",")}""")
+            ctx.log.debug(s"""adding worker data: ${enoughButNotTooMuchInfo(d.mkString(","),20)}""")
             dataInput(conf, nd)
 
           case StartWorker(rt) =>

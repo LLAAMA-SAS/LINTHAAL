@@ -71,7 +71,7 @@ case class WorkerState(
     date: Date = new Date)
     extends WorkerResponse {
   override def toString: String = {
-    s"""state: ${state.toString} - % completed: ${percentCompleted} - msg: ${enoughButNotTooMuchInfo(msg)} - date: ${dateToString(date)}"""
+    s"""state: ${state.toString} - completed: ${percentCompleted}% - msg: ${enoughButNotTooMuchInfo(msg)} - date: ${dateToString(date)}"""
   }
 }
 
@@ -92,5 +92,14 @@ case class WorkerResults(results: Map[String, String]) extends WorkerResponse
   * Afterwards, it can never be started again or change its states.
   */
 
+/**
+ * State of a worker as given by worker itself and propagated up to ComplexTaskMaterialization
+ * 
+ * Ready: new working for task
+ * DataInput: getting data, not yet started
+ * Running, Success, Failure: as it says
+ * Stopped: Was stopped externally, will end up in a PartialSuccess. 
+ * Unknown: should not happen 
+ */
 enum WorkerStateType:
   case Ready, DataInput, Running, Success, Failure, Stopped, PartialSuccess, Unknown
