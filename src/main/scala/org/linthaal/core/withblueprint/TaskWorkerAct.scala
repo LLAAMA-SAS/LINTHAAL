@@ -48,8 +48,6 @@ object TaskWorkerAct {
       s"taskId: [${taskId}] current state: [$state]"
     }
 
-    def isNotUnknown: Boolean = state.state != WorkerStateType.Unknown
-
     def isActive: Boolean = state.state == WorkerStateType.Ready || state.state == WorkerStateType.Running
       || state.state == WorkerStateType.DataInput
 
@@ -125,7 +123,7 @@ class TaskWorkerAct private (
 
     Behaviors.receiveMessage[TWCmdOrWRes] {
       case GetTaskWorkerState(rt) =>
-        ctx.log.debug(s"got request for last known task/worker state for [${taskId}]")
+        ctx.log.debug(s"got request for last known task worker state for [${taskId}]")
         worker ! GetWorkerState(ctx.self)
         rt ! TaskWorkerState(taskId, workerStates.head)
         running(workerStates)

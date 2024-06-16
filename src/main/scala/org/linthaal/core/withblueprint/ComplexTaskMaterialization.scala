@@ -60,22 +60,34 @@ object ComplexTaskMaterialization {
 
   case class FinalResults(results: Map[String, Map[String, String]]) extends ComplexTaskResponse
 
-  /** 
-   * Individual Task state in the context of the Materialization of a graph of tasks
-   * 
-   * New: the task has just been created
-   * Running: the task has been informed that it can start
-   * TaskCompleted: the task returned that it has completed successfully, partially or stopped
-   * ChildrenTasksResultsSent: Children tasks results sent  
-   * Succeeded: Children tasks results received
-   * Failed: something failed either in the task execution or in the dispatching of results to the children
-   * 
-   */
+  /** Individual Task state in the context of the Materialization of a graph of tasks
+    *
+    * New: the task has just been created
+    *
+    * Ready: ready to start as data has been provided
+    *
+    * Running: the task has been informed that it can start
+    *
+    * TaskCompleted: the task returned that it has completed successfully, partially or stopped
+    *
+    * ChildrenTasksResultsSent: Children tasks results sent
+    *
+    * Succeeded: Children tasks results received
+    *
+    * Failed: something failed either in the task execution or in the dispatching of results to the children
+    */
   enum MatTaskStateType:
-    case New, Running, TaskCompleted, ChildrenTasksResultsSent, Succeeded, Failed
+    case New, Ready, AskToStart, Running, TaskCompleted, ChildrenTasksResultsSent, Succeeded, Failed
 
+  /**
+   * Inner task state will define state herein, from Ready, Running or TaskCompleted
+   * @param state
+   * @return
+   */
   private def fromWorkerStToMatTaskSt(state: WorkerStateType): MatTaskStateType = state match {
-    case WorkerStateType.Ready | WorkerStateType.DataInput | WorkerStateType.Running | WorkerStateType.Unknown =>
+    case WorkerStateType.Ready => MatTaskStateType.Ready
+
+    case WorkerStateType.DataInput | WorkerStateType.Running =>
       MatTaskStateType.Running
 
     case WorkerStateType.Success | WorkerStateType.Stopped | WorkerStateType.PartialSuccess =>
@@ -115,6 +127,7 @@ class ComplexTaskMaterialization private (
 
   private var materializedTasks: Map[String, TaskBlueprint] = Map.empty // actual taskID to blueprint task
   private var taskStates: Map[String, MatTaskStateType] = Map.empty // taskID to state
+  private var fromToStates: Map[FromToDispatch, FromToStateType] = Map.empty
 
   enum FromToStateType:
     case New, Completed
@@ -143,7 +156,7 @@ class ComplexTaskMaterialization private (
           }
         }
         timers.startTimerWithFixedDelay(TickComplexTaskMat, 3.seconds)
-        running(currentState, Map.empty)
+        running(currentState)
 
       case GetComplexTaskState(replyTo) =>
         replyTo ! currentState
@@ -155,110 +168,49 @@ class ComplexTaskMaterialization private (
     }
   }
 
-  private def running(currentState: ComplexTaskState, fromToStates: Map[FromToDispatch, FromToStateType]): Behavior[CTCmdAndAgentResp] = {
-
-    import AgentTaskStateType.*
+  private def running(currentState: ComplexTaskState): Behavior[CTCmdAndAgentResp] = {
 
     Behaviors.receiveMessage {
-      case ti @ TaskInfo(agentId, taskWorkerState, state) =>
+      case ti @ TaskInfo(agentId, taskWorkerState) =>
         val taskId = taskWorkerState.taskId
         context.log.debug(s"receiving task info: ${ti.toString}")
-        if (taskWorkerState.isNotUnknown) {
-          taskStates += taskId -> fromWorkerStToMatTaskSt(taskWorkerState.state.state)
-          val nState = currentState.copy(
-            openTasks = countOpenTasks,
-            successfulTasks = taskStates.count(_._2 == MatTaskStateType.Succeeded),
-            failedTasks = taskStates.count(_._2 == MatTaskStateType.Failed))
-          running(nState, fromToStates)
-        } else running(currentState, fromToStates)
+        taskStates += taskId -> fromWorkerStToMatTaskSt(taskWorkerState.state.state)
+        val nState = currentState.copy(
+          openTasks = countOpenTasks,
+          successfulTasks = taskStates.count(_._2 == MatTaskStateType.Succeeded),
+          failedTasks = taskStates.count(_._2 == MatTaskStateType.Failed))
+        running(nState)
 
       case TickComplexTaskMat =>
         context.log.debug(s"Tick in Complex Task Materialization...")
         context.log.debug(s"FromToStates: ${fromToStates.mkString(",")} ")
 
-        // take active tasks and ask corresponding agent actor for state
-        taskStates
-          .filter(t => t._2 == MatTaskStateType.Running)
-          .keys
-          .map(k => (k, materializedTasks.get(k)))
-          .filter(kv => kv._2.nonEmpty)
-          .map(bp => (bp._1, agents.get(bp._2.get.workerId)))
-          .filter(kv => kv._2.nonEmpty)
-          .foreach(kv => kv._2.get ! GetLastTaskStatus(kv._1, context.self))
+        askingRunningTasksForState()
 
-        // take successfully completed tasks
-        val tSuccess: Set[String] = taskStates.filter(t => t._2 == MatTaskStateType.TaskCompleted).keySet
-        context.log.debug(s"succeeded tasks: ${tSuccess.mkString}")
+        addingChildrenTasks()
 
-        // preparing children tasks and transitions
-        var nToStates: Map[FromToDispatch, FromToStateType] = Map.empty
+        closingTaskOnceChildrenInformed()
 
-        tSuccess.foreach { t =>
-          materializedTasks.get(t).foreach { tak =>
-            val from: List[FromToDispatchBlueprint] =
-              blueprint.channelsFrom(tak.name).filterNot(tt => materializedTasks.keySet.contains(tt.toTask))
-
-            // next materialized taskIds with blueprint and blueprintDispatch
-            from.map { bpd =>
-              blueprint.taskByName(bpd.toTask).foreach { tbn =>
-                val newTaskId = UniqueName.getName
-                materializedTasks += newTaskId -> tbn
-                taskStates += newTaskId -> MatTaskStateType.New
-                agents.get(tbn.workerId).foreach(ag => ag ! CreateTask(newTaskId))
-                context.log.debug(s"adding new child task [${newTaskId}]")
-                val ftd = FromToDispatch(t, newTaskId)
-                val toAgent = agents.get(tbn.workerId)
-                if (toAgent.isDefined) {
-                  agents.get(tak.workerId).foreach{a => 
-                    a ! AddFromToDispatch(ftd, bpd, toAgent.get, context.self)
-                    nToStates += ftd -> FromToStateType.New
-                  }
-                }
-              }
-            }
-          }
-          taskStates += t -> MatTaskStateType.ChildrenTasksResultsSent
-        }
-
-        // CLOSING TASKS: check toStates and close task if all children have been informed
-        taskStates.filter(ts => ts._2 == MatTaskStateType.ChildrenTasksResultsSent).keySet.foreach { t =>
-          if (!fromToStates.exists(fts => fts._1.fromTask == t && fts._2 == FromToStateType.New)) {
-            context.log.debug(s"closing $t as all its children have been informed...")
-            taskStates += t -> MatTaskStateType.Succeeded
-          }
-        }
-
-        // START TASKS: trigger task if all parent have transmitted their results
-        val completedAndChildrenInformed = taskStates
-          .filter(_._2 == MatTaskStateType.New).keySet
-          .filter(t => fromToStates.filter(ft => ft._1.toTask == t).forall(ft => ft._2 == FromToStateType.Completed))
-
-        completedAndChildrenInformed.foreach { t =>
-          materializedTasks.get(t).foreach { mt =>
-            agents.get(mt.workerId).foreach { a =>
-              a ! TaskReadyToRun(t)
-              taskStates += t -> MatTaskStateType.Running
-            }
-          }
-        }
+        startTaskOnceParentsHaveTransmittedInfo()
 
         // ALL FINISHED: Is the complex task materialization finished?
-        if (taskStates.count(_._2 == MatTaskStateType.Succeeded) + taskStates.count(
-            _._2 == MatTaskStateType.Failed) == blueprint.tasks.size) {
+        if (taskStates.count(_._2 == MatTaskStateType.Succeeded) +
+          taskStates.count(_._2 == MatTaskStateType.Failed) == blueprint.tasks.size) {
           completed(currentState.copy(state = ComplexTaskStateType.Completed, msg = "Complex Task completed. "), Map.empty)
-        } 
-        
-        running(currentState, fromToStates ++ nToStates)
+        }
+        running(currentState)
 
       case DispatchCompleted(fromToD) =>
         context.log.debug(s"fromTo completed: $fromToD")
-        running(currentState, fromToStates + (fromToD -> FromToStateType.Completed))
+        fromToStates += fromToD -> FromToStateType.Completed
+        running(currentState)
 
       case GetComplexTaskState(replyTo) =>
         replyTo ! currentState
-        running(currentState, fromToStates)
+        running(currentState)
     }
   }
+
 
   private def completed(currentState: ComplexTaskState, finalResults: Map[String, Map[String, String]]): Behavior[CTCmdAndAgentResp] = {
     Behaviors.receiveMessage {
@@ -305,10 +257,68 @@ class ComplexTaskMaterialization private (
         Behaviors.same
     }
   }
-  
+
   private def countOpenTasks: Int = taskStates.count(ts =>
-    ts._2 == MatTaskStateType.New || ts._2 == MatTaskStateType.Running 
+    ts._2 == MatTaskStateType.New || ts._2 == MatTaskStateType.Running
       || ts._2 == MatTaskStateType.TaskCompleted || ts._2 == MatTaskStateType.ChildrenTasksResultsSent)
-    
-    
+
+
+  private def askingRunningTasksForState(): Unit = {
+    // ask running tasks about their state updates
+    for
+      t <- taskStates
+      if t._2 == MatTaskStateType.Running
+      tId = t._1
+      mt <- materializedTasks.get(tId)
+      ag <- agents.get(mt.workerId)
+    do ag ! GetLastTaskStatus(tId, context.self)
+  }
+
+  private def addingChildrenTasks(): Unit = {
+    for
+      successfulTask <- taskStates 
+      if successfulTask._2 == MatTaskStateType.TaskCompleted
+      tId = successfulTask._1
+      matTask <- materializedTasks.get(tId)
+      fromBlueP <- blueprint.channelsFrom(matTask.name)
+      tbn <- blueprint.taskByName(fromBlueP.toTask)
+      newTaskId = UniqueName.getName
+      ftd = FromToDispatch(tId, newTaskId)
+      toAgent <- agents.get(tbn.workerId)
+      a <- agents.get(matTask.workerId)
+    do {
+      materializedTasks += newTaskId -> tbn
+      taskStates += newTaskId -> MatTaskStateType.New
+      toAgent ! CreateTask(newTaskId)
+      context.log.debug(s"adding new child task [${newTaskId}]")
+      a ! AddFromToDispatch(ftd, fromBlueP, toAgent, context.self)
+      fromToStates += ftd -> FromToStateType.New
+      taskStates += tId -> MatTaskStateType.ChildrenTasksResultsSent
+    }
+  }
+  
+  private def closingTaskOnceChildrenInformed(): Unit = {
+    for
+      tkState <- taskStates
+      if tkState._2 == MatTaskStateType.ChildrenTasksResultsSent
+      tId = tkState._1
+      if !fromToStates.exists(fts => fts._1.fromTask == tId && fts._2 == FromToStateType.New)
+    do {
+      context.log.debug(s"closing $tId as all its children have been informed...")
+      taskStates += tId -> MatTaskStateType.Succeeded
+    }
+  }
+  
+  private def startTaskOnceParentsHaveTransmittedInfo(): Unit = {
+    for
+      ts <- taskStates
+      if ts._2 == MatTaskStateType.Ready
+      t = ts._1
+      mt <- materializedTasks.get(t)
+      ag <- agents.get(mt.workerId)
+    do {
+      ag ! TaskReadyToRun(t)
+      taskStates += t -> MatTaskStateType.AskToStart
+    }
+  }
 }

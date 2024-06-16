@@ -64,14 +64,10 @@ sealed trait WorkerResponse
   * @param percentCompleted
   * @param msg
   */
-case class WorkerState(
-    state: WorkerStateType = WorkerStateType.Unknown,
-    percentCompleted: Int = 0,
-    msg: String = "Unknown state",
-    date: Date = new Date)
+case class WorkerState(state: WorkerStateType = WorkerStateType.Ready, percentCompleted: Int = 0, msg: String = "-", date: Date = new Date)
     extends WorkerResponse {
   override def toString: String = {
-    s"""state: ${state.toString} - completed: ${percentCompleted}% - msg: ${enoughButNotTooMuchInfo(msg)} - date: ${dateToString(date)}"""
+    s"""state: ${state.toString}, completed: ${percentCompleted}%, msg: ${enoughButNotTooMuchInfo(msg)}, date: ${dateToString(date)}"""
   }
 }
 
@@ -92,14 +88,26 @@ case class WorkerResults(results: Map[String, String]) extends WorkerResponse
   * Afterwards, it can never be started again or change its states.
   */
 
-/**
- * State of a worker as given by worker itself and propagated up to ComplexTaskMaterialization
- * 
- * Ready: new working for task
- * DataInput: getting data, not yet started
- * Running, Success, Failure: as it says
- * Stopped: Was stopped externally, will end up in a PartialSuccess. 
- * Unknown: should not happen 
- */
+/** State of a worker as given by worker itself and propagated up to ComplexTaskMaterialization
+  *
+  * Ready: new working for task
+  *
+  * DataInput: getting data, not yet started
+  *
+  * Running, Success, Failure: as it says
+  *
+  * Stopped: Was stopped externally, will end up in a PartialSuccess.
+  */
 enum WorkerStateType:
-  case Ready, DataInput, Running, Success, Failure, Stopped, PartialSuccess, Unknown
+  case Ready, DataInput, Running, Success, Failure, Stopped, PartialSuccess
+
+object WorkerStateHelper {
+  import WorkerStateType.*
+
+  def isOpen(state: WorkerStateType): Boolean = state == Ready || state == DataInput || state == Running
+
+  def isCompleted(state: WorkerStateType): Boolean = state == Success || state == Failure || state == Stopped
+    || state == PartialSuccess
+
+  def isSuccessful(state: WorkerStateType): Boolean = state == Success || state == Stopped || state == PartialSuccess
+}
