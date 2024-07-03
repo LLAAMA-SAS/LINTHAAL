@@ -33,7 +33,7 @@ object AgentAct {
   case class GetAgentInfo(replyTo: ActorRef[AgentInfo]) extends AgentCommand
 
   case class CreateTask(taskId: String, data: Map[String, String] = Map.empty) extends AgentCommand
-  case class TaskReadyToRun(taskId: String) extends AgentCommand
+  case class StartTask(taskId: String) extends AgentCommand
   case class GetResults(taskId: String, replyTo: ActorRef[TaskResults]) extends AgentCommand
   case class GetLastTaskStatus(taskId: String, replyTo: ActorRef[TaskInfo]) extends AgentCommand
 
@@ -51,16 +51,16 @@ object AgentAct {
 
   private type AgentCmdAndTWorkResp = AgentCommand | TaskWorkerResp
 
-  case class AgentInfo(agentId: WorkerId, totalTasks: Int, openTasks: Int, closedTasks: Int, comment: String = "") {
+  case class AgentInfo(agentId: WorkerId, totalTasks: Int, activeTasks: Int, closedTasks: Int, comment: String = "") {
     override def toString: String =
       s"""[ID: $agentId]-[$comment] total Tasks: $totalTasks,
-         |Open Tasks: $openTasks, Closed Tasks: $closedTasks,
+         |Active Tasks: $activeTasks, Closed Tasks: $closedTasks,
          """.stripMargin
   }
 
   sealed trait AgentResponse
 
-  case class TaskInfo(agentId: String, taskWorkerState: TaskWorkerState = TaskWorkerState()) extends AgentResponse {
+  case class TaskInfo(agentId: String, taskWorkerState: TaskWorkerState) extends AgentResponse {
     override def toString: String = s"WorkerState: [${taskWorkerState.toString}] - Agent: [$agentId]"
   }
 
@@ -122,9 +122,7 @@ private[core] class AgentAct(
         val taskWorker: ActorRef[TaskWorkerCommand] =
           context.spawn(TaskWorkerAct.apply(taskId, configuration, List.empty, agent.behavior), wname) // todo fix
         taskActors += taskId -> taskWorker
-        taskWorkerStates += taskId -> TaskWorkerState(
-          taskId,
-          WorkerState(state = WorkerStateType.Ready, msg = s"New task. taskId: ${taskId}"))
+        taskWorkerStates += taskId -> TaskWorkerState(taskId)
         if (data.nonEmpty) taskWorker ! AddSimpleTaskWorkerData(data)
         context.log.info(info)
       } else {
@@ -142,7 +140,7 @@ private[core] class AgentAct(
       }
       this
 
-    case TaskReadyToRun(tId) =>
+    case StartTask(tId) =>
       taskActors.get(tId).foreach { a =>
         context.log.debug(s"Task ${tId} is ready to run, StartWorking message sent to  [$a]")
         a ! StartWorking
@@ -165,29 +163,30 @@ private[core] class AgentAct(
       this
 
     case GetLastTaskStatus(taskId, rt) =>
-      context.log.debug(s"got request for task info for taskId: ${taskId}")
+      context.log.debug(s"Agent got request for last task info for taskId: ${taskId}")
       taskWorkerStates.get(taskId).foreach { tws =>
         rt ! TaskInfo(agent.workerId.toString, tws)
       }
       this
 
     case AgentTick =>
-      context.log.debug(s"Tick in Agent [${agent.workerId}]")
+      context.log.info(s"Tick in Agent [${agent.workerId}] Running tasks: ${taskWorkerStates.count(_._2.isActive)} from a total of: ${taskWorkerStates.size}")
 
       // request state from supposedly running tasks
-      val openT = openTasks()
+      val openT = activeTasks()
       taskActors.filter(ta => openT.contains(ta._1)).foreach(a => a._2 ! GetTaskWorkerState(context.self))
 
       // request results from successful tasks
       val successT = successfulTasks()
-      taskActors.filter(ta => successT.contains(ta._1)).foreach(a => a._2 ! GetTaskWorkerResults(context.self))
+      taskActors.filter(ta => successT.contains(ta._1) && !taskResults.keySet.contains(ta._1))
+        .foreach(a => a._2 ! GetTaskWorkerResults(context.self))
 
-      val completed = closedTasks()
+      val completed = finishedTasks()
       val pipes2Trigger = fromToDispPipe.filter(ft => completed.contains(ft._1.fromTask))
 
       pipes2Trigger.foreach { fta =>
         fta._2 ! OutputInput(taskResults.getOrElse(fta._1.fromTask, Map.empty))
-        fromToDispPipe -= fta._1
+        fromToDispPipe -= fta._1 
       }
 
       // fromTo Stash
@@ -207,8 +206,8 @@ private[core] class AgentAct(
           context.log.debug(s"taskId: ${taskId} results: ${enoughButNotTooMuchInfo(results.mkString)}")
           taskResults += taskId -> results
 
-        case tws @ TaskWorkerState(taskId, state) =>
-          context.log.debug(s"taskId: $taskId state: $state")
+        case tws @ TaskWorkerState(taskId, tstate) =>
+          context.log.debug(s"taskId: $taskId $tstate")
           taskWorkerStates += taskId -> tws
 
       }
@@ -217,18 +216,21 @@ private[core] class AgentAct(
 
   import WorkerStateType.*
 
-  private def openTasks(): Set[String] = taskWorkerStates.filter(tws => WorkerStateHelper.isOpen(tws._2.state.state)).keySet
+  private def activeTasks(): Set[String] = taskWorkerStates
+    .filter(tws => tws._2.isActive).keySet
 
-  private def closedTasks(): Set[String] = taskWorkerStates.filter(tws => WorkerStateHelper.isCompleted(tws._2.state.state)).keySet
+  private def finishedTasks(): Set[String] = taskWorkerStates
+    .filter(tws => tws._2.isFinished).keySet
 
-  private def successfulTasks(): Set[String] = taskWorkerStates.filter(tws => WorkerStateHelper.isSuccessful(tws._2.state.state)).keySet
+  private def successfulTasks(): Set[String] = taskWorkerStates
+    .filter(tws => tws._2.isSuccessful).keySet
 
   private def agentSummary(cmt: String = ""): AgentInfo =
     AgentInfo(
       agent.workerId,
       totalTasks = taskWorkerStates.keySet.size,
-      openTasks = openTasks().size,
-      closedTasks = closedTasks().size,
+      activeTasks = activeTasks().size,
+      closedTasks = finishedTasks().size,
       cmt
     ) // todo improve agent state comment
 }

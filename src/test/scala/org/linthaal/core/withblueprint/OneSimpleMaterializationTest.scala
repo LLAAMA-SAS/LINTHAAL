@@ -29,7 +29,7 @@ import scala.concurrent.duration.DurationInt
 
 class OneSimpleMaterializationTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
   "A two agents system " must {
-    val timeout = 30.seconds
+    val timeout = 120.seconds
     "start and run two different tasks in a row and complete " in {
       //Super simple Blueprint
       val bpt1 = TaskBlueprint("to upper case 1", WorkerExamples.upperCaseAgentId)

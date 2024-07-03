@@ -64,7 +64,7 @@ sealed trait WorkerResponse
   * @param percentCompleted
   * @param msg
   */
-case class WorkerState(state: WorkerStateType = WorkerStateType.Ready, percentCompleted: Int = 0, msg: String = "-", date: Date = new Date)
+case class WorkerState(state: WorkerStateType = WorkerStateType.New, percentCompleted: Int = 0, msg: String = "-", date: Date = new Date)
     extends WorkerResponse {
   override def toString: String = {
     s"""state: ${state.toString}, completed: ${percentCompleted}%, msg: ${enoughButNotTooMuchInfo(msg)}, date: ${dateToString(date)}"""
@@ -88,26 +88,35 @@ case class WorkerResults(results: Map[String, String]) extends WorkerResponse
   * Afterwards, it can never be started again or change its states.
   */
 
-/** State of a worker as given by worker itself and propagated up to ComplexTaskMaterialization
+/** State of a worker as given by the worker itself.
   *
-  * Ready: new working for task
+  * Ready: worker is ready to be started
   *
   * DataInput: getting data, not yet started
   *
-  * Running, Success, Failure: as it says
+  * Running: started and processing data
   *
-  * Stopped: Was stopped externally, will end up in a PartialSuccess.
+  * Success, Failure: as it says // can never go back to any other state
+  *
+  * PartialSuccess: some results but not everything (like if it would have been stopped from
+  * outside)
+  *
   */
 enum WorkerStateType:
-  case Ready, DataInput, Running, Success, Failure, Stopped, PartialSuccess
+  case New, DataInput, Running, Success, PartialSuccess, Failure
 
 object WorkerStateHelper {
   import WorkerStateType.*
 
-  def isOpen(state: WorkerStateType): Boolean = state == Ready || state == DataInput || state == Running
+  def isActive(wState: WorkerState): Boolean = wState.state match
+    case New | DataInput | Running => true
+    case _ => false
 
-  def isCompleted(state: WorkerStateType): Boolean = state == Success || state == Failure || state == Stopped
-    || state == PartialSuccess
+  def isFinished(wState: WorkerState): Boolean = wState.state match
+    case Success | Failure | PartialSuccess => true
+    case _ => false
 
-  def isSuccessful(state: WorkerStateType): Boolean = state == Success || state == Stopped || state == PartialSuccess
+  def isSuccessful(wState: WorkerState): Boolean = wState.state match
+    case Success | PartialSuccess => true
+    case _ => false
 }

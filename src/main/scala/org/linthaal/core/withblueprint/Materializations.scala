@@ -161,9 +161,9 @@ class Materializations private (conf: Map[String, String], ctx: ActorContext[Mat
       // todo case receiving info of created Materialization
 
       case TickMat =>
-        ctx.log.debug("Tick in Materializations")
-        val actives = materializationsStates.filter(m => m._2.state == Running).keySet
-        materializations.filter(m => actives.contains(m._1)).foreach(m => m._2 ! GetComplexTaskState(ctx.self))
+        val running = materializationsStates.filter(m => m._2.state == Running).keySet
+        ctx.log.info(s"Tick in Materializations... Running: ${running.size} from a total of ${materializations.size}")
+        materializations.filter(m => running.contains(m._1)).foreach(m => m._2 ! GetComplexTaskState(ctx.self))
         Behaviors.same
 
       case GetAllMaterializationState(rt) =>

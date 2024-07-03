@@ -1,12 +1,12 @@
 package org.linthaal.core.withblueprint
 
-import akka.actor.typed.scaladsl.{ActorContext, Behaviors, TimerScheduler}
-import akka.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
+import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, TimerScheduler }
+import akka.actor.typed.{ ActorRef, Behavior, SupervisorStrategy }
 import org.linthaal.core.withblueprint.DispatchPipe.FromToDispatch
 import org.linthaal.core.withblueprint.TaskWorkerAct.TWCmdOrWRes
+import org.linthaal.core.withblueprint.TaskWorkerAct.TaskWorkerStateType.{ Ready, Started }
 import org.linthaal.core.withblueprint.adt.*
 
-import scala.compiletime.ops.any.!=
 import scala.concurrent.duration.*
 
 /** This program is free software: you can redistribute it and/or modify it under the terms of the
@@ -28,8 +28,9 @@ object TaskWorkerAct {
   sealed trait TaskWorkerCommand
 
   case class AddSimpleTaskWorkerData(data: Map[String, String]) extends TaskWorkerCommand
-  
-  case class AddTaskWorkerData(data: Map[String, String], fromTo: FromToDispatch, replyTo: ActorRef[DispatchCompleted]) extends TaskWorkerCommand
+
+  case class AddTaskWorkerData(data: Map[String, String], fromTo: FromToDispatch, replyTo: ActorRef[DispatchCompleted])
+      extends TaskWorkerCommand
 
   case object StartWorking extends TaskWorkerCommand
   case object StopWorking extends TaskWorkerCommand
@@ -41,19 +42,45 @@ object TaskWorkerAct {
 
   private type TWCmdOrWRes = TaskWorkerCommand | WorkerResponse
 
+  enum TaskWorkerStateType:
+    case New, DataInput, Ready, Started, Running, Stopped, Success, Failure, Error
   sealed trait TaskWorkerResp
 
-  case class TaskWorkerState(taskId: String = "unknown", state: WorkerState = WorkerState()) extends TaskWorkerResp {
+  import TaskWorkerStateType.*
+
+  case class TaskWorkerState(taskId: String, taskState: TaskWorkerStateType = New) extends TaskWorkerResp {
     override def toString: String = {
-      s"taskId: [${taskId}] current state: [$state]"
+      s"""taskId: [${taskId}] state=$taskState"]"""
     }
 
-    def isActive: Boolean = state.state == WorkerStateType.Ready || state.state == WorkerStateType.Running
-      || state.state == WorkerStateType.DataInput
+    lazy val isActive: Boolean = taskState match
+      case New | DataInput | Ready | Started | Running => true
+      case _                                           => false
 
-    def isFinished: Boolean = state.state == WorkerStateType.Stopped || state.state == WorkerStateType.Success ||
-      state.state == WorkerStateType.PartialSuccess || state.state == WorkerStateType.Failure
+    lazy val isSuccessful: Boolean = taskState match
+      case Stopped | Success => true
+      case _                 => false
+
+    lazy val isFinished: Boolean = taskState match
+      case Stopped | Success | Failure | Error => true
+      case _                                   => false
+
   }
+
+  //  From worker: New, DataInput, Running, Success, PartialSuccess, Failure
+  //  To Task: New, DataInput, Ready, Started, Running, Stopped, Success, Failure
+  def reconcileState(currentTWState: TaskWorkerStateType, workerStateType: WorkerStateType): TaskWorkerStateType =
+    (currentTWState, workerStateType) match
+      case (Success, _)                        => Success
+      case (Failure, _)                        => Failure
+      case (Stopped, _)                        => Stopped
+      case (_, WorkerStateType.New)            => New
+      case (_, WorkerStateType.DataInput)      => DataInput
+      case (_, WorkerStateType.Running)        => Running
+      case (_, WorkerStateType.Success)        => Success
+      case (_, WorkerStateType.PartialSuccess) => Success
+      case (_, WorkerStateType.Failure)        => Failure
+
   case class TaskWorkerResults(taskId: String, results: Map[String, String]) extends TaskWorkerResp
 
   case class DispatchCompleted(fromTo: FromToDispatch) extends TaskWorkerResp
@@ -68,9 +95,10 @@ object TaskWorkerAct {
         Behaviors.withTimers[TWCmdOrWRes] { timers =>
           Behaviors
             .supervise(workerBehavior)
-            .onFailure[IllegalStateException](SupervisorStrategy.restart.withLimit(maxNrOfRetries = 10, withinTimeRange = 5.seconds))
+            .onFailure[IllegalStateException](
+              SupervisorStrategy.restart.withLimit(maxNrOfRetries = 10, withinTimeRange = 5.seconds))
           val worker: ActorRef[WorkerCommand] = ctx.spawn(workerBehavior, s"${taskId}_worker")
-          new TaskWorkerAct(taskId, conf, blueprintChannels, worker, ctx, timers).init()
+          new TaskWorkerAct(taskId, conf, blueprintChannels, worker, ctx, timers).init(New)
         }
       }
       .narrow
@@ -86,114 +114,124 @@ class TaskWorkerAct private (
     timers: TimerScheduler[TWCmdOrWRes]) {
 
   import TaskWorkerAct.*
+  import TaskWorkerStateType.*
 
-  private def init(): Behavior[TWCmdOrWRes] = {
-    worker ! AddWorkerConf(conf, ctx.self)
+  worker ! AddWorkerConf(conf, ctx.self) // todo improve?
 
+  private def init(taskWorkerState: TaskWorkerStateType): Behavior[TWCmdOrWRes] = {
     Behaviors.receiveMessage[TWCmdOrWRes] {
       case AddSimpleTaskWorkerData(d) =>
         ctx.log.debug(s"Receiving initial data for $taskId")
         worker ! AddWorkerData(d)
-        Behaviors.same
+        init(Ready)
 
       case AddTaskWorkerData(d, ft, rt) =>
         ctx.log.debug(s"Receiving data through $ft")
         worker ! AddWorkerData(d)
         rt ! DispatchCompleted(ft)
-        Behaviors.same
+        init(Ready)
 
       case StartWorking =>
         ctx.log.info(s"Starting worker for task: $taskId")
         worker ! StartWorker(ctx.self)
         timers.startTimerWithFixedDelay(TWTick, 1.seconds)
-        running()
+        running(Started)
 
       case GetTaskWorkerState(rt) =>
-        ctx.log.debug(s"(init) Returning worker state for worker/task: [${taskId}]")
-        rt ! TaskWorkerState(taskId)
-        Behaviors.same
+        ctx.log.debug(s"(init) Returning last known worker state for task: [${taskId}]")
+        worker ! GetWorkerState(ctx.self)
+        rt ! TaskWorkerState(taskId, taskWorkerState)
+        init(taskWorkerState)
+
+      case ws @ WorkerState(state, _, _, _) =>
+        ctx.log.debug(
+          s"(init) getting last state for task: [${taskId}], state: $taskWorkerState worker state: ${state} ")
+        init(reconcileState(taskWorkerState, ws.state))
 
       case other =>
         ctx.log.warn(s"(init) not processing msg: $other")
-        Behaviors.same
+        init(taskWorkerState)
     }
   }
 
-  private def running(workerStates: List[WorkerState] = WorkerState() :: Nil): Behavior[TWCmdOrWRes] = {
+  private def running(taskWorkerState: TaskWorkerStateType): Behavior[TWCmdOrWRes] = {
 
     Behaviors.receiveMessage[TWCmdOrWRes] {
       case GetTaskWorkerState(rt) =>
         ctx.log.debug(s"got request for last known task worker state for [${taskId}]")
         worker ! GetWorkerState(ctx.self)
-        rt ! TaskWorkerState(taskId, workerStates.head)
-        running(workerStates)
+        rt ! TaskWorkerState(taskId, taskWorkerState)
+        running(taskWorkerState)
 
       case StopWorking =>
         worker ! StopWorker(ctx.self)
         ctx.log.info(s"Stopping task worker [${taskId}]")
-        completed(workerStates)
+        completed(TaskWorkerStateType.Stopped)
 
       case TWTick =>
         worker ! GetWorkerState(ctx.self)
-        ctx.log.debug(s"(Tick) Asking worker/task [${taskId}] for its state.")
+        ctx.log.debug(s"(Tick) Asking worker about [${taskId}] state.")
         Behaviors.same
 
       case ws @ WorkerState(state, _, _, _) =>
-        ctx.log.debug(s"getting last state from worker/task [${taskId}], state: ${ws.toString} ")
+        ctx.log.debug(s"(running) getting last state for task [${taskId}], state: ${ws.toString} ")
         state match
           case WorkerStateType.Success | WorkerStateType.PartialSuccess =>
             worker ! GetWorkerResults(ctx.self)
             ctx.log.debug(s"STATE: SUCCESS for $taskId")
-            completed(ws +: workerStates)
+            completed(reconcileState(taskWorkerState, ws.state))
 
           case WorkerStateType.Failure =>
             ctx.log.debug(s"STATE: FAILURE for $taskId")
-            finished(ws +: workerStates)
+            finished(TaskWorkerStateType.Failure)
 
           case other =>
-            ctx.log.debug(s"STATE: $other for $taskId")
-            running(workerStates)
+            ctx.log.debug(s"STATE: ${other.toString.toUpperCase()} for $taskId")
+            running(taskWorkerState)
 
       case other =>
         ctx.log.warn(s"(running $taskId) not processing msg: $other")
-        finished(workerStates)
+        finished(taskWorkerState)
     }
   }
 
-  private def completed(workerStates: List[WorkerState]): Behavior[TWCmdOrWRes] = {
+  private def completed(taskWorkerState: TaskWorkerStateType): Behavior[TWCmdOrWRes] = {
+
     Behaviors.receiveMessage[TWCmdOrWRes] {
       case GetTaskWorkerState(rt) =>
         ctx.log.debug(s"(completed) returning last known task worker state for worker/task: [${taskId}]")
-        rt ! TaskWorkerState(taskId, workerStates.head)
-        completed(workerStates)
+        rt ! TaskWorkerState(taskId, taskWorkerState)
+        completed(taskWorkerState)
 
       case ws: WorkerResults =>
         ctx.log.debug(s"getting results from worker/task [${taskId}]")
-        finished(workerStates, ws.results)
+        finished(taskWorkerState, ws.results)
 
       case other =>
         ctx.log.warn(s"(completed) not processing msg: $other")
-        Behaviors.same
+        completed(taskWorkerState)
     }
   }
 
-  private def finished(workerStates: List[WorkerState], res: Map[String, String] = Map.empty): Behavior[TWCmdOrWRes] = {
+  private def finished(
+      taskWorkerState: TaskWorkerStateType,
+      res: Map[String, String] = Map.empty): Behavior[TWCmdOrWRes] = {
     timers.cancelAll()
 
     Behaviors.receiveMessage[TWCmdOrWRes] {
       case GetTaskWorkerResults(rt) =>
         ctx.log.debug(s"(finished) returning known results for worker/task: [${taskId}]")
         rt ! TaskWorkerResults(taskId, res)
-        finished(workerStates, res)
+        finished(taskWorkerState, res)
 
       case GetTaskWorkerState(rt) =>
         ctx.log.debug(s"(finished) returning last known task worker state for worker/task: [${taskId}]")
-        rt ! TaskWorkerState(taskId, workerStates.head)
-        finished(workerStates, res)
+        rt ! TaskWorkerState(taskId, taskWorkerState)
+        finished(taskWorkerState, res)
 
       case other =>
         ctx.log.warn(s"(finished $taskId) not processing msg: $other")
-        finished(workerStates, res)
+        finished(taskWorkerState, res)
     }
   }
 }

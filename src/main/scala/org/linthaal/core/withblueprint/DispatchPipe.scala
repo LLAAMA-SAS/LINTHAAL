@@ -28,6 +28,9 @@ import java.util.UUID
 
 object DispatchPipe {
 
+  enum FromToStateType:
+    case New, Completed
+
   case class FromToDispatch(fromTask: String, toTask: String) {
     override def toString: String = s"[${fromTask} --> ${toTask}]"
 
@@ -65,7 +68,7 @@ class DispatchPipe private (
 
       case OutputInput(data) =>
         val datat = data.map(kv => if (transformers.isDefinedAt(kv._1)) kv._1 -> transformers(kv._1)(kv._2) else kv._1 -> kv._2)
-        ctx.log.debug(s"data transfer from ${fromTo.fromTask} --->> ${fromTo.toTask}")
+        ctx.log.debug(s"data transfer ${fromTo.fromTask} --->> ${fromTo.toTask}")
         toAgent ! AddTaskInputData(datat, fromTo, source)
         Behaviors.stopped
     }

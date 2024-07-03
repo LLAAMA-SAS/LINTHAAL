@@ -24,18 +24,18 @@ object WorkerExamples {
       Behaviors.receive { (ctx, msg) =>
         msg match
           case AddWorkerConf(c, rt) =>
+            ctx.log.debug(s"""uppercase worker got conf: ${c.mkString(",")}""")
             val nconf = conf ++ c
-            ctx.log.debug(s"""added worker conf: ${c.mkString(",")}""")
-            rt ! WorkerState(WorkerStateType.Ready)
+            rt ! WorkerState(WorkerStateType.New)
             dataInput(nconf, data)
 
           case AddWorkerData(d) =>
             val nd = data ++ d
-            ctx.log.debug(s"""adding worker data: ${enoughButNotTooMuchInfo(d.mkString(","),20)}""")
+            ctx.log.debug(s"""uppercase worker got data: ${enoughButNotTooMuchInfo(d.mkString(","),20)}""")
             dataInput(conf, nd)
 
           case StartWorker(rt) =>
-            ctx.log.info(s"starting working on data: ${enoughButNotTooMuchInfo(data.mkString(","), 30)}")
+            ctx.log.info(s"uppercase worker called to on data: ${enoughButNotTooMuchInfo(data.mkString(","), 30)}")
             // do the work here (could spawn a actor hierarchy and manage it from here)
             val results = data.map(kv => kv._1 -> kv._2.toUpperCase)
             ctx.log.info(s"results: ${results.mkString(", ")}")
@@ -77,19 +77,19 @@ object WorkerExamples {
         msg match
           case AddWorkerConf(c, rt) =>
             val nconf = conf ++ c
-            ctx.log.debug(s"""added worker conf: ${c.mkString(",")}""")
-            rt ! WorkerState(WorkerStateType.Ready)
+            ctx.log.debug(s"""(replaceBy) added worker conf: ${c.mkString(",")}""")
+            rt ! WorkerState(WorkerStateType.New)
             dataInput(nconf, data)
 
           case AddWorkerData(d) =>
             val nd = data ++ d
-            ctx.log.debug(s"""added more worker data: ${d.mkString(",")}""")
+            ctx.log.debug(s"""(replaceBy) added worker data: ${enoughButNotTooMuchInfo(d.mkString(","), 20)}""")
             dataInput(conf, nd)
 
           case StartWorker(rt) =>
-            ctx.log.info(s"starting working on data: ${enoughButNotTooMuchInfo(data.mkString(","), 30)}")
+            ctx.log.info(s"(replaceBy) starting working on data: ${enoughButNotTooMuchInfo(data.mkString(","), 30)}")
             // do the work here (could spawn a actor hierarchy and manage it from here)
-            val replaceFrom = conf.getOrElse("replace", "a")
+            val replaceFrom = conf.getOrElse("replace", "O")
             val replaceBy = conf.getOrElse("replaceBy", "B1")
             val results = data.map(kv => kv._1 -> kv._2.replace(replaceFrom, replaceBy))
             ctx.log.info(s"results: ${results.mkString(", ")}")

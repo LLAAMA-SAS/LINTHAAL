@@ -88,4 +88,8 @@ case class ComplexTaskBlueprint(name: String, description: String = "", version:
   def channelsFrom(name: String): List[FromToDispatchBlueprint] = channels.filter(t => t.fromTask == name)
 
   def channelsTo(name: String): List[FromToDispatchBlueprint] = channels.filter(t => t.toTask == name)
+  
+  def isStartTask(name: String): Boolean = startingTasks.exists(_.name == name)
+  
+  def isEndTask(name: String): Boolean = endTasks.exists(_.name == name)
 }
