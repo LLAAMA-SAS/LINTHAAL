@@ -1,6 +1,7 @@
 package org.linthaal.core.withblueprint.adt
 
 import org.linthaal.helpers
+import org.linthaal.helpers.UniqueName
 
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
@@ -26,8 +27,9 @@ import scala.concurrent.duration.{DurationInt, FiniteDuration}
  * @param workerId
  * @param timeOut
  */
-case class TaskBlueprint(name: String, workerId: WorkerId, timeOut: FiniteDuration = 2.hours) {
-  override def toString: String = s"""[$name]~>[$workerId]"""
+case class TaskBlueprint(workerId: WorkerId, timeOut: FiniteDuration = 2.hours, info: String = "") {
+  val name: String = UniqueName.getUniqueName
+  override def toString: String = s"""[$name]~>[$workerId] ($info)"""
 }
 
 /**
@@ -39,9 +41,13 @@ case class TaskBlueprint(name: String, workerId: WorkerId, timeOut: FiniteDurati
  * @param toTask
  * @param transformer
  */
-case class FromToDispatchBlueprint(fromTask: String, toTask: String, transformer:Option[String => String] = None) {
+case class FromToDispatchBlueprint(fromTask: TaskBlueprint, toTask: TaskBlueprint, transformer:Option[String => String] = None) {
   override def toString: String = s"[$fromTask]~>[$transformer]~>[$toTask]"
 }
+
+//object FromToDispatchBlueprint{
+//  def apply()
+//}
 
 
 /**
@@ -66,30 +72,28 @@ case class ComplexTaskBlueprint(name: String, description: String = "", version:
   def checker(): List[String] = {
     var l: List[String] = Nil
 
-    if (tasks.map(_.name).distinct.length != tasks.length) l = l :+ "Found duplicate tasks in the blueprint."
-    if (!channels.flatMap(t => List(t.fromTask, t.toTask)).distinct.forall(t => tasks.map(_.name).contains(t)))
-      l = l :+ "At least a transition contains unknown task name. "
+    //todo check circuit in tasks
 
     l
   }
 
   val requiredWorkers: List[WorkerId] = tasks.map(_.workerId)
 
-  val fromTasks: List[String] = channels.map(_.fromTask)
+  val fromTasks: List[TaskBlueprint] = channels.map(_.fromTask)
 
-  val toTasks: List[String] = channels.map(_.toTask)
+  val toTasks: List[TaskBlueprint] = channels.map(_.toTask)
 
-  val startingTasks: List[TaskBlueprint] = tasks.filter(t => !toTasks.contains(t.name))
+  val startingTasks: List[TaskBlueprint] = tasks.filter(t => !toTasks.contains(t))
 
-  val endTasks: List[TaskBlueprint] = tasks.filter(t => !fromTasks.contains(t.name))
+  val endTasks: List[TaskBlueprint] = tasks.filter(t => !fromTasks.contains(t))
 
   def taskByName(name: String): Option[TaskBlueprint] = tasks.find(t => t.name == name)
 
   def channelsFrom(name: String): List[FromToDispatchBlueprint] = channels.filter(t => t.fromTask == name)
 
   def channelsTo(name: String): List[FromToDispatchBlueprint] = channels.filter(t => t.toTask == name)
-  
+
   def isStartTask(name: String): Boolean = startingTasks.exists(_.name == name)
-  
+
   def isEndTask(name: String): Boolean = endTasks.exists(_.name == name)
 }

@@ -174,7 +174,7 @@ class TaskWorkerAct private (
         Behaviors.same
 
       case ws @ WorkerState(state, _, _, _) =>
-        ctx.log.debug(s"(running) getting last state for task [${taskId}], state: ${ws.toString} ")
+        ctx.log.debug(s"(running) getting last state for task [${taskId}], ${ws.toString} ")
         state match
           case WorkerStateType.Success | WorkerStateType.PartialSuccess =>
             worker ! GetWorkerResults(ctx.self)

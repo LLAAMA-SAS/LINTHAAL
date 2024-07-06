@@ -24,7 +24,7 @@ import java.util.Date
   *
   * Their behavior is defined by the following commands.
   */
-trait WorkerCommand
+sealed trait WorkerCommand
 
 /** adding configuration to the worker (e.g. token to access a remote service)
   * @param config

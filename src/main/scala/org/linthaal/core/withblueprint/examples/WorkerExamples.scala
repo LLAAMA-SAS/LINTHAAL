@@ -2,7 +2,7 @@ package org.linthaal.core.withblueprint.examples
 
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
-import org.linthaal.core.withblueprint.adt.WorkerStateType.DataInput
+import org.linthaal.core.withblueprint.adt.WorkerStateType.*
 import org.linthaal.core.withblueprint.adt.*
 import org.linthaal.helpers.enoughButNotTooMuchInfo
 

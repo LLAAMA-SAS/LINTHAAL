@@ -128,7 +128,7 @@ class Materializations private (conf: Map[String, String], ctx: ActorContext[Mat
         val bp = blueprints.find(_.id == bpId)
         if (bp.isDefined && bp.get.requiredWorkers.forall(a => agents.keySet.contains(a))) {
           val ags = agents.view.filterKeys(k => bp.get.requiredWorkers.contains(k)).toMap
-          val matId = s"tasks_mat_${bp.get.id}_${UniqueName.getName}"
+          val matId = s"tasks_mat_${bp.get.id}_${UniqueName.getUniqueName}"
           ctx.log.info(s"creating new materialization $matId")
           val sgMat = ctx.spawn(ComplexTaskMaterialization(bp.get, matId, ags, conf, params), matId)
           materializations += matId -> sgMat

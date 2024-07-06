@@ -21,14 +21,14 @@ import scala.util.Random
   *
   */
 object UniqueName {
-  private val animals = readFileFromResources("/name_gen/animals.txt")
-  private val aL = animals.size
-  private val colors = readFileFromResources("/name_gen/colors.txt")
-  private val cL = colors.size
-  private val adjectives = readFileFromResources("/name_gen/adjectives.txt")
-  private val adL = adjectives.size
-  private val vs = "aeiouy"
-  private val co = "bcdfghjklmnpqrstvw"
+  val animals = readFileFromResources("/name_gen/animals.txt")
+  val aL = animals.size
+  val colors = readFileFromResources("/name_gen/colors.txt")
+  val cL = colors.size
+  val adjectives = readFileFromResources("/name_gen/adjectives.txt")
+  val adL = adjectives.size
+  val vs = "aeiouy"
+  val co = "bcdfghjklmnpqrstvw"
 
   private def readFileFromResources(name: String): List[String] = {
     import scala.io.Source
@@ -50,19 +50,18 @@ object UniqueName {
   private var alreadyGiven: Set[String] = Set.empty
 
   @tailrec
-  def getName: String =
+  def getUniqueName: String =
     val newName = generateNewName
-    if (alreadyGiven.contains(newName)) getName
+    if (alreadyGiven.contains(newName)) getUniqueName
     else
       alreadyGiven += newName
       newName
-  
-  private def generateNewName: String = {
-    val animal = firstLetterUpperCase(animals(Random.nextInt(aL)))
-    val color = firstLetterUpperCase(colors(Random.nextInt(cL)))
-    val adjective = firstLetterUpperCase(adjectives(Random.nextInt(adL)))
-    s"${adjective}_${color}_${animal}_${nickN}"
-  }
 
-  def randomNameWithTime: String = s"${getName}_${DateAndTimeHelpers.getCurrentDate_ms()}"
+  def animal: String = firstLetterUpperCase(animals(Random.nextInt(aL)))
+  def color: String = firstLetterUpperCase(colors(Random.nextInt(cL)))
+  def adjective: String = firstLetterUpperCase(adjectives(Random.nextInt(adL)))
+  
+  def generateNewName: String = s"${adjective}_${color}_${animal}_${nickN}"
+
+  def randomNameWithTime: String = s"${getUniqueName}_${DateAndTimeHelpers.getCurrentDate_ms()}"
 }

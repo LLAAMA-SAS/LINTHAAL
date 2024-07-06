@@ -143,7 +143,7 @@ class ComplexTaskMaterialization private (
 
   private def init(): Behavior[CTCmdAndAgentResp] = {
     blueprint.startingTasks.foreach { t => // adding all starting blueprint tasks to materializedTasks
-      val taskId = UniqueName.getName
+      val taskId = UniqueName.getUniqueName
       materializedTasks += taskId -> t
       taskStates += taskId -> MatTaskStateType.New
       agents.get(t.workerId).foreach { ag =>
@@ -201,7 +201,7 @@ class ComplexTaskMaterialization private (
 
         closingTasksOnceChildrenInformed()
 
-        newTasksReadyOnceDispatchsCompleted()
+        newTasksReadyWhenDataInputDispatchesCompleted()
 
         startReadyTasks()
 
@@ -278,7 +278,8 @@ class ComplexTaskMaterialization private (
   private def countOpenTasks(): Int = taskStates.count(ts => isOpen(ts._2))
 
   private def askingRunningTasksForState(): Unit = {
-    context.log.debug(s"*** Asking Running tasks for their state updates... [${taskStates.mkString(", ")}]")
+    context.log.debug(
+      s"*** Asking Running tasks for their state updates... known states: [${taskStates.mkString(", ")}]")
     for
       t <- taskStates
       if isActive(t._2)
@@ -316,7 +317,7 @@ class ComplexTaskMaterialization private (
       val targetTask = materializedTasks
         .find(mt => mt._2.name == fromBlueP.toTask)
         .fold {
-          val newTaskId = UniqueName.getName
+          val newTaskId = UniqueName.getUniqueName
           materializedTasks += newTaskId -> tbn
           taskStates += newTaskId -> MatTaskStateType.New
           context.log.debug(s"adding new child task [${newTaskId}]")
@@ -344,10 +345,20 @@ class ComplexTaskMaterialization private (
     }
   }
 
-  private def newTasksReadyOnceDispatchsCompleted(): Unit = {
-    context.log.debug(s"""*** Change state to ready for tasks which were receiving data... 
-                         |${taskStates.filter(_._2 == MatTaskStateType.DataInput).mkString} """.stripMargin)
-    
+  private def newTasksReadyWhenDataInputDispatchesCompleted(): Unit = {
+    context.log.debug(s"""*** Change state to ready for tasks which were receiving data... ${taskStates
+        .filter(_._2 == MatTaskStateType.DataInput)
+        .mkString} """.strip())
+
+//    def parentTasksFromBlueprint(tId: String) = List[TaskBlueprint] {
+//      val parentIds = materializedTasks.get(tId).fold(List.empty) { taskBlueprint =>
+//        blueprint.channelsTo(taskBlueprint.name).map(_.fromTask)
+//      }
+//      
+//      val fromTaskBlueprints = materializedTasks.filter(mt => parentIds.contains(mt._2.name))
+//      
+//    }
+
     for
       ts <- taskStates
       if ts._2 == MatTaskStateType.DataInput
