@@ -201,7 +201,7 @@ class ComplexTaskMaterialization private (
 
         closingTasksOnceChildrenInformed()
 
-        newTasksReadyWhenDataInputDispatchesCompleted()
+        newTasksReadyWhenDataInputCompleted()
 
         startReadyTasks()
 
@@ -301,7 +301,7 @@ class ComplexTaskMaterialization private (
       if successfulTask._2 == MatTaskStateType.TaskSucceeded
       tId = successfulTask._1
       matTask <- materializedTasks.get(tId)
-      if blueprint.isEndTask(matTask.name)
+      if blueprint.isEndTask(matTask)
     do taskStates += tId -> MatTaskStateType.FinalSuccess
 
     for
@@ -310,15 +310,14 @@ class ComplexTaskMaterialization private (
       tId = successfulTask._1
       matTask <- materializedTasks.get(tId)
       a <- agents.get(matTask.workerId)
-      fromBlueP <- blueprint.channelsFrom(matTask.name)
-      tbn <- blueprint.taskByName(fromBlueP.toTask)
-      toAgent <- agents.get(tbn.workerId)
+      fromBlueP <- blueprint.channelsFrom(matTask)
+      toAgent <- agents.get(fromBlueP.toTask.workerId)
     do {
       val targetTask = materializedTasks
-        .find(mt => mt._2.name == fromBlueP.toTask)
+        .find(mt => mt._2 == fromBlueP.toTask)
         .fold {
           val newTaskId = UniqueName.getUniqueName
-          materializedTasks += newTaskId -> tbn
+          materializedTasks += newTaskId -> fromBlueP.toTask
           taskStates += newTaskId -> MatTaskStateType.New
           context.log.debug(s"adding new child task [${newTaskId}]")
           toAgent ! CreateTask(newTaskId)
@@ -345,34 +344,39 @@ class ComplexTaskMaterialization private (
     }
   }
 
-  private def newTasksReadyWhenDataInputDispatchesCompleted(): Unit = {
-    context.log.debug(s"""*** Change state to ready for tasks which were receiving data... ${taskStates
+  private def newTasksReadyWhenDataInputCompleted(): Unit = {
+    context.log.debug(s"""*** Change state to ready for tasks which did receive data... ${taskStates
         .filter(_._2 == MatTaskStateType.DataInput)
         .mkString} """.strip())
 
-//    def parentTasksFromBlueprint(tId: String) = List[TaskBlueprint] {
-//      val parentIds = materializedTasks.get(tId).fold(List.empty) { taskBlueprint =>
-//        blueprint.channelsTo(taskBlueprint.name).map(_.fromTask)
+//    def parentTasksDataInputsCompleted(tId: String) = Boolean {
+//      val parentBlueprints = materializedTasks.get(tId).fold(List.empty) { taskBlueprint =>
+//        blueprint.channelsTo(taskBlueprint).map(_.fromTask)
 //      }
 //      
-//      val fromTaskBlueprints = materializedTasks.filter(mt => parentIds.contains(mt._2.name))
+//      val parentMatBlueprints = materializedTasks.filter(mt => parentBlueprints.contains(mt._2))
 //      
+//      if (parentBlueprints.size == parentMatBlueprints.size) {
+//        
+//      }
 //    }
+//    
+//    def fromToDispatchStateCompleted(tId: String): Boolean = {
+//      val fromToS = fromToStates.filter(fts => fts._1.toTask == tId)
+//    } 
 
     for
       ts <- taskStates
       if ts._2 == MatTaskStateType.DataInput
       tId = ts._1
       tbp <- materializedTasks.get(tId)
-      bpChans = blueprint.channelsTo(tbp.name).map(_.fromTask)
-      fromTasks = materializedTasks.filter(mt => bpChans.contains(mt._2.name))
+      agent <- agents.get(tbp.workerId)
+      bpChans = blueprint.channelsTo(tbp).map(_.fromTask)
+      fromTasks = materializedTasks.filter(mt => bpChans.contains(mt._2))
       if bpChans.size == fromTasks.size
       if fromTasks
-        .map(ft => fromToStates.find(fts => fts._1.toTask == ft._1))
+        .map(ft => fromToStates.find(fts => fts._1.fromTask == ft._1 && fts._1.toTask == tId)) 
         .forall(t => t.nonEmpty && t.get._2 == FromToStateType.Completed)
-      ag = agents.get(tbp.workerId)
-      if ag.isDefined
-      agent = ag.get
     do {
       context.log.debug(s"Dispatches completed, starting task: $tId")
       agent ! StartTask(tId)

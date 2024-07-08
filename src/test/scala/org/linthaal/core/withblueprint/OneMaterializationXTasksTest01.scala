@@ -27,25 +27,25 @@ import scala.concurrent.duration.DurationInt
  *
  */
 
-class MoreComplexMaterialization1Test extends ScalaTestWithActorTestKit with AnyWordSpecLike {
+class OneMaterializationXTasksTest01 extends ScalaTestWithActorTestKit with AnyWordSpecLike {
   "A 3 agents system " must {
     val timeout = 240.seconds
     "start and run 7 different tasks and complete " in {
       //Super simple Blueprint
-      val bpt11 = TaskBlueprint("to upper case 1", WorkerExamples.upperCaseAgentId)
-      val bpt21 = TaskBlueprint("replace 1", WorkerExamples.replaceAgentId)
-      val bpt12 = TaskBlueprint("to upper case 2", WorkerExamples.upperCaseAgentId)
-      val bpt22 = TaskBlueprint("replace 2", WorkerExamples.replaceAgentId)
-      val bpt31 = TaskBlueprint("add Text agent 1", DelegatedAddText.addTextAgentId)
-      val bpt32 = TaskBlueprint("add Text agent 2", DelegatedAddText.addTextAgentId)
-      val bpt33 = TaskBlueprint("add Text agent 3", DelegatedAddText.addTextAgentId)
+      val bpt11 = TaskBlueprint(WorkerExamples.upperCaseAgentId)
+      val bpt21 = TaskBlueprint(WorkerExamples.replaceAgentId)
+      val bpt12 = TaskBlueprint(WorkerExamples.upperCaseAgentId)
+      val bpt22 = TaskBlueprint(WorkerExamples.replaceAgentId)
+      val bpt31 = TaskBlueprint(DelegatedAddText.addTextAgentId)
+      val bpt32 = TaskBlueprint(DelegatedAddText.addTextAgentId)
+      val bpt33 = TaskBlueprint(DelegatedAddText.addTextAgentId)
 
-      val ftBp1 = FromToDispatchBlueprint(bpt21.name, bpt31.name)
-      val ftBp2 = FromToDispatchBlueprint(bpt12.name, bpt32.name)
-      val ftBp3 = FromToDispatchBlueprint(bpt31.name, bpt11.name)
-      val ftBp4 = FromToDispatchBlueprint(bpt32.name, bpt22.name)
-      val ftBp5 = FromToDispatchBlueprint(bpt11.name, bpt33.name)
-      val ftBp6 = FromToDispatchBlueprint(bpt22.name, bpt33.name)
+      val ftBp1 = FromToDispatchBlueprint(bpt21, bpt31)
+      val ftBp2 = FromToDispatchBlueprint(bpt12, bpt32)
+      val ftBp3 = FromToDispatchBlueprint(bpt31, bpt11)
+      val ftBp4 = FromToDispatchBlueprint(bpt32, bpt22)
+      val ftBp5 = FromToDispatchBlueprint(bpt11, bpt33)
+      val ftBp6 = FromToDispatchBlueprint(bpt22, bpt33)
 
       val bp = ComplexTaskBlueprint("7 tasks", tasks = List(bpt11, bpt21, bpt12, bpt22, bpt31, bpt32, bpt33),
         channels = List(ftBp1,ftBp2,ftBp3,ftBp4,ftBp5,ftBp6))

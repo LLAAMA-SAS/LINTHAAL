@@ -21,15 +21,14 @@ import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 /**
  * A task blueprint defines a real task done by a worker.
- * Its name must be unique and another task using the same worker should have have another name.
  *
- * @param name
  * @param workerId
  * @param timeOut
  */
-case class TaskBlueprint(workerId: WorkerId, timeOut: FiniteDuration = 2.hours, info: String = "") {
-  val name: String = UniqueName.getUniqueName
-  override def toString: String = s"""[$name]~>[$workerId] ($info)"""
+case class TaskBlueprint(workerId: WorkerId, timeOut: FiniteDuration = 2.hours, comments: String = "") {
+  val id: String = UniqueName.getUniqueName
+  
+  override def toString: String = s"[$workerId] id=[$id] - $comments"
 }
 
 /**
@@ -42,13 +41,8 @@ case class TaskBlueprint(workerId: WorkerId, timeOut: FiniteDuration = 2.hours, 
  * @param transformer
  */
 case class FromToDispatchBlueprint(fromTask: TaskBlueprint, toTask: TaskBlueprint, transformer:Option[String => String] = None) {
-  override def toString: String = s"[$fromTask]~>[$transformer]~>[$toTask]"
+  override def toString: String = s"[$fromTask]~>[$toTask]"
 }
-
-//object FromToDispatchBlueprint{
-//  def apply()
-//}
-
 
 /**
  * A graph of agents is defined as a set of tasks and a set of transmission channels.
@@ -87,13 +81,11 @@ case class ComplexTaskBlueprint(name: String, description: String = "", version:
 
   val endTasks: List[TaskBlueprint] = tasks.filter(t => !fromTasks.contains(t))
 
-  def taskByName(name: String): Option[TaskBlueprint] = tasks.find(t => t.name == name)
+  def channelsFrom(taskBlueprint: TaskBlueprint): List[FromToDispatchBlueprint] = channels.filter(t => t.fromTask == taskBlueprint)
 
-  def channelsFrom(name: String): List[FromToDispatchBlueprint] = channels.filter(t => t.fromTask == name)
+  def channelsTo(taskBlueprint: TaskBlueprint): List[FromToDispatchBlueprint] = channels.filter(t => t.toTask == taskBlueprint)
 
-  def channelsTo(name: String): List[FromToDispatchBlueprint] = channels.filter(t => t.toTask == name)
+  def isStartTask(taskBlueprint: TaskBlueprint): Boolean = startingTasks.contains(taskBlueprint)
 
-  def isStartTask(name: String): Boolean = startingTasks.exists(_.name == name)
-
-  def isEndTask(name: String): Boolean = endTasks.exists(_.name == name)
+  def isEndTask(taskBlueprint: TaskBlueprint): Boolean = endTasks.contains(taskBlueprint)
 }

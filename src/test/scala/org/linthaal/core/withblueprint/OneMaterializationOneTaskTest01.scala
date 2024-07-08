@@ -1,11 +1,11 @@
 package org.linthaal.core.withblueprint
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
-import org.linthaal.core.withblueprint.Materializations.*
-import org.linthaal.core.withblueprint.adt.{ComplexTaskBlueprint, FromToDispatchBlueprint, TaskBlueprint}
 import org.linthaal.core.GenericFeedback
 import org.linthaal.core.withblueprint.ComplexTaskMaterialization.{FinalResults, GetFinalResults}
-import org.linthaal.core.withblueprint.examples.WorkerExamples
+import org.linthaal.core.withblueprint.Materializations.*
+import org.linthaal.core.withblueprint.adt.{ComplexTaskBlueprint, FromToDispatchBlueprint, TaskBlueprint}
+import org.linthaal.core.withblueprint.examples.{DelegatedAddText, WorkerExamples}
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.duration.DurationInt
@@ -27,17 +27,14 @@ import scala.concurrent.duration.DurationInt
   *
   */
 
-class OneSimpleMaterialization1Test extends ScalaTestWithActorTestKit with AnyWordSpecLike {
-  "A two agents system " must {
-    val timeout = 120.seconds
-    "start and run two different tasks in a row and complete " in {
+class OneMaterializationOneTaskTest01 extends ScalaTestWithActorTestKit with AnyWordSpecLike {
+  "A one agent system " must {
+    val timeout = 100.seconds
+    "starts and runs one long task... " in {
       //Super simple Blueprint
-      val bpt1 = TaskBlueprint("to upper case 1", WorkerExamples.upperCaseAgentId)
-      val bpt2 = TaskBlueprint("replace 1", WorkerExamples.replaceAgentId)
+      val bpt1 = TaskBlueprint(DelegatedAddText.addTextAgentId)
 
-      val ftBp = FromToDispatchBlueprint(bpt1.name, bpt2.name)
-
-      val bp = ComplexTaskBlueprint("ultra simple", tasks = List(bpt1, bpt2), channels = List(ftBp))
+      val bp = ComplexTaskBlueprint("ultra simple 2", tasks = List(bpt1), channels = List())
 
       val probe1 = createTestProbe[GenericFeedback]()
       val probe2 = createTestProbe[AllMaterializationState]()
@@ -46,9 +43,7 @@ class OneSimpleMaterialization1Test extends ScalaTestWithActorTestKit with AnyWo
 
       val underTest = spawn(Materializations())
       
-      underTest.tell(AddAgent(WorkerExamples.upperCaseAgent, probe1.ref))
-      probe1.expectMessageType[GenericFeedback](timeout)
-      underTest.tell(AddAgent(WorkerExamples.replaceAgent, probe1.ref))
+      underTest.tell(AddAgent(DelegatedAddText.addTextAgent, probe1.ref))
       probe1.expectMessageType[GenericFeedback](timeout)
 
       underTest.tell(AddBlueprint(bp, probe1.ref))
@@ -59,11 +54,12 @@ class OneSimpleMaterialization1Test extends ScalaTestWithActorTestKit with AnyWo
       
       underTest.tell(GetAllMaterializationState(probe2.ref))
       probe2.expectMessageType[AllMaterializationState](timeout)
-//      probe2.expectMessage(timeout, Materializations.AllMaterializationState(AllMateralizationStateType.Active,"total mat: 1"))
+
       underTest.tell(GetMaterializations(probe31.ref))
       probe31.expectMessageType[Materializations.AllMaterializations](timeout)
       underTest.tell(GetMatFinalResults("dd", probe32.ref))
-      probe32.expectMessage(timeout, FinalResults(Map("d" -> Map("hello" -> "World"))))
+
+      probe32.expectMessage(timeout, FinalResults(Map("d" -> Map("hello" -> "Earth, World, Moon "))))
     }
   }
 }
