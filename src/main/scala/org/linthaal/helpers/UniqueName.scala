@@ -60,8 +60,16 @@ object UniqueName {
   def animal: String = firstLetterUpperCase(animals(Random.nextInt(aL)))
   def color: String = firstLetterUpperCase(colors(Random.nextInt(cL)))
   def adjective: String = firstLetterUpperCase(adjectives(Random.nextInt(adL)))
-  
+
   def generateNewName: String = s"${adjective}_${color}_${animal}_${nickN}"
+  
+  def generateNameMaybeNotUnique: String = s"${adjective}_${color}_${animal}"
 
   def randomNameWithTime: String = s"${getUniqueName}_${DateAndTimeHelpers.getCurrentDate_ms()}"
+
+}
+
+case class ReadableUID(name: String = UniqueName.generateNameMaybeNotUnique,
+                       uid: String = UUID.randomUUID().toString) {
+  override def toString: String = name + "_" + uid.substring(2)
 }
