@@ -24,14 +24,14 @@ import java.util.UUID
 
 object SimplePromptAct {
 
-  final case class Question(uid: String, question: String, contextInformation: String)
+  final case class PromptQuestion(uid: String, question: String, contextInformation: String)
 
   sealed trait SimplePromptCmd
-  final case class PromptQuestion(question: Question, replyTo: ActorRef[PromptResponse]) extends SimplePromptCmd
+  final case class PromptQuestionCmd(question: PromptQuestion, replyTo: ActorRef[PromptResponse]) extends SimplePromptCmd
 
   private type SimplePromptCmdAndResp = SimplePromptCmd | PromptOnceResp
 
-  final case class PromptResponse(question: Question, successful: Boolean, response: String, responseMeta: String = "")
+  final case class PromptResponse(question: PromptQuestion, successful: Boolean, response: String, responseMeta: String = "")
 
   def apply(
       projectId: String = "hus-collab-001",
@@ -61,9 +61,9 @@ private class SimplePromptAct(model: GenerativeModel, ctx: ActorContext[SimplePr
   import SimplePromptAct.*
   import OnePromptAct.*
 
-  def prompting(prompts: Map[String, (Question, ActorRef[PromptResponse])]): Behavior[SimplePromptCmdAndResp] = {
+  def prompting(prompts: Map[String, (PromptQuestion, ActorRef[PromptResponse])]): Behavior[SimplePromptCmdAndResp] = {
     Behaviors.receiveMessage[SimplePromptCmdAndResp] {
-      case PromptQuestion(q, rt) =>
+      case PromptQuestionCmd(q, rt) =>
         ctx.log.debug(s"prompt question: $q")
         val actRef = ctx.spawn(OnePromptAct(), UUID.randomUUID().toString)
         actRef ! PromptOnce(model, q.uid, buildPrompt(q.question, q.contextInformation), ctx.self)
@@ -83,7 +83,11 @@ private class SimplePromptAct(model: GenerativeModel, ctx: ActorContext[SimplePr
 
   def buildPrompt(question: String, context: String): String =
     if (context.length < 3) question
-    else s"""This is the context: "$context", answer this question : "$question" """
+    else
+      s"""Given the following context: "$context",
+         | 
+         | Do the following. 
+         | "$question" """.stripMargin
 }
 
 private[vertexai] object OnePromptAct {

@@ -1,7 +1,7 @@
 package org.linthaal.ai.services.google.vertexai
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
-import org.linthaal.ai.services.google.vertexai.SimplePromptAct.{PromptQuestion, PromptResponse, Question}
+import org.linthaal.ai.services.google.vertexai.SimplePromptAct.{PromptQuestionCmd, PromptResponse, PromptQuestion}
 import org.linthaal.helpers.UniqueName
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -23,7 +23,7 @@ import scala.concurrent.duration.DurationInt
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
   */
-class SimplePromtActTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
+class SimplePromptActTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
   "a simple prompt example " must {
     val timeout = 20.seconds
     "call the google prompt api three times a get meaningful results " in {
@@ -34,9 +34,9 @@ class SimplePromtActTest extends ScalaTestWithActorTestKit with AnyWordSpecLike 
 
       val underTest = spawn(SimplePromptAct())
 
-      underTest.tell(PromptQuestion(Question(UniqueName.getUniqueName, "What is pi and what is its value? ", " Simple Mathematics "), testProbe1.ref))
-      underTest.tell(PromptQuestion(Question(UniqueName.getUniqueName, "Who are the most important physicists for quantum mechanics and what were their contributions, name not more than 4", " General knowledge "), testProbe2.ref))
-      underTest.tell(PromptQuestion(Question(UniqueName.getUniqueName, "What is the role of the sigmoid colon?", " Be very precised and detailed. "), testProbe3.ref))
+      underTest.tell(PromptQuestionCmd(PromptQuestion(UniqueName.getUniqueName, "What is pi and what is its value? ", " Simple Mathematics "), testProbe1.ref))
+      underTest.tell(PromptQuestionCmd(PromptQuestion(UniqueName.getUniqueName, "Who are the most important physicists for quantum mechanics and what were their contributions, name not more than 4", " General knowledge "), testProbe2.ref))
+      underTest.tell(PromptQuestionCmd(PromptQuestion(UniqueName.getUniqueName, "What is the role of the sigmoid colon?", " Be very precise and detailed. "), testProbe3.ref))
 
       testProbe1.expectMessageType[PromptResponse](timeout)
       testProbe2.expectMessageType[PromptResponse](timeout)

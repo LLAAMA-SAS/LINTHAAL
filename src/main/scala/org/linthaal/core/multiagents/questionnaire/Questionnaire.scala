@@ -12,7 +12,7 @@ package org.linthaal.core.multiagents.questionnaire
   * not, see <http://www.gnu.org/licenses/>.
   */
 
-case class Questionnaire(questions: List[Question])
+case class Questionnaire(aiContextInstructions: String, questions: List[Question])
 
 enum BranchingStrategyType:
   case YesNo, NumberEquals, NumberBigger, NumberSmaller, AIReasoning
@@ -21,14 +21,22 @@ case class BranchQuestionDecisionStrategy(branchingStrategy: BranchingStrategyTy
 
 case class Branch(decisionStrategy: BranchQuestionDecisionStrategy, children: List[Question])
 
-enum AnswerType:
-  case FreeText, FreeNumber, Range, MultiChoice, YesNo
+case class AnswerExample(answer: String, inferredValue: String) {
+  override def toString: String = s"""answer: $answer, inferred value: $inferredValue"""
+}
+
+enum AnswerType(val description: String):
+  case FreeText extends AnswerType("Text")
+  case FreeNumber extends AnswerType("Number")
+  case RangeNumber extends AnswerType("Range number")
+  case MultiChoice extends AnswerType("Multiple choices")
+  case YesNo extends AnswerType("Yes/No")
 
 case class Question(
     question: String,
     answerType: AnswerType,
-    predefined: String,
-    answerExamples: List[String] = List.empty,
+    predefined: List[String] = List.empty,
+    answerExamples: List[AnswerExample] = List.empty,
     branch: Option[Branch] = None)
 
 sealed trait InferredAnswer(rawAnswer: String)
