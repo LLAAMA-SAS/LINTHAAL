@@ -12,42 +12,64 @@ package org.linthaal.core.multiagents.questionnaire
   * not, see <http://www.gnu.org/licenses/>.
   */
 
-case class Questionnaire(aiContextInstructions: String, questions: List[Question])
+case class Questionnaire(title: String, description: String, aiContextInstructions: String, questions: List[Question])
 
-enum BranchingStrategyType:
-  case YesNo, NumberEquals, NumberBigger, NumberSmaller, AIReasoning
+enum BranchStrategyType:
+  case Always, YesNo, NumberEquals, NumberBigger, NumberSmaller, AIReasoning
 
-case class BranchQuestionDecisionStrategy(branchingStrategy: BranchingStrategyType, comment: String)
-
-case class Branch(decisionStrategy: BranchQuestionDecisionStrategy, children: List[Question])
+case class BranchDecisionStrategy(branchingStrategy: BranchStrategyType, comment: String)
 
 case class AnswerExample(answer: String, inferredValue: String) {
   override def toString: String = s"""answer: $answer, inferred value: $inferredValue"""
 }
 
-enum AnswerType(val description: String):
-  case FreeText extends AnswerType("Text")
-  case FreeNumber extends AnswerType("Number")
-  case RangeNumber extends AnswerType("Range number")
-  case MultiChoice extends AnswerType("Multiple choices")
-  case YesNo extends AnswerType("Yes/No")
+enum AnswerCategory(val description: String):
+  case FreeTextCat extends AnswerCategory("Text")
+  case NumberCat extends AnswerCategory("Floating Number")
+  case IntegerCat extends AnswerCategory("Integer")
+  case RangeNumberCat extends AnswerCategory("Floating number range")
+  case RangeIntNumberCat extends AnswerCategory("Integer number range")
+  case MultiChoicesCat extends AnswerCategory("Multiple choices")
+  case YesNoCat extends AnswerCategory("Yes/No")
+
+sealed trait AnswerType(val category: AnswerCategory)
+
+case class FreeText(maxLength: Int = 10000, defaultVal: Option[String] = None)
+    extends AnswerType(AnswerCategory.FreeTextCat)
+case class FreeNumber(maxVal: Double = Double.MaxValue, defaultVal: Option[Double] = None)
+    extends AnswerType(AnswerCategory.NumberCat)
+case class IntegerNumber(maxVal: Int = Int.MaxValue, defaultVal: Option[Int] = None)
+    extends AnswerType(AnswerCategory.IntegerCat)
+case class RangeNumber(minVal: Double = -10000, maxVal: Double = 10000, defaultVal: Option[Double] = None)
+    extends AnswerType(AnswerCategory.RangeNumberCat)
+case class RangeIntNumber(minVal: Int = -10000, maxVal: Int = 10000, defaultVal: Option[Int] = None)
+    extends AnswerType(AnswerCategory.RangeIntNumberCat)
+case class MultipleChoices(options: List[String], newValue: Boolean = false, defaultVal: Option[String] = None)
+    extends AnswerType(AnswerCategory.MultiChoicesCat)
+case class YesNo(maxLength: Int = 10, defaultVal: Option[String] = Some("Yes")) extends AnswerType(AnswerCategory.FreeTextCat)
 
 case class Question(
-    question: String,
-    answerType: AnswerType,
-    predefined: List[String] = List.empty,
-    answerExamples: List[AnswerExample] = List.empty,
-    branch: Option[Branch] = None)
+                     question: String,
+                     answerType: AnswerType,
+                     description: String = "",
+                     answerExamples: List[AnswerExample] = List.empty,
+                     dependsOn: Option[(Question, BranchDecisionStrategy)] = None)
 
-sealed trait InferredAnswer(rawAnswer: String)
+sealed trait InferredAnswer
 
-case class UnknownAnswer(rawAnswer: String, inference: String) extends InferredAnswer(rawAnswer)
+case object UnknownAnswer extends InferredAnswer
 
-case class IntNumberAnswer(number: Int, rawAnswer: String) extends InferredAnswer(rawAnswer)
+case class IntNumberAnswer(number: Int) extends InferredAnswer
 
-case class DoubleNumberAnswer(number: Double, rawAnswer: String) extends InferredAnswer(rawAnswer)
+case class DoubleNumberAnswer(number: Double) extends InferredAnswer
 
-case class YesNoAnswer(yes: Boolean, rawAnswer: String) extends InferredAnswer(rawAnswer)
+case class YesNoAnswer(yes: Boolean) extends InferredAnswer
 
-case class FreeTextAnswer(keptText: String, rawAnswer: String) extends InferredAnswer(rawAnswer)
+case class TextAnswer(keptText: String) extends InferredAnswer
 
+object QuestionnaireHelper {
+  def answerChildrenQuestions(branchDecisionStrategy: BranchDecisionStrategy, answer: InferredAnswer): Boolean = {
+    //todo implement
+    true
+  }
+}

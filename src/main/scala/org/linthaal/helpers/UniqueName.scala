@@ -42,7 +42,7 @@ object UniqueName {
   }
 
   private def rndI = Random.nextInt(10)
-  
+
   private def rndVo: Char = vs.charAt(Random.nextInt(vs.length))
   private def rndCs: Char = co.charAt(Random.nextInt(co.length))
   private def nickN: String = firstLetterUpperCase(s"$rndCs$rndVo$rndI$rndCs$rndVo$rndI")
@@ -62,14 +62,10 @@ object UniqueName {
   def adjective: String = firstLetterUpperCase(adjectives(Random.nextInt(adL)))
 
   def generateNewName: String = s"${adjective}_${color}_${animal}_${nickN}"
-  
+
   def generateNameMaybeNotUnique: String = s"${adjective}_${color}_${animal}"
 
   def randomNameWithTime: String = s"${getUniqueName}_${DateAndTimeHelpers.getCurrentDate_ms()}"
 
-}
-
-case class ReadableUID(name: String = UniqueName.generateNameMaybeNotUnique,
-                       uid: String = UUID.randomUUID().toString) {
-  override def toString: String = name + "_" + uid.substring(2)
+  def getReadableUID: String = s"${UniqueName.generateNameMaybeNotUnique}_${UUID.randomUUID().toString}"
 }

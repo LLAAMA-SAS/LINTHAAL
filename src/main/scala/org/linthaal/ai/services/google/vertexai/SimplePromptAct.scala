@@ -24,14 +24,14 @@ import java.util.UUID
 
 object SimplePromptAct {
 
-  final case class PromptQuestion(uid: String, question: String, contextInformation: String)
+  final case class PromptRequest(uid: String, request: String, contextInformation: String)
 
   sealed trait SimplePromptCmd
-  final case class PromptQuestionCmd(question: PromptQuestion, replyTo: ActorRef[PromptResponse]) extends SimplePromptCmd
+  final case class PromptQuestionCmd(question: PromptRequest, replyTo: ActorRef[PromptResponse]) extends SimplePromptCmd
 
   private type SimplePromptCmdAndResp = SimplePromptCmd | PromptOnceResp
 
-  final case class PromptResponse(question: PromptQuestion, successful: Boolean, response: String, responseMeta: String = "")
+  final case class PromptResponse(request: PromptRequest, successful: Boolean, response: String, responseMeta: String = "")
 
   def apply(
       projectId: String = "hus-collab-001",
@@ -61,12 +61,12 @@ private class SimplePromptAct(model: GenerativeModel, ctx: ActorContext[SimplePr
   import SimplePromptAct.*
   import OnePromptAct.*
 
-  def prompting(prompts: Map[String, (PromptQuestion, ActorRef[PromptResponse])]): Behavior[SimplePromptCmdAndResp] = {
+  def prompting(prompts: Map[String, (PromptRequest, ActorRef[PromptResponse])]): Behavior[SimplePromptCmdAndResp] = {
     Behaviors.receiveMessage[SimplePromptCmdAndResp] {
       case PromptQuestionCmd(q, rt) =>
         ctx.log.debug(s"prompt question: $q")
         val actRef = ctx.spawn(OnePromptAct(), UUID.randomUUID().toString)
-        actRef ! PromptOnce(model, q.uid, buildPrompt(q.question, q.contextInformation), ctx.self)
+        actRef ! PromptOnce(model, q.uid, buildPrompt(q.request, q.contextInformation), ctx.self)
         prompting(prompts + (q.uid -> (q, rt)))
 
       case PromptOnceSucceeded(uid, r) =>

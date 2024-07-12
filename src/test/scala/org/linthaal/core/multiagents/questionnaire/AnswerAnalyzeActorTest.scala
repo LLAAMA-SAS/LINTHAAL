@@ -2,8 +2,8 @@ package org.linthaal.core.multiagents.questionnaire
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import org.linthaal.ai.services.google.vertexai.SimplePromptAct
-import org.linthaal.ai.services.google.vertexai.SimplePromptAct.PromptResponse
-import org.linthaal.core.multiagents.questionnaire.AnswerAnalyzeActor.*
+import org.linthaal.core.multiagents.questionnaire.AnswerAnalyzeV1Actor.*
+import org.scalatest.Failed
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.duration.DurationInt
@@ -24,33 +24,38 @@ import scala.concurrent.duration.DurationInt
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
   */
-
 class AnswerAnalyzeActorTest  extends ScalaTestWithActorTestKit with AnyWordSpecLike {
 
-  import AnswerAnalyzeActorTest.*
-
-  "A answer " must {
-    val timeout = 20.seconds
+  "Answer 1 " must {
+    val timeout = 10.seconds
     " be analyzed and returned as a clearly defined answer " in {
 
       val spa = spawn(SimplePromptAct())
 
-//      val testProbe1 = createTestProbe[AnswerAnalyzedResp]()
-//      val underTest1 = spawn(AnswerAnalyzeActor(spa, "test1", q1, testProbe1.ref))
-//      underTest1.tell(AnalyzeAnswer("I believe 2 tablets per day"))
-//      testProbe1.expectMessage(timeout, AnalyzedAnswer(IntNumberAnswer(2,"2"), ""))
-
-      val testProbe2 = createTestProbe[AnswerAnalyzedResp]()
-      val underTest2 = spawn(AnswerAnalyzeActor(spa, "test1", q2, testProbe2.ref))
-      underTest2.tell(AnalyzeAnswer("Last night almost forty-one."))
-      testProbe2.expectMessage(timeout, AnalyzedAnswer(IntNumberAnswer(41,"41"), ""))
+      val testProbe = createTestProbe[AnswerAnalyzedResp]()
+      val underTest = spawn(AnswerAnalyzeV1Actor(spa, "test1", QuestionExamples.q1, testProbe.ref))
+      underTest.tell(ProcessAnswer("I believe 2 tablets per day"))
+      val answer = testProbe.expectMessageType[AnalyzedAnswer](timeout)
+      answer.inferredAnswer shouldBe IntNumberAnswer(2)
     }
   }
 
-  object AnswerAnalyzeActorTest {
-    val q1: Question = Question("How many tablets do you take per day?", AnswerType.FreeNumber,
-      answerExamples = List(AnswerExample("maybe 4 a day", "4")))
-    val q2: Question = Question("What is your current temperature in Celsius?", AnswerType.FreeNumber,
-      answerExamples = List(AnswerExample("This morning I guess 36 ", "36"),AnswerExample("thirty-seven", "37")))
+  "Answer 2 " must {
+    val timeout = 10.seconds
+    " be analyzed and returned as a clearly defined answer " in {
+
+      val spa = spawn(SimplePromptAct())
+
+      val testProbe = createTestProbe[AnswerAnalyzedResp]()
+      val underTest = spawn(AnswerAnalyzeV1Actor(spa, "test1", QuestionExamples.q2, testProbe.ref))
+      underTest.tell(ProcessAnswer("Last night almost forty-one."))
+      val answer = testProbe.expectMessageType[AnalyzedAnswer](timeout)
+      answer.inferredAnswer match {
+        case DoubleNumberAnswer(vd) =>
+          vd should (be >= 40.3 and be <= 41.0)
+        case _ =>
+          Failed("not right type. ")
+      }
+    }
   }
 }

@@ -3,7 +3,7 @@ package org.linthaal.core.multiagents.questionnaire
 import akka.actor.typed.{ ActorRef, Behavior }
 import akka.actor.typed.scaladsl.{ ActorContext, Behaviors }
 import org.linthaal.core.multiagents.questionnaire.QuestionnaireAgent.QuestionnaireCmd
-import org.linthaal.helpers.{ ReadableUID, UniqueName }
+import org.linthaal.helpers.UniqueName
 
 import java.util.UUID
 
@@ -33,7 +33,7 @@ object QuestionnaireAgent {
 
 private class QuestionnaireAgent(questionnaire: Questionnaire, ctx: ActorContext[QuestionnaireCmd]) {
 
-  val uid: ReadableUID = ReadableUID()
+  val uid: String = UniqueName.getReadableUID
 
   def init(): Behavior[QuestionnaireCmd] = {
     Behaviors.stopped
