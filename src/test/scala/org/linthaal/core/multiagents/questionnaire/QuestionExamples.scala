@@ -22,6 +22,8 @@ object QuestionExamples {
     answerExamples = List(AnswerExample("maybe 4 a day", "4")))
   val q2: Question = Question("What is your temperature in Celsius?", RangeNumber(35, 43),
     answerExamples = List(AnswerExample("This morning I guess 36 ", "36"), AnswerExample("thirty-seven", "37")))
-  
   val q3: Question = Question("Do you have heart problems? ", YesNo())
+  
+//  val fq1: Question = Question()
+//  val fq2: Question = Question()
 }

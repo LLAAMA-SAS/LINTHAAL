@@ -18,7 +18,7 @@ import org.linthaal.core.multiagents.questionnaire.AnswerCategory.*
   * You should have received a copy of the GNU General Public License along with this program. If
   * not, see <http://www.gnu.org/licenses/>.
   */
-object AnswerAnalyzeV1Actor {
+object AnalyzeAnswerActV1 {
 
   sealed trait AnswerAnalyzeCmd
 
@@ -31,14 +31,13 @@ object AnswerAnalyzeV1Actor {
 
   def apply(
       simplePrompt: ActorRef[SimplePromptCmd],
-      uid: String,
       question: Question,
       replyTo: ActorRef[AnswerAnalyzedResp]): Behavior[AnswerAnalyzeCmd] = {
     Behaviors
       .setup[AACmdAndPResp] { ctx =>
         Behaviors.receiveMessage {
           case ProcessAnswer(ra) =>
-            simplePrompt ! PromptQuestionCmd(prepareQuestion(uid, question, ra), ctx.self)
+            simplePrompt ! PromptQuestionCmd(prepareQuestion(question, ra), ctx.self)
             Behaviors.same
 
           case PromptResponse(req, sucess, resp, rmeta) =>
@@ -50,7 +49,7 @@ object AnswerAnalyzeV1Actor {
       .narrow
   }
 
-  def prepareQuestion(uid: String, question: Question, rawAnswer: String): PromptRequest = {
+  def prepareQuestion(question: Question, rawAnswer: String): PromptRequest = {
     val q =
       s"""
          |Given the previous context, analyze the answer text after ANSWER TEXT=.
@@ -82,7 +81,7 @@ object AnswerAnalyzeV1Actor {
          |$examples
          |""".stripMargin
 
-    PromptRequest(uid, q, contextInf)
+    PromptRequest(q, contextInf)
   }
 
   def xmlToAnalyzedAnswer(question: Question, xmlStg: String): AnalyzedAnswer = {

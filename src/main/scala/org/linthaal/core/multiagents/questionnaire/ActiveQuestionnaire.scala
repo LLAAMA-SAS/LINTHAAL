@@ -2,7 +2,7 @@ package org.linthaal.core.multiagents.questionnaire
 
 import org.linthaal.helpers.UniqueName
 
-import java.util.UUID
+import scala.annotation.tailrec
 
 /** This program is free software: you can redistribute it and/or modify it under the terms of the
   * GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -14,44 +14,54 @@ import java.util.UUID
   *
   * You should have received a copy of the GNU General Public License along with this program. If
   * not, see <http://www.gnu.org/licenses/>.
+  *
+  * TODO: add skipped questions
   */
 
 class ActiveQuestionnaire(questionnaire: Questionnaire) {
+  assert(questionnaire.questions.nonEmpty)
+  
+  val uid: String = UniqueName.getReadableUID
 
-  val uid = UniqueName.getReadableUID
+  private[questionnaire] var answeredQuestions: Map[Question, UserAndInferredAnswer] = Map.empty
+  
+  private var lastQuestion: Option[Question] = None
 
-  private var answeredQuestions: Map[Question, InferredAnswer] = Map.empty
-
-  private var lastQuestion: Question = questionnaire.questions.head
-
-  def notAnsweredQuestions(): List[Question] = {
+  def toBeAnsweredQuestions: List[Question] = {
     questionnaire.questions.filterNot(q => answeredQuestions.keySet.contains(q))
   }
 
   def nextQuestion(): Option[Question] = {
 
-    def askQuestion(q: Question): Boolean = {
-      val par = q.dependsOn
-      !answeredQuestions.isDefinedAt(q) &&
-      (par.isEmpty ||
-        (answeredQuestions.isDefinedAt(par.get._1) &&
-          QuestionnaireHelper.answerChildrenQuestions(par.get._2, answeredQuestions(par.get._1))))
+    def shouldQuestionBeAsked(q: Question): Boolean = {
+      q.dependsOn.isEmpty ||
+      (!answeredQuestions.isDefinedAt(q) &&
+        answeredQuestions.isDefinedAt(q.dependsOn.get) &&
+        q.dependsOn.get.askSubQuestions.fold(true)(f => f(answeredQuestions(q.dependsOn.get).inferredAnswer)))
     }
 
     val qs = questionnaire.questions
 
-    def findNextQuestion(idx: Int = qs.indexOf(lastQuestion)): Option[Question] = {
-      if (idx < qs.size - 1) {
-        val q = qs(idx + 1)
-        if (askQuestion(q)) Some(q)
-        else findNextQuestion(idx + 1)
-      } else notAnsweredQuestions().headOption
+    @tailrec
+    def nextQuestion(lastQuestId: Int): Option[Question] = {
+      if (lastQuestId < qs.size - 1) {
+        val q = qs(lastQuestId + 1)
+        if (shouldQuestionBeAsked(q)) Some(q)
+        else nextQuestion(lastQuestId + 1)
+      } else toBeAnsweredQuestions.headOption
     }
 
-    findNextQuestion()
+    nextQuestion(lastQuestion.fold(-1)(q => qs.indexOf(q)))
   }
 
-  def saveAnswer(question: Question, inferredAnswer: InferredAnswer): Unit =
-    answeredQuestions += question -> inferredAnswer
-    lastQuestion = question
+  def saveAnswer(
+      question: Question,
+      inferredAnswer: InferredAnswer,
+      userAnswer: String,
+      comment: String = "",
+      aiTrust: Float = .98): Unit =
+    answeredQuestions += question -> UserAndInferredAnswer(userAnswer, inferredAnswer, comment, aiTrust)
+    lastQuestion = Some(question)
 }
+
+case class UserAndInferredAnswer(userAnswer: String, inferredAnswer: InferredAnswer, comment: String, aiTrust: Float)

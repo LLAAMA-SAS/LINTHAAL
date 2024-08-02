@@ -24,7 +24,7 @@ import java.util.UUID
 
 object SimplePromptAct {
 
-  final case class PromptRequest(uid: String, request: String, contextInformation: String)
+  final case class PromptRequest(request: String, contextInformation: String)
 
   sealed trait SimplePromptCmd
   final case class PromptQuestionCmd(question: PromptRequest, replyTo: ActorRef[PromptResponse]) extends SimplePromptCmd
@@ -65,9 +65,10 @@ private class SimplePromptAct(model: GenerativeModel, ctx: ActorContext[SimplePr
     Behaviors.receiveMessage[SimplePromptCmdAndResp] {
       case PromptQuestionCmd(q, rt) =>
         ctx.log.debug(s"prompt question: $q")
-        val actRef = ctx.spawn(OnePromptAct(), UUID.randomUUID().toString)
-        actRef ! PromptOnce(model, q.uid, buildPrompt(q.request, q.contextInformation), ctx.self)
-        prompting(prompts + (q.uid -> (q, rt)))
+        val uid = UUID.randomUUID().toString
+        val actRef = ctx.spawn(OnePromptAct(),uid)
+        actRef ! PromptOnce(model, uid, buildPrompt(q.request, q.contextInformation), ctx.self)
+        prompting(prompts + (uid -> (q, rt)))
 
       case PromptOnceSucceeded(uid, r) =>
         ctx.log.debug(s"prompt response: $r")

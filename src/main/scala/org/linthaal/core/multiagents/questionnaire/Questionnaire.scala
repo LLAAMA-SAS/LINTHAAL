@@ -14,17 +14,13 @@ package org.linthaal.core.multiagents.questionnaire
 
 case class Questionnaire(title: String, description: String, aiContextInstructions: String, questions: List[Question])
 
-enum BranchStrategyType:
-  case Always, YesNo, NumberEquals, NumberBigger, NumberSmaller, AIReasoning
-
-case class BranchDecisionStrategy(branchingStrategy: BranchStrategyType, comment: String)
-
 case class AnswerExample(answer: String, inferredValue: String) {
   override def toString: String = s"""answer: $answer, inferred value: $inferredValue"""
 }
 
 enum AnswerCategory(val description: String):
   case FreeTextCat extends AnswerCategory("Text")
+  case TextWithAIConstraintCat extends AnswerCategory("Text constraint by AI")
   case NumberCat extends AnswerCategory("Floating Number")
   case IntegerCat extends AnswerCategory("Integer")
   case RangeNumberCat extends AnswerCategory("Floating number range")
@@ -35,6 +31,8 @@ enum AnswerCategory(val description: String):
 sealed trait AnswerType(val category: AnswerCategory)
 
 case class FreeText(maxLength: Int = 10000, defaultVal: Option[String] = None)
+    extends AnswerType(AnswerCategory.FreeTextCat)
+case class ConstraintText(maxLength: Int = 10000, defaultVal: Option[String] = None, aiConstraint: String)
     extends AnswerType(AnswerCategory.FreeTextCat)
 case class FreeNumber(maxVal: Double = Double.MaxValue, defaultVal: Option[Double] = None)
     extends AnswerType(AnswerCategory.NumberCat)
@@ -53,7 +51,8 @@ case class Question(
                      answerType: AnswerType,
                      description: String = "",
                      answerExamples: List[AnswerExample] = List.empty,
-                     dependsOn: Option[(Question, BranchDecisionStrategy)] = None)
+                     askSubQuestions: Option[(answer: InferredAnswer) => Boolean] = None,
+                     dependsOn: Option[Question] = None)
 
 sealed trait InferredAnswer
 
@@ -66,10 +65,3 @@ case class DoubleNumberAnswer(number: Double) extends InferredAnswer
 case class YesNoAnswer(yes: Boolean) extends InferredAnswer
 
 case class TextAnswer(keptText: String) extends InferredAnswer
-
-object QuestionnaireHelper {
-  def answerChildrenQuestions(branchDecisionStrategy: BranchDecisionStrategy, answer: InferredAnswer): Boolean = {
-    //todo implement
-    true
-  }
-}

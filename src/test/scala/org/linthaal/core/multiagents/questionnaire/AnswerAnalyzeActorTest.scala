@@ -2,7 +2,7 @@ package org.linthaal.core.multiagents.questionnaire
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import org.linthaal.ai.services.google.vertexai.SimplePromptAct
-import org.linthaal.core.multiagents.questionnaire.AnswerAnalyzeV1Actor.*
+import org.linthaal.core.multiagents.questionnaire.AnalyzeAnswerActV1.*
 import org.scalatest.Failed
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -24,7 +24,7 @@ import scala.concurrent.duration.DurationInt
   * along with this program. If not, see <http://www.gnu.org/licenses/>.
   *
   */
-class AnswerAnalyzeActorTest  extends ScalaTestWithActorTestKit with AnyWordSpecLike {
+class AnswerAnalyzeActorTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
 
   "Answer 1 " must {
     val timeout = 10.seconds
@@ -33,7 +33,7 @@ class AnswerAnalyzeActorTest  extends ScalaTestWithActorTestKit with AnyWordSpec
       val spa = spawn(SimplePromptAct())
 
       val testProbe = createTestProbe[AnswerAnalyzedResp]()
-      val underTest = spawn(AnswerAnalyzeV1Actor(spa, "test1", QuestionExamples.q1, testProbe.ref))
+      val underTest = spawn(AnalyzeAnswerActV1(spa, QuestionExamples.q1, testProbe.ref))
       underTest.tell(ProcessAnswer("I believe 2 tablets per day"))
       val answer = testProbe.expectMessageType[AnalyzedAnswer](timeout)
       answer.inferredAnswer shouldBe IntNumberAnswer(2)
@@ -47,7 +47,7 @@ class AnswerAnalyzeActorTest  extends ScalaTestWithActorTestKit with AnyWordSpec
       val spa = spawn(SimplePromptAct())
 
       val testProbe = createTestProbe[AnswerAnalyzedResp]()
-      val underTest = spawn(AnswerAnalyzeV1Actor(spa, "test1", QuestionExamples.q2, testProbe.ref))
+      val underTest = spawn(AnalyzeAnswerActV1(spa, QuestionExamples.q2, testProbe.ref))
       underTest.tell(ProcessAnswer("Last night almost forty-one."))
       val answer = testProbe.expectMessageType[AnalyzedAnswer](timeout)
       answer.inferredAnswer match {

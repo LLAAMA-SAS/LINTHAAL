@@ -8,7 +8,7 @@ object Dependencies {
     lazy val akkaHttpVersion = "10.6.3"
   }
 
-  val scalaTest: ModuleID = "org.scalatest" %% "scalatest" % "3.2.16" % Test
+  val scalaTest: ModuleID = "org.scalatest" %% "scalatest" % "3.2.18" % Test
 
   val akkaActor: ModuleID = "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion
   val akkaStream: ModuleID = "com.typesafe.akka" %% "akka-stream" % akkaVersion

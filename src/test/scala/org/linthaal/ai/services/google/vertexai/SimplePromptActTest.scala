@@ -34,9 +34,9 @@ class SimplePromptActTest extends ScalaTestWithActorTestKit with AnyWordSpecLike
 
       val underTest = spawn(SimplePromptAct())
 
-      underTest.tell(PromptQuestionCmd(PromptRequest(UniqueName.getUniqueName, "What is pi and what is its value? ", " Simple Mathematics "), testProbe1.ref))
-      underTest.tell(PromptQuestionCmd(PromptRequest(UniqueName.getUniqueName, "Who are the most important physicists for quantum mechanics and what were their contributions, name not more than 4", " General knowledge "), testProbe2.ref))
-      underTest.tell(PromptQuestionCmd(PromptRequest(UniqueName.getUniqueName, "What is the role of the sigmoid colon?", " Be very precise and detailed. "), testProbe3.ref))
+      underTest.tell(PromptQuestionCmd(PromptRequest("What is pi and what is its value? ", " Simple Mathematics "), testProbe1.ref))
+      underTest.tell(PromptQuestionCmd(PromptRequest("Who are the most important physicists for quantum mechanics and what were their contributions, name not more than 4", " General knowledge "), testProbe2.ref))
+      underTest.tell(PromptQuestionCmd(PromptRequest("What is the role of the sigmoid colon?", " Be very precise and detailed. "), testProbe3.ref))
 
       testProbe1.expectMessageType[PromptResponse](timeout)
       testProbe2.expectMessageType[PromptResponse](timeout)
