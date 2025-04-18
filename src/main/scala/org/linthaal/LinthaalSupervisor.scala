@@ -29,7 +29,6 @@ object LinthaalSupervisor {
   def apply(): Behavior[Nothing] =
     Behaviors.setup[Nothing] { ctx =>
       // define all ToT top actors here
-
       val pubmedToTMain = ctx.spawn(PubMedToTManager(), "pubmed_tot_main")
       ctx.watch(pubmedToTMain)
       val toTRoutes = PubMedSummarizationRoutes(pubmedToTMain)(ctx.system)

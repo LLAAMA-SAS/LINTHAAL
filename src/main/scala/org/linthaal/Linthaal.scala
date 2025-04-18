@@ -1,8 +1,8 @@
 package org.linthaal
 
 import akka.actor.typed.ActorSystem
-import org.linthaal.helpers.{ ApiKeys, Parameters }
-import org.slf4j.{ Logger, LoggerFactory }
+import org.linthaal.helpers.Parameters
+import org.slf4j.{Logger, LoggerFactory}
 
 /** This program is free software: you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the Free
