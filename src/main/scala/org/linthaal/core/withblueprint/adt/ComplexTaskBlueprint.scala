@@ -46,7 +46,7 @@ case class FromToDispatchBlueprint(fromTask: TaskBlueprint, toTask: TaskBlueprin
 
 /**
  * A graph of agents is defined as a set of tasks and a set of transmission channels.
- * It's defined as a blue print and can eventually be materialized.
+ * It's defined as a blueprint and can eventually be materialized.
  *
  * @param name
  * @param description

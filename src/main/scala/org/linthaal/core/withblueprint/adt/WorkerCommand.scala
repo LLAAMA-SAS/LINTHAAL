@@ -19,7 +19,7 @@ import java.util.Date
   * not, see <http://www.gnu.org/licenses/>.
   *
   * Workers are specific implementations of precisely defined tasks. They should be able to
-  * accomplish one task and stop afterwards. They can spawn their own actors hierarchy and maintain
+  * accomplish one task and stop afterward. They can spawn their own actors hierarchy and maintain
   * a state until the work is completed. Once finished, they should never start again.
   *
   * Their behavior is defined by the following commands.
