@@ -1,4 +1,4 @@
-package org.linthaal.ai.services.openai
+package org.linthaal.genai.services.openai
 
 import OpenAIPromptService.{ ChatRequest, ChatResponse, Choice, Message, Usage }
 import spray.json.{ DefaultJsonProtocol, RootJsonFormat }

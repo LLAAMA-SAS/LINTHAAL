@@ -1,11 +1,11 @@
-package org.linthaal.ai.services.openai
+package org.linthaal.genai.services.openai
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ ActorRef, Behavior }
+import org.linthaal.genai.services.AIResponse
 
 import scala.concurrent.Future
 import scala.util.{ Failure, Success, Try }
-import org.linthaal.ai.services.AIResponse
 
 /** This program is free software: you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the Free

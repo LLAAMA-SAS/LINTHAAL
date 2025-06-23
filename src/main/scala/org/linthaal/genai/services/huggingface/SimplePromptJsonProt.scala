@@ -1,6 +1,6 @@
-package org.linthaal.ai.services.huggingface
+package org.linthaal.genai.services.huggingface
 
-import org.linthaal.ai.services.huggingface.HuggingFaceInferencePromptService.{ Options, Parameters, TextGenerationRequest, TextGenerationResponse }
+import HuggingFaceInferencePromptService.{ Options, Parameters, TextGenerationRequest, TextGenerationResponse }
 import spray.json.{ DefaultJsonProtocol, RootJsonFormat }
 
 /** This program is free software: you can redistribute it and/or modify it

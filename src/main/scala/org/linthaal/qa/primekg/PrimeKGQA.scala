@@ -4,10 +4,10 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.Behavior
 
 import java.util.UUID
-import org.linthaal.ai.services.openai.{ OpenAIChatAct, OpenAIPromptService }
 import akka.actor.typed.ActorRef
-import org.linthaal.ai.services.AIResponse
-import org.linthaal.ai.services.openai.OpenAIPromptService.Message
+import org.linthaal.genai.services.AIResponse
+import org.linthaal.genai.services.openai.{OpenAIChatAct, OpenAIPromptService}
+import org.linthaal.genai.services.openai.OpenAIPromptService.Message
 import org.linthaal.helpers.Neo4jDatabaseService
 
 object PrimeKGQA {

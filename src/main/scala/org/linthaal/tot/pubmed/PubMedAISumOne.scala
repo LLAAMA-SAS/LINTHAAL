@@ -1,12 +1,12 @@
 package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ ActorRef, Behavior }
-import org.linthaal.ai.services.*
-import org.linthaal.ai.services.huggingface.{ HuggingFaceInferencePromptService, HuggingFaceTextGenAct }
-import org.linthaal.ai.services.openai.OpenAIPromptService.Message
-import org.linthaal.ai.services.openai.{ OpenAIChatAct, OpenAIPromptService }
-import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
+import akka.actor.typed.{ActorRef, Behavior}
+import org.linthaal.genai.services.{AIResponse, HuggingFaceInferenceEndpointsService, OpenAIService, Service}
+import org.linthaal.genai.services.openai.OpenAIPromptService.Message
+import org.linthaal.genai.services.huggingface.{HuggingFaceInferencePromptService, HuggingFaceTextGenAct}
+import org.linthaal.genai.services.openai.{OpenAIChatAct, OpenAIPromptService}
+import org.linthaal.subagents.pubmed.eutils.EutilsADT.PMAbstract
 
 import java.util.UUID
 
@@ -53,7 +53,7 @@ object PubMedAISumOne {
     }
 
   private def prepareMsg(instructions: String, pmAb: PMAbstract): String = {
-    import org.linthaal.helpers.ncbi.eutils.PMJsonProt.jsonPMAbstract
+    import org.linthaal.subagents.pubmed.eutils.PMJsonProt.jsonPMAbstract
     import spray.json.*
 
     val asJsonString =

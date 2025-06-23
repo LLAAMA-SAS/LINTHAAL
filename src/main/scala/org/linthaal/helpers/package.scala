@@ -40,9 +40,8 @@ package object helpers {
 
   def dateToIsoString(date: Date): String = localIsoDateFormatter.get().format(date)
 
-  def getDigest(text: String): String = {
+  def getDigest(text: String*): String = {
     val md = java.security.MessageDigest.getInstance("SHA-256")
-    Hex.encodeHexString(md.digest(text.getBytes(StandardCharsets.UTF_8)))
+    Hex.encodeHexString(md.digest(text.mkString("").getBytes(StandardCharsets.UTF_8)))
   }
-
 }

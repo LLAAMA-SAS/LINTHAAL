@@ -1,7 +1,7 @@
-package org.linthaal.ai.services.huggingface
+package org.linthaal.genai.services.huggingface
 
 import akka.actor.typed.ActorSystem
-import org.linthaal.ai.services.huggingface.HuggingFaceInferencePromptService.*
+import HuggingFaceInferencePromptService.*
 import org.linthaal.helpers.ApiKeys
 import spray.json._
 import akka.actor.typed.ActorSystem
@@ -11,7 +11,6 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{ Authorization, OAuth2BearerToken }
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.scaladsl.{ Sink, Source }
-import org.linthaal.ai.services.huggingface.SimplePromptJsonProt
 
 import scala.concurrent.Future
 

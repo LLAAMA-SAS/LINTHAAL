@@ -1,4 +1,4 @@
-package org.linthaal.helpers.ncbi.eutils
+package org.linthaal.helpers
 
 /** This program is free software: you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the Free
@@ -20,14 +20,15 @@ package org.linthaal.helpers.ncbi.eutils
 
 /** Copied from original ScalaXmlSupport because DTD issue
   */
-import java.io.{ ByteArrayInputStream, InputStreamReader }
-import javax.xml.parsers.{ SAXParser, SAXParserFactory }
+import akka.http.scaladsl.marshalling.*
+import akka.http.scaladsl.model.*
+import akka.http.scaladsl.model.MediaTypes.*
+import akka.http.scaladsl.unmarshalling.*
+
+import java.io.{ByteArrayInputStream, InputStreamReader}
+import javax.xml.parsers.{SAXParser, SAXParserFactory}
 import scala.collection.immutable
-import scala.xml.{ NodeSeq, XML }
-import akka.http.scaladsl.unmarshalling._
-import akka.http.scaladsl.marshalling._
-import akka.http.scaladsl.model._
-import MediaTypes._
+import scala.xml.{NodeSeq, XML}
 
 trait ScalaXmlSupport2 {
   implicit def defaultNodeSeqMarshaller: ToEntityMarshaller[NodeSeq] =
@@ -64,7 +65,7 @@ object ScalaXmlSupport2 extends ScalaXmlSupport2 {
     import javax.xml.XMLConstants
 
     // Constants manually imported from com.sun.org.apache.xerces.internal.impl.Constants
-    // which isn't accessible any more when scalac option `-release 8` is used.
+    // which isn't accessible anymore when scalac option `-release 8` is used.
     val SAX_FEATURE_PREFIX = "http://xml.org/sax/features/"
     val EXTERNAL_GENERAL_ENTITIES_FEATURE = "external-general-entities"
     val EXTERNAL_PARAMETER_ENTITIES_FEATURE = "external-parameter-entities"

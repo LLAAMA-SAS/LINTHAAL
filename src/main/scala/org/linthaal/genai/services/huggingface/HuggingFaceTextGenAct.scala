@@ -1,8 +1,8 @@
-package org.linthaal.ai.services.huggingface
+package org.linthaal.genai.services.huggingface
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ ActorRef, Behavior }
-import org.linthaal.ai.services.AIResponse
+import org.linthaal.genai.services.AIResponse
 
 import scala.concurrent.Future
 import scala.util.{ Failure, Success }

@@ -1,7 +1,7 @@
 package org.linthaal.tot.pubmed.caching
 
 import org.linthaal.api.routes.PubMedAISumReq
-import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
+import org.linthaal.subagents.pubmed.eutils.EutilsADT.PMAbstract
 import org.linthaal.tot.pubmed.PubMedSumAct.SummarizedAbstract
 import org.slf4j.{ Logger, LoggerFactory }
 

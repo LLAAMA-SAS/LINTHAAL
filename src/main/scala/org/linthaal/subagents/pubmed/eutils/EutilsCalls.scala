@@ -1,4 +1,4 @@
-package org.linthaal.helpers.ncbi.eutils
+package org.linthaal.subagents.pubmed.eutils
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
@@ -57,7 +57,7 @@ final class EutilsCalls(config: EutilsCalls.EutilsConfig)(implicit as: ActorSyst
     responseFuture.flatMap { response =>
       response.status match {
         case StatusCodes.OK =>
-          import ScalaXmlSupport2._
+          import org.linthaal.helpers.ScalaXmlSupport2._
           Unmarshal(response.entity).to[scala.xml.NodeSeq]
         case _ =>
           response.discardEntityBytes()

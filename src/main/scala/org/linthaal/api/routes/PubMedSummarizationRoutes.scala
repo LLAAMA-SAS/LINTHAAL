@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import org.linthaal.ai.services.{ OpenAIService, Service }
+import org.linthaal.genai.services.{OpenAIService, Service}
 import org.linthaal.helpers
 import org.linthaal.tot.pubmed.PubMedSumAct.*
 import org.linthaal.tot.pubmed.PubMedToTManager

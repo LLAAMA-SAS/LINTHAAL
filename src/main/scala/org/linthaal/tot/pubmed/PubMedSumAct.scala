@@ -2,11 +2,11 @@ package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
-import org.linthaal.ai.services.AIResponse
 import org.linthaal.api.routes.PubMedAISumReq
-import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
-import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.linthaal.helpers.ncbi.eutils.{EutilsCalls, PMActor}
+import org.linthaal.genai.services.AIResponse
+import org.linthaal.subagents.pubmed.eutils.EutilsADT.PMAbstract
+import org.linthaal.subagents.pubmed.eutils.PMActor.PMAbstracts
+import org.linthaal.subagents.pubmed.eutils.{EutilsCalls, PMActor}
 import org.linthaal.tot.pubmed.PubMedSumAct.*
 import org.linthaal.tot.pubmed.caching.{CachePubMedResults, CachingActor}
 import org.linthaal.tot.pubmed.caching.CachePubMedResults.{CachedResults, flushPubMedResults}

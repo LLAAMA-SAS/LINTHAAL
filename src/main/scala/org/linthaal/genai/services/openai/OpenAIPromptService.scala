@@ -1,4 +1,4 @@
-package org.linthaal.ai.services.openai
+package org.linthaal.genai.services.openai
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http

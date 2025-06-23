@@ -1,5 +1,18 @@
 # Examples of Linthaal Use cases 
 
+Linthaal can easily be tested with docker:
+
+```shell
+ docker run -it --mount type=bind,source={pathToLocalLinthaalHome},target=/home/linthaal -p 7847:7847 llaamasas/linthaal:1.0.0
+``` 
+
+KeyFile should be a line like that:
+ncbi.api_key=xxxxxxxxxxxxxxxx
+or
+openai.api_key=xxxxxxx
+
+
+
 ## Get short Summaries of papers regarding a given subject (query)
 
 ### Start a new Pubmed Summarization ToT

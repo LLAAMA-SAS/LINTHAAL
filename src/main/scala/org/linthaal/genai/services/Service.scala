@@ -1,4 +1,4 @@
-package org.linthaal.ai.services
+package org.linthaal.genai.services
 
 /** This program is free software: you can redistribute it and/or modify it
   * under the terms of the GNU General Public License as published by the Free
@@ -13,7 +13,10 @@ package org.linthaal.ai.services
   * You should have received a copy of the GNU General Public License along with
   * this program. If not, see <http://www.gnu.org/licenses/>.
   */
-trait AIResponse {
-  def mainResponse(): String
-  def extendedResponse(): String
+sealed trait Service {
+  def model: String
 }
+
+case class OpenAIService(model: String) extends Service
+
+case class HuggingFaceInferenceEndpointsService(model: String) extends Service

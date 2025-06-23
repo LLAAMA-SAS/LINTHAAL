@@ -1,4 +1,4 @@
-package org.linthaal.helpers.ncbi.eutils
+package org.linthaal.subagents.pubmed.eutils
 
 import org.linthaal.helpers.{DateAndTimeHelpers, JSONHelpers}
 

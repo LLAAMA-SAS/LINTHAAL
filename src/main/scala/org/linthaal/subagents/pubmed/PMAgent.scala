@@ -1,13 +1,13 @@
-package org.linthaal.agents.pubmed
+package org.linthaal.subagents.pubmed
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import org.linthaal.core.withblueprint.AgentAct.AgentCommand
 import org.linthaal.core.withblueprint.DispatchPipe
 import org.linthaal.core.withblueprint.DispatchPipe.DispatchPipeCmd
-import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
-import org.linthaal.helpers.ncbi.eutils.PMActor.{NotSoGraceFullShutdown, PMAbstracts, PMCommand, GetStatus as PMGetStatus}
-import org.linthaal.helpers.ncbi.eutils.{EutilsADT, EutilsCalls, PMActor}
+import org.linthaal.subagents.pubmed.eutils.EutilsADT.PMAbstract
+import org.linthaal.subagents.pubmed.eutils.PMActor.{NotSoGraceFullShutdown, PMAbstracts, PMCommand, GetStatus as PMGetStatus}
+import org.linthaal.subagents.pubmed.eutils.{EutilsADT, EutilsCalls, PMActor}
 
 import java.util.UUID
 import upickle.default.*
