@@ -5,6 +5,8 @@ import akka.actor.typed.{ActorRef, Behavior}
 import org.linthaal.core.withblueprint.AgentAct.AgentCommand
 import org.linthaal.core.withblueprint.DispatchPipe
 import org.linthaal.core.withblueprint.DispatchPipe.DispatchPipeCmd
+import org.linthaal.core.withblueprint.adt.{Agent, AgentId}
+import org.linthaal.core.withblueprint.examples.AddingText.Results
 import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.helpers.ncbi.eutils.PMActor.{NotSoGraceFullShutdown, PMAbstracts, PMCommand, GetStatus as PMGetStatus}
 import org.linthaal.helpers.ncbi.eutils.{EutilsADT, EutilsCalls, PMActor}

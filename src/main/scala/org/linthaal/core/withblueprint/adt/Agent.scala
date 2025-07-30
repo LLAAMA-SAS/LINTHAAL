@@ -18,13 +18,13 @@ import org.linthaal.helpers
   * An Agent is responsible for a unique task type (workerId).
   */
 case class Agent(
-    workerId: WorkerId,
-    behavior: Behavior[WorkerCommand],
-    mandatoryConf: List[String] = List.empty, // initialization params are like configuration to start the agent
-    optionalConf: List[String] = List.empty,
-    mandatoryStartTaskParams: List[String] = List.empty, // the parameters to start the task
-    optionalStartTaskParams: List[String] = List.empty,
-    checkParams: Map[String, String => (Boolean, String)] = Map.empty) {
+                  workerId: AgentId,
+                  behavior: Behavior[WorkerCommand],
+                  mandatoryConf: List[String] = List.empty, // initialization params are like configuration to start the agent
+                  optionalConf: List[String] = List.empty,
+                  mandatoryStartTaskParams: List[String] = List.empty, // the parameters to start the task
+                  optionalStartTaskParams: List[String] = List.empty,
+                  checkParams: Map[String, String => (Boolean, String)] = Map.empty) {
 
   override def toString: String = s"${workerId} [${helpers.enoughButNotTooMuchInfo(workerId.description, 100)}]"
 

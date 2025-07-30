@@ -51,7 +51,7 @@ object AgentAct {
 
   private type AgentCmdAndTWorkResp = AgentCommand | TaskWorkerResp
 
-  case class AgentInfo(agentId: WorkerId, totalTasks: Int, activeTasks: Int, closedTasks: Int, comment: String = "") {
+  case class AgentInfo(agentId: AgentId, totalTasks: Int, activeTasks: Int, closedTasks: Int, comment: String = "") {
     override def toString: String =
       s"""[ID: $agentId]-[$comment] total Tasks: $totalTasks,
          |Active Tasks: $activeTasks, Closed Tasks: $closedTasks,

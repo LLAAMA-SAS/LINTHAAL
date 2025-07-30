@@ -9,7 +9,7 @@ inThisBuild(
     name := "Linthaal",
     startYear := Some(2023),
     version := "1.3.0",
-    scalaVersion := "3.3.1",
+    scalaVersion := "3.7.2",
     fork := true,
     dynverSeparator := "-"))
 
@@ -17,7 +17,7 @@ lazy val root =
   project
     .in(file("."))
     .enablePlugins(JavaAppPackaging, DockerPlugin, DockerSpotifyClientPlugin)
-    .settings(scalaVersion := "3.3.1")
+    .settings(scalaVersion := "3.7.2")
     .settings(scalacOptions := stdOptions)
     .settings(resolvers ++= ExtResolvers.extRes)
     .settings(libraryDependencies ++=Dependencies.linthaalDeps)

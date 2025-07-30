@@ -67,7 +67,7 @@ object WorkerExamples {
     dataInput(Map.empty, Map.empty)
   }
 
-  val upperCaseAgentId: WorkerId = WorkerId("upper_case", "1.1.1", "Upper_case Agent")
+  val upperCaseAgentId: AgentId = AgentId("upper_case", "1.1.1", "Upper_case Agent")
   val upperCaseAgent: Agent = Agent(upperCaseAgentId, upperCase)
 
 
@@ -122,6 +122,6 @@ object WorkerExamples {
     dataInput(Map.empty, Map.empty)
   }
 
-  val replaceAgentId = WorkerId("replace", "1.1.1", "Replace string Agent")
+  val replaceAgentId = AgentId("replace", "1.1.1", "Replace string Agent")
   val replaceAgent = Agent(replaceAgentId, replaceBy)
 }
