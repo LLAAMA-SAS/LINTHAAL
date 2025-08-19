@@ -1,11 +1,11 @@
 package org.linthaal.tot.pubmed
 
-import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, Routers }
-import akka.actor.typed.{ ActorRef, Behavior, DispatcherSelector, SupervisorStrategy }
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors, Routers}
+import akka.actor.typed.{ActorRef, Behavior, DispatcherSelector, SupervisorStrategy}
+import org.linthaal.agents.pubmed.PMActor.PMAbstracts
 import org.linthaal.ai.services.openai.OpenAIChatAct
 import org.linthaal.api.routes.PubMedAISumReq
-import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.linthaal.tot.pubmed.PubMedSumAct.{ FullResponse, SummarizedAbstract }
+import org.linthaal.tot.pubmed.PubMedSumAct.{FullResponse, SummarizedAbstract}
 import org.linthaal.ai.services.AIResponse
 import org.linthaal.ai.services.huggingface.HuggingFaceTextGenAct
 

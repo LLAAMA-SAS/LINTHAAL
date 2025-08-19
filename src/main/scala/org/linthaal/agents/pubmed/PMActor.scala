@@ -2,9 +2,9 @@ package org.linthaal.agents.pubmed
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
+import com.llaama.linthaal.agents.helpers.eutils.{EutilsADT, EutilsCalls}
 import org.linthaal.helpers.enoughButNotTooMuchInfo
-import org.linthaal.helpers.ncbi.eutils.EutilsADT.{PMAbstract, PMIdSearchResults}
-import org.linthaal.helpers.ncbi.eutils.{EutilsADT, EutilsCalls}
+import com.llaama.linthaal.agents.helpers.eutils.EutilsADT.{PMAbstract, PMIdSearchResults}
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -28,7 +28,7 @@ object PMActor {
 
   final case class PMIds(sr: PMIdSearchResults) extends PMCommand
   final case class PMFailed(reason: String) extends PMCommand
-  final case class PMAbstracts(abstracts: List[PMAbstract], msg: String = "") extends PMCommand
+  final case class PMAbstracts(abstracts: Set[PMAbstract], msg: String = "") extends PMCommand
 
   def apply(conf: EutilsCalls.EutilsConfig, search: String, pmIdsAlreadyDone: List[Int] = List.empty, replyToWhenDone: ActorRef[PMAbstracts]): Behavior[PMCommand] = {
     Behaviors.setup[PMCommand] { ctx =>
@@ -38,7 +38,7 @@ object PMActor {
         case Success(ns) =>
           ctx.log.info(enoughButNotTooMuchInfo(ns.toString()))
           val sr = EutilsADT.pmIdsFromXml(ns)
-          ctx.log.info(s"found ${sr.ids.size} pmids")
+          ctx.log.info(s"found ${sr.pmIds.size} pmids")
           PMIds(sr)
         case Failure(r) =>
           ctx.log.error(r.getStackTrace.mkString("\n"))
@@ -53,7 +53,7 @@ object PMActor {
     Behaviors.receive { (ctx, msg) =>
       msg match {
         case PMIds(sr) =>
-          val idsToFetch = sr.ids.filter(id => !pmIdsAlreadyDone.contains(id))
+          val idsToFetch = sr.pmIds.filter(id => !pmIdsAlreadyDone.contains(id))
           val futureResp: Future[NodeSeq] = eutilsCalls.eFetchPubmed(idsToFetch)
           ctx.pipeToSelf(futureResp) {
             case Success(ns) =>
@@ -69,7 +69,7 @@ object PMActor {
 
         case PMFailed(r) =>
           ctx.log.error(r)
-          replyToWhenDone ! PMAbstracts(List.empty, r)
+          replyToWhenDone ! PMAbstracts(Set.empty, r)
           Behaviors.stopped
       }
     }
@@ -83,7 +83,7 @@ object PMActor {
           ctx.log.info(s"returned ${pmr.abstracts.size} abstracts...")
           Behaviors.stopped
         case any: Any =>
-          replyToWhenDone ! PMAbstracts(List.empty, s"Failed: $any")
+          replyToWhenDone ! PMAbstracts(Set.empty, s"Failed: $any")
           Behaviors.stopped
       }
     }

@@ -1,6 +1,6 @@
-package com.llaama.linthaal.mas1
+package com.llaama.linthaal.organize
+
 import akka.actor.typed.scaladsl.ActorContext
-import com.llaama.linthaal.mas1.Orchestrator
 
 /**
  * root - info@llaama.com - July 2025 
@@ -8,13 +8,9 @@ import com.llaama.linthaal.mas1.Orchestrator
  */
 
 object Orchestrator {
-  
   sealed trait Command
-  
-
 }
 
 private class Orchestrator(ctx: ActorContext[Orchestrator.Command]) {
-  
-  
+  import Orchestrator.Command
 }

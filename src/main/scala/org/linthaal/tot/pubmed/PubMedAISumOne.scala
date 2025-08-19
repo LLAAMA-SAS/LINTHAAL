@@ -6,7 +6,7 @@ import org.linthaal.ai.services.*
 import org.linthaal.ai.services.huggingface.{ HuggingFaceInferencePromptService, HuggingFaceTextGenAct }
 import org.linthaal.ai.services.openai.OpenAIPromptService.Message
 import org.linthaal.ai.services.openai.{ OpenAIChatAct, OpenAIPromptService }
-import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
+import com.llaama.linthaal.agents.helpers.eutils.EutilsADT.PMAbstract
 
 import java.util.UUID
 
@@ -53,7 +53,7 @@ object PubMedAISumOne {
     }
 
   private def prepareMsg(instructions: String, pmAb: PMAbstract): String = {
-    import org.linthaal.helpers.ncbi.eutils.PMJsonProt.jsonPMAbstract
+    import com.llaama.linthaal.agents.helpers.eutils.PMJsonProt.jsonPMAbstract
     import spray.json.*
 
     val asJsonString =

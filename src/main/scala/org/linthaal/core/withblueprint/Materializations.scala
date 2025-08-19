@@ -7,7 +7,7 @@ import org.linthaal.core.GenericTaskStateType.*
 import org.linthaal.core.withblueprint.AgentAct.AgentCommand
 import org.linthaal.core.withblueprint.ComplexTaskMaterialization.*
 import org.linthaal.core.withblueprint.Materializations.MatCmdAndMatResp
-import org.linthaal.core.withblueprint.adt.{Agent, ComplexTaskBlueprint, AgentId}
+import org.linthaal.core.withblueprint.adt.{Agent, ComplexTaskBlueprint, WorkerId}
 import org.linthaal.core.{GenericFeedback, GenericFeedbackType, GenericTaskStateType}
 import org.linthaal.helpers.UniqueName
 import org.linthaal.helpers.DateAndTimeHelpers.getCurrentDate_ms
@@ -65,7 +65,7 @@ object Materializations {
 
   trait MatResponse
 
-  case class ActiveAgents(agents: Set[AgentId]) extends MatResponse
+  case class ActiveAgents(agents: Set[WorkerId]) extends MatResponse
 
   case class MaterializationState(state: ComplexTaskState, lastUpdate: Date) extends MatResponse
 
@@ -88,7 +88,7 @@ class Materializations private (conf: Map[String, String], ctx: ActorContext[Mat
 
   var blueprints: Set[ComplexTaskBlueprint] = Set.empty
 
-  var agents: Map[AgentId, ActorRef[AgentCommand]] = Map.empty
+  var agents: Map[WorkerId, ActorRef[AgentCommand]] = Map.empty
 
   var materializations: Map[String, ActorRef[ComplexTaskCommand]] = Map.empty
   
@@ -105,13 +105,13 @@ class Materializations private (conf: Map[String, String], ctx: ActorContext[Mat
             val agentAct: ActorRef[AgentCommand] = ctx.spawn(AgentAct.apply(agent, conf = conf), s"Agent_${agent.workerId}")
             agents += agent.workerId -> agentAct
             ctx.log.info(s"Adding agent: ${agent}")
-            rt ! GenericFeedback(GenericSuccess, id = agent.workerId.toString, s"Agent created: ${agentAct.toString}")
+            rt ! GenericFeedback(GenericSuccess, id = agent.workerId.toString, msg = s"Agent created: ${agent.workerId.toString}")
           } else {
             ctx.log.info(s"agent ${agent.workerId} already exists. ")
-            rt ! GenericFeedback(GenericSuccess, id = agent.workerId.toString, s"Agent ${agent.workerId.toString} already exists.")
+            rt ! GenericFeedback(GenericSuccess, id = agent.workerId.toString, msg =s"Agent ${agent.workerId.toString} already exists.")
           }
         } else {
-          rt ! GenericFeedback(GenericFailure, id = agent.workerId.toString, cconf.toString)
+          rt ! GenericFeedback(GenericFailure, id = agent.workerId.toString, msg = cconf.toString)
         }
         Behaviors.same
 

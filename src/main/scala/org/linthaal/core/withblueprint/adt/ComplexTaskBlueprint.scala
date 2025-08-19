@@ -25,7 +25,7 @@ import scala.concurrent.duration.{DurationInt, FiniteDuration}
  * @param workerId
  * @param timeOut
  */
-case class TaskBlueprint(workerId: AgentId, timeOut: FiniteDuration = 2.hours, comments: String = "") {
+case class TaskBlueprint(workerId: WorkerId, timeOut: FiniteDuration = 2.hours, comments: String = "") {
   val id: String = UniqueName.getUniqueName
   
   override def toString: String = s"[$workerId] id=[$id] - $comments"
@@ -71,7 +71,7 @@ case class ComplexTaskBlueprint(name: String, description: String = "", version:
     l
   }
 
-  val requiredWorkers: List[AgentId] = tasks.map(_.workerId)
+  val requiredWorkers: List[WorkerId] = tasks.map(_.workerId)
 
   val fromTasks: List[TaskBlueprint] = channels.map(_.fromTask)
 

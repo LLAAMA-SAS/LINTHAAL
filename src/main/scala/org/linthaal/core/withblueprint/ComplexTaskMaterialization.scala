@@ -110,7 +110,7 @@ object ComplexTaskMaterialization {
   def apply(
              blueprint: ComplexTaskBlueprint,
              matId: String,
-             agents: Map[AgentId, ActorRef[AgentCommand]],
+             agents: Map[WorkerId, ActorRef[AgentCommand]],
              conf: Map[String, String],
              params: Map[String, String],
              timeOut: FiniteDuration = 10.minutes): Behavior[ComplexTaskCommand] = {
@@ -128,7 +128,7 @@ object ComplexTaskMaterialization {
 class ComplexTaskMaterialization private (
                                            blueprint: ComplexTaskBlueprint,
                                            matId: String,
-                                           agents: Map[AgentId, ActorRef[AgentCommand]],
+                                           agents: Map[WorkerId, ActorRef[AgentCommand]],
                                            conf: Map[String, String],
                                            params: Map[String, String],
                                            timeout: FiniteDuration,

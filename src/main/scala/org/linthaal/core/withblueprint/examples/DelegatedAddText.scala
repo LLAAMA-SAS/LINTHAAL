@@ -36,7 +36,7 @@ object DelegatedAddText {
       .narrow
   }
 
-  val addTextAgentId: AgentId = AgentId("add_text1", "1.0.0", "Adding text Agent")
+  val addTextAgentId: WorkerId = WorkerId("add_text1", "1.0.0", "Adding text Agent")
   val addTextAgent: Agent = Agent(addTextAgentId, DelegatedAddText.apply())
 }
 

@@ -23,7 +23,7 @@ package org.linthaal.core.withblueprint.adt
  * @param version
  * @param description
  */
-case class AgentId(name: String, version: String, description: String = "") {
+case class WorkerId(name: String, version: String, description: String = "") {
   override def toString: String = s"${name}_${version}".trim.replaceAll("\\s", "_").replaceAll("\\.", "_")
 }
 

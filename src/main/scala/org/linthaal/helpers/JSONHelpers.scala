@@ -1,6 +1,6 @@
 package org.linthaal.helpers
 
-import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
+import com.llaama.linthaal.agents.helpers.eutils.EutilsADT.PMAbstract
 import upickle.default.*
 
 import java.util.Date

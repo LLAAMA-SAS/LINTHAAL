@@ -18,7 +18,7 @@ import org.linthaal.helpers
   * An Agent is responsible for a unique task type (workerId).
   */
 case class Agent(
-                  workerId: AgentId,
+                  workerId: WorkerId,
                   behavior: Behavior[WorkerCommand],
                   mandatoryConf: List[String] = List.empty, // initialization params are like configuration to start the agent
                   optionalConf: List[String] = List.empty,

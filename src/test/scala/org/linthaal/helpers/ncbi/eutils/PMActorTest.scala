@@ -1,8 +1,9 @@
 package org.linthaal.helpers.ncbi.eutils
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
-import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.linthaal.helpers.ncbi.eutils.{ EutilsCalls, PMActor }
+import com.llaama.linthaal.agents.helpers.eutils.EutilsCalls
+import org.linthaal.agents.pubmed.PMActor
+import org.linthaal.agents.pubmed.PMActor.PMAbstracts
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.duration.DurationInt

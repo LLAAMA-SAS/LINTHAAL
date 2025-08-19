@@ -2,7 +2,7 @@ package org.linthaal.api.protocols
 
 import org.linthaal.ai.services.{ HuggingFaceInferenceEndpointsService, OpenAIService, Service }
 import org.linthaal.api.routes.{ PrimeKGQAReq, PubMedAISumReq, SumOfSumsReq }
-import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
+import com.llaama.linthaal.agents.helpers.eutils.EutilsADT.PMAbstract
 import org.linthaal.qa.primekg.PrimeKGQA.PrimeKGAnswer
 import org.linthaal.tot.pubmed.PubMedSumAct.{ SummarizedAbstract, SummarizedAbstracts, SummaryOfSummaries }
 import org.linthaal.tot.pubmed.PubMedToTManager.{ ActionPerformed, AllSummarizationRequests }

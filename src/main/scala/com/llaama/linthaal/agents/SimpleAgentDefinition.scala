@@ -1,4 +1,4 @@
-package com.llaama.linthaal.mas1.agents
+package com.llaama.linthaal.agents
 
 /**
  * root - info@llaama.com - July 2025 

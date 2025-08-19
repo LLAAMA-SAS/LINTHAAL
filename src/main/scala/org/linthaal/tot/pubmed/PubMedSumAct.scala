@@ -2,11 +2,12 @@ package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
+import com.llaama.linthaal.agents.helpers.eutils.EutilsADT.PMAbstract
 import org.linthaal.ai.services.AIResponse
 import org.linthaal.api.routes.PubMedAISumReq
-import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
-import org.linthaal.helpers.ncbi.eutils.PMActor.PMAbstracts
-import org.linthaal.helpers.ncbi.eutils.{EutilsCalls, PMActor}
+import com.llaama.linthaal.agents.helpers.eutils.EutilsCalls
+import org.linthaal.agents.pubmed.PMActor
+import org.linthaal.agents.pubmed.PMActor.PMAbstracts
 import org.linthaal.tot.pubmed.PubMedSumAct.*
 import org.linthaal.tot.pubmed.caching.{CachePubMedResults, CachingActor}
 import org.linthaal.tot.pubmed.caching.CachePubMedResults.{CachedResults, flushPubMedResults}
@@ -46,7 +47,7 @@ object PubMedSumAct {
 
   final case class FullResponse(
       aiReq: Option[PubMedAISumReq] = None,
-      originalAbstracts: List[PMAbstract] = List.empty,
+      originalAbstracts: Set[PMAbstract] = Set.empty,
       summarizedAbstracts: List[SummarizedAbstract] = List.empty,
       aiResponses: List[AIResponse] = List.empty,
       msg: String = "")
@@ -130,7 +131,7 @@ class PubMedSumAct(
         this
 
       case GetFullResults(replyTo) =>
-        replyTo ! FullResponse(Some(aiReq), originAbstracts.values.toList, summarizedAbstracts.values.toList)
+        replyTo ! FullResponse(Some(aiReq), originAbstracts.values.toSet, summarizedAbstracts.values.toList)
         this
 
       case GetResults(replyTo) =>

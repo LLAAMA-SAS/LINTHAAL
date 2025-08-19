@@ -1,6 +1,6 @@
-package org.linthaal.helpers.ncbi.eutils
+package com.llaama.linthaal.agents.helpers.eutils
 
-import org.linthaal.helpers.ncbi.eutils.EutilsADT.PMAbstract
+import EutilsADT.PMAbstract
 import org.linthaal.tot.pubmed.PubMedSumAct.SummarizedAbstract
 
 /** This program is free software: you can redistribute it and/or modify it
