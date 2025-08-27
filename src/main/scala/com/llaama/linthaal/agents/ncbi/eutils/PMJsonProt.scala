@@ -1,6 +1,6 @@
-package com.llaama.linthaal.agents.helpers.eutils
+package com.llaama.linthaal.agents.ncbi.eutils
 
-import EutilsADT.PMAbstract
+import com.llaama.linthaal.agents.ncbi.eutils.EutilsADT.{PMAbstract, PMAbstractDates}
 import org.linthaal.tot.pubmed.PubMedSumAct.SummarizedAbstract
 
 /** This program is free software: you can redistribute it and/or modify it
@@ -17,9 +17,10 @@ import org.linthaal.tot.pubmed.PubMedSumAct.SummarizedAbstract
   * this program. If not, see <http://www.gnu.org/licenses/>.
   */
 object PMJsonProt {
-  import org.linthaal.helpers.JsonFormats._
-  import spray.json._
+  import org.linthaal.helpers.JsonFormats.*
+  import spray.json.*
 
+  implicit val jsonPMDateAbstract: RootJsonFormat[PMAbstractDates] = jsonFormat3(PMAbstractDates.apply)
   implicit val jsonPMAbstract: RootJsonFormat[PMAbstract] = jsonFormat4(PMAbstract.apply)
   implicit val jsonPMSummarizedAbstract: RootJsonFormat[SummarizedAbstract] = jsonFormat4(SummarizedAbstract.apply)
 

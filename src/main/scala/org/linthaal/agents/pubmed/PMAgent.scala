@@ -2,13 +2,13 @@ package org.linthaal.agents.pubmed
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
-import com.llaama.linthaal.agents.helpers.eutils.{EutilsADT, EutilsCalls}
 import org.linthaal.core.withblueprint.AgentAct.AgentCommand
 import org.linthaal.core.withblueprint.DispatchPipe
 import org.linthaal.core.withblueprint.DispatchPipe.DispatchPipeCmd
 import org.linthaal.core.withblueprint.adt.{Agent, WorkerId}
 import org.linthaal.core.withblueprint.examples.AddingText.Results
-import com.llaama.linthaal.agents.helpers.eutils.EutilsADT.PMAbstract
+import com.llaama.linthaal.agents.ncbi.eutils.EutilsADT.PMAbstract
+import com.llaama.linthaal.agents.ncbi.eutils.{EutilsADT, EutilsCalls}
 
 import java.util.UUID
 import upickle.default.*

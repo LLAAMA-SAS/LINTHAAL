@@ -29,6 +29,14 @@ object Dependencies {
 
   val upickle: ModuleID = "com.lihaoyi" % "upickle_3" % "3.2.0"
 
+  val monocleC: ModuleID = "dev.optics" %% "monocle-core" % "3.3.0"
+  val monocleM: ModuleID = "dev.optics" %% "monocle-macro" % "3.3.0"
+
+  val googleAIPlatform: ModuleID = "com.google.cloud" % "google-cloud-aiplatform" % "3.64.0"
+  val googleProtobufJavaUtil: ModuleID = "com.google.protobuf" % "protobuf-java-util" % "4.31.0"
+  val googleProtobufJava: ModuleID = "com.google.protobuf" % "protobuf-java" % "4.31.0"
+  val googleGenAI: ModuleID = "com.google.genai" % "google-genai" % "1.5.0"
+
   val linthaalDeps = Seq(
     akkaActor,
     akkaStream,
@@ -41,5 +49,11 @@ object Dependencies {
     neo4jDriver,
     akkaActorTestkit,
     scalaTest,
-    upickle)
+    upickle,
+    monocleC,
+    monocleM,
+    googleAIPlatform,
+    googleProtobufJava,
+    googleProtobufJavaUtil,
+    googleGenAI)
 }

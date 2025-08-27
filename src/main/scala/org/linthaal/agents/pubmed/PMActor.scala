@@ -2,9 +2,9 @@ package org.linthaal.agents.pubmed
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import com.llaama.linthaal.agents.helpers.eutils.{EutilsADT, EutilsCalls}
 import org.linthaal.helpers.enoughButNotTooMuchInfo
-import com.llaama.linthaal.agents.helpers.eutils.EutilsADT.{PMAbstract, PMIdSearchResults}
+import com.llaama.linthaal.agents.ncbi.eutils.EutilsADT.{PMAbstract, PMIdSearchResults}
+import com.llaama.linthaal.agents.ncbi.eutils.{EutilsADT, EutilsCalls}
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}

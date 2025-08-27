@@ -1,14 +1,15 @@
-package com.llaama.linthaal.agents.pubmed
+package com.llaama.linthaal.agents.ncbi.pubmed
 
 import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, Routers }
-import akka.actor.typed.{ ActorRef, Behavior, DispatcherSelector, SupervisorStrategy }
-import com.llaama.linthaal.agents.helpers.eutils.{ EutilsADT, EutilsCalls }
+import akka.actor.typed.{ ActorRef, Behavior, SupervisorStrategy }
+import com.llaama.linthaal.agents.ncbi.eutils.EutilsADT.PMAbstract
+import com.llaama.linthaal.agents.ncbi.eutils.{ EutilsADT, EutilsCalls }
+import com.llaama.linthaal.agents.ncbi.pubmed.RetrieveAbstracts.{ Command, PMAbstracts, RetrievedPMAbstracts }
 import org.linthaal.helpers.enoughButNotTooMuchInfo
-import com.llaama.linthaal.agents.helpers.eutils.EutilsADT.PMAbstract
 
 import scala.concurrent.Future
-import scala.xml.NodeSeq
 import scala.util.{ Failure, Success }
+import scala.xml.NodeSeq
 
 /** linthaal - info@llaama.com - July 2025
   *
@@ -19,37 +20,51 @@ object RetrieveAbstracts {
   sealed trait Command
   final case class GetAbstracts(pmIds: Set[Int]) extends Command
 
-  private final case class RetrievedPMAbstracts(abstracts: Set[PMAbstract]) extends Command
+  private final case class RetrievedPMAbstracts(abstracts: Set[PMAbstract]) extends Command {
+    override def toString: String = abstracts.mkString(">\n")
+  }
+
   private final case class Failed(reason: String) extends Command
 
   final case class PMAbstracts(abstracts: Set[PMAbstract], success: Boolean, msg: String = "")
 
   def apply(conf: EutilsCalls.EutilsConfig, replyTo: ActorRef[PMAbstracts]): Behavior[Command] = {
     Behaviors.setup { ctx =>
-      Behaviors.receiveMessage { case GetAbstracts(pmIds) =>
+      new RetrieveAbstracts(conf, replyTo, ctx).lookForAbstracts()
+    }
+  }
+
+}
+
+private class RetrieveAbstracts(
+    conf: EutilsCalls.EutilsConfig,
+    replyTo: ActorRef[PMAbstracts],
+    ctx: ActorContext[Command]) {
+
+  import RetrieveAbstracts.*
+
+  private def lookForAbstracts(): Behavior[Command] = {
+    Behaviors.receiveMessage {
+      case GetAbstracts(pmIds) =>
         ctx.log.debug(s"returning abstracts for ${pmIds.mkString(", ")}")
         val eutilsCalls: EutilsCalls = new EutilsCalls(conf)(using ctx.system)
         val futureResp: Future[NodeSeq] = eutilsCalls.eFetchPubmed(pmIds)
         ctx.pipeToSelf(futureResp) {
           case Success(ns) =>
-            ctx.log.info(enoughButNotTooMuchInfo(ns.toString()))
+            ctx.log.debug(enoughButNotTooMuchInfo(ns.toString()))
+            //            ctx.log.debug("DEBUG: {}", ns.toString())
             val sr = EutilsADT.pmAbstractsFromXml(ns)
-            ctx.log.info(enoughButNotTooMuchInfo(sr.toString))
+            ctx.log.debug(enoughButNotTooMuchInfo(sr.toString))
             RetrievedPMAbstracts(sr)
           case Failure(r) =>
             ctx.log.error(r.getStackTrace.mkString("\n"))
             Failed(r.toString)
         }
-        returnAbstracts(replyTo, ctx)
-      }
-    }
-  }
-
-  def returnAbstracts(replyTo: ActorRef[PMAbstracts], ctx: ActorContext[Command]): Behavior[Command] = {
-    Behaviors.receiveMessage {
+        Behaviors.same
       case RetrievedPMAbstracts(res) =>
+        ctx.log.debug(res.toString())
         replyTo ! PMAbstracts(res, true)
-        Behaviors.stopped
+        Behaviors.same
       case Failed(r) =>
         replyTo ! PMAbstracts(Set.empty, false, r)
         Behaviors.stopped
@@ -70,8 +85,7 @@ object RetrieveAbstractsPool {
         // make sure the retrievers are restarted if they fail
         Behaviors.supervise(RetrieveAbstracts(conf, replyTo)).onFailure[Exception](SupervisorStrategy.restart)
       }
-      val blockingPool = pool.withRouteeProps(routeeProps = DispatcherSelector.blocking())
-      val router = ctx.spawn(blockingPool, "retrieve-abstracts-pool")
+      val router = ctx.spawn(pool.withRoundRobinRouting(), "retrieve-abstracts-pool")
 
       Behaviors.receiveMessage {
         case StartRetrievingAbstracts(ids) =>

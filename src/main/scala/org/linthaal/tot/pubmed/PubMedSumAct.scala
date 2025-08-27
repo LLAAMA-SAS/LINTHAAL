@@ -2,10 +2,10 @@ package org.linthaal.tot.pubmed
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
-import com.llaama.linthaal.agents.helpers.eutils.EutilsADT.PMAbstract
+import com.llaama.linthaal.agents.ncbi.eutils.EutilsADT.PMAbstract
+import com.llaama.linthaal.agents.ncbi.eutils.EutilsCalls
 import org.linthaal.ai.services.AIResponse
 import org.linthaal.api.routes.PubMedAISumReq
-import com.llaama.linthaal.agents.helpers.eutils.EutilsCalls
 import org.linthaal.agents.pubmed.PMActor
 import org.linthaal.agents.pubmed.PMActor.PMAbstracts
 import org.linthaal.tot.pubmed.PubMedSumAct.*

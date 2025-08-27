@@ -39,4 +39,15 @@ object DateAndTimeHelpers {
 
   def dateToString(date: Date): String = localDateFormatter.get().format(date)
   
+  // date <-> string
+  val localDateFormatterShort = new ThreadLocal[SimpleDateFormat] {
+    override def initialValue() = new SimpleDateFormat("yyyy-MM-dd")
+  }
+
+  def stringToDateShort(date: String): Option[Date] = Try {
+    localDateFormatterShort.get().parse(date)
+  }.toOption
+
+  def dateToStringShort(date: Date): String = localDateFormatterShort.get().format(date)
+  
 }

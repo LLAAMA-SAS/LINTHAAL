@@ -4,6 +4,7 @@ cache/
 .settings
 .project
 .classpath
+.env
 
 # intellij idea
 *.iml

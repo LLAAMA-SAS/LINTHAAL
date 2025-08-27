@@ -1,13 +1,14 @@
-package com.llaama.linthaal.agents.helpers.eutils
+package com.llaama.linthaal.agents.ncbi.eutils
 
-import akka.actor.typed.ActorSystem
+import akka.actor.typed.{ ActorSystem, DispatcherSelector }
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.*
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.scaladsl.{ Flow, Sink, Source }
 import org.linthaal.helpers.ApiKeys
+import org.slf4j.LoggerFactory
 
-import scala.concurrent.{ ExecutionContextExecutor, Future }
+import scala.concurrent.{ ExecutionContext, ExecutionContextExecutor, Future }
 import scala.xml.NodeSeq
 
 /** This program is free software: you can redistribute it and/or modify it under the terms of the
@@ -21,16 +22,22 @@ import scala.xml.NodeSeq
   * You should have received a copy of the GNU General Public License along with this program. If
   * not, see <http://www.gnu.org/licenses/>.
   */
-final class EutilsCalls(config: EutilsCalls.EutilsConfig)(implicit as: ActorSystem[?]) {
+final class EutilsCalls(config: EutilsCalls.EutilsConfig)(implicit ac: ActorSystem[Nothing]) {
 
-  private val logger = as.log
+  private val log = LoggerFactory.getLogger(getClass.toString)
 
+  given ec: ExecutionContext = ac.executionContext
+  
   import EutilsCalls._
 
   def searchPubmed(search: String, maxReturned: Int = 50): Future[NodeSeq] = {
-    val queryUri =
-      baseUrl + eSearch + search.trim.replaceAll("\\s", "+") + setMaxRet + maxReturned.toString + config.apiKeyURl
-    logger.info("Pubmed search query: " + queryUri)
+    val queryUri = baseUrl + eSearch +
+      search.trim.replaceAll("\\s", "+") +
+      setMaxRet + maxReturned.toString +
+      sortDescByDate +
+      config.apiKeyURl
+
+    log.info("Pubmed search query: " + queryUri)
     getRemote(queryUri)
   }
 
@@ -45,7 +52,6 @@ final class EutilsCalls(config: EutilsCalls.EutilsConfig)(implicit as: ActorSyst
   }
 
   private def getRemote(queryUri: String): Future[NodeSeq] = {
-    implicit val exeContext: ExecutionContextExecutor = as.executionContext
 
     val httpReq = HttpRequest(
       method = HttpMethods.GET,
@@ -71,7 +77,6 @@ final class EutilsCalls(config: EutilsCalls.EutilsConfig)(implicit as: ActorSyst
       }
     }
   }
-
 }
 
 object EutilsCalls {
@@ -90,6 +95,8 @@ object EutilsCalls {
   private val retTypeJson = "&rettype=json"
 
   private val setMaxRet = "&retmax="
+
+  private val sortDescByDate = "&sort=pub_date"
 
   final case class EutilsConfig(apiKey: String) {
     lazy val apiKeyURl = s"&api_key=$apiKey"

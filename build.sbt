@@ -8,7 +8,7 @@ inThisBuild(
     organization := "org.linthaal",
     name := "Linthaal",
     startYear := Some(2023),
-    version := "1.3.0",
+    version := "1.4.0",
     scalaVersion := "3.7.2",
     fork := true,
     dynverSeparator := "-"))
@@ -22,7 +22,7 @@ lazy val root =
     .settings(resolvers ++= ExtResolvers.extRes)
     .settings(libraryDependencies ++=Dependencies.linthaalDeps)
     .settings(run / fork := true)
-    .settings(Compile / mainClass := Some("org.linthaal.Linthaal"))
+    .settings(Compile / mainClass := Some("com.llaama.linthaal.Main"))
     .settings(Universal / mappings ++= directory("user"))
     .settings(Universal / javaOptions ++= Seq("-J-Xmx1G", "-J-Xms256m"))
     .settings(dockerSettings)

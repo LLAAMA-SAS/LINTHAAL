@@ -1,6 +1,6 @@
 package org.linthaal.helpers
 
-import com.llaama.linthaal.agents.helpers.eutils.EutilsADT.PMAbstract
+import com.llaama.linthaal.agents.ncbi.eutils.EutilsADT.PMAbstract
 import upickle.default.*
 
 import java.util.Date
@@ -26,6 +26,8 @@ object JSONHelpers {
   given dateRW: ReadWriter[Date] = readwriter[String]
     .bimap[Date](d => DateAndTimeHelpers.dateToString(d),
       s => DateAndTimeHelpers.stringToDate(s).getOrElse(new Date()))
+  
+  
 }
 
 

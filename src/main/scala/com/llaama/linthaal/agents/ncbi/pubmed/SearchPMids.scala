@@ -1,13 +1,13 @@
-package com.llaama.linthaal.agents.pubmed
+package com.llaama.linthaal.agents.ncbi.pubmed
 
 import akka.actor.typed.{ ActorRef, Behavior }
 import akka.actor.typed.scaladsl.{ ActorContext, Behaviors }
-import com.llaama.linthaal.agents.helpers.eutils.{EutilsADT, EutilsCalls}
 
 import org.linthaal.helpers.enoughButNotTooMuchInfo
 
-import com.llaama.linthaal.agents.helpers.eutils.EutilsADT.{ PMAbstract, PMIdSearchResults }
-import com.llaama.linthaal.agents.helpers.eutils.EutilsCalls.eutilsDefaultConf
+import com.llaama.linthaal.agents.ncbi.eutils.EutilsADT.{ PMAbstract, PMIdSearchResults }
+import com.llaama.linthaal.agents.ncbi.eutils.{EutilsADT, EutilsCalls}
+import com.llaama.linthaal.agents.ncbi.eutils.EutilsCalls.eutilsDefaultConf
 
 import scala.concurrent.Future
 import scala.xml.NodeSeq

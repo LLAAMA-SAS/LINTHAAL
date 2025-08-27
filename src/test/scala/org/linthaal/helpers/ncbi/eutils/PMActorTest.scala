@@ -1,7 +1,7 @@
 package org.linthaal.helpers.ncbi.eutils
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
-import com.llaama.linthaal.agents.helpers.eutils.EutilsCalls
+import com.llaama.linthaal.agents.ncbi.eutils.EutilsCalls
 import org.linthaal.agents.pubmed.PMActor
 import org.linthaal.agents.pubmed.PMActor.PMAbstracts
 import org.scalatest.wordspec.AnyWordSpecLike

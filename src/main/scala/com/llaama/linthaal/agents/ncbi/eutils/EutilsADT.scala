@@ -1,12 +1,10 @@
-package com.llaama.linthaal.agents.helpers.eutils
+package com.llaama.linthaal.agents.ncbi.eutils
 
-import org.linthaal.helpers.{ DateAndTimeHelpers, JSONHelpers }
-
-import java.text.SimpleDateFormat
-import java.util.Date
-import scala.util.Try
-import scala.xml.NodeSeq
+import org.linthaal.helpers.DateAndTimeHelpers
 import upickle.default.*
+
+import java.util.Date
+import scala.xml.NodeSeq
 
 /** This program is free software: you can redistribute it and/or modify it under the terms of the
   * GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -21,18 +19,28 @@ import upickle.default.*
   */
 object EutilsADT {
 
+  final case class PMAbstractDates(dr: String = "?", dp: String = "?", ad: String = "?") derives ReadWriter {
+    override def toString: String = s"""Revised: $dr, Published: $dp, Article: $ad"""
+  }
+
   final case class QueryTranslation(from: String, to: String)
 
   final case class PMIdSearchResults(
-                                      count: Int = -1,
-                                      retMax: Int = 0,
-                                      RetStart: Int = 0,
-                                      pmIds: Set[Int] = Set.empty,
-                                      queryTranslations: Set[QueryTranslation] = Set.empty,
-                                      msg: String = "")
+      count: Int = -1,
+      retMax: Int = 0,
+      RetStart: Int = 0,
+      pmIds: Set[Int] = Set.empty,
+      queryTranslations: Set[QueryTranslation] = Set.empty,
+      msg: String = "")
 
-  import JSONHelpers.dateRW
-  final case class PMAbstract(id: Int, title: String, abstractText: String, date: Date) derives ReadWriter
+  final case class PMAbstract(id: Int, title: String, abstractText: String, dates: PMAbstractDates) derives ReadWriter {
+    override def toString: String =
+      s"""id: $id
+         |title: $title
+         |abstract: $abstractText
+         |dates: $dates}
+         |""".stripMargin
+  }
 
   def pmIdsFromXml(ns: NodeSeq): PMIdSearchResults = {
     val count: Int = (ns \\ "eSearchResult" \\ "Count").text.toInt
@@ -56,12 +64,17 @@ object EutilsADT {
           id = (ar \ "PMID").text.toInt,
           title = (ar \\ "Article" \\ "ArticleTitle").text,
           abstractText = pmXmlAbstToText(ar \\ "Article" \\ "Abstract"),
-          stringToDate(pmXmlDate(ar \\ "Article" \\ "ArticleDate"))))
+          findDate(ar)))
       .toSet
     absts
   }
 
-  private def stringToDate(date: String): Date = DateAndTimeHelpers.stringToDate(date).getOrElse(new Date(0))
+  private def findDate(nodeSeq: NodeSeq): PMAbstractDates = {
+    val dr = (nodeSeq \\ "DateRevised").headOption.fold("?")(d => pmXmlDate(d))
+    val ad = (nodeSeq \\ "ArticleDate").headOption.fold("?")(d => pmXmlDate(d))
+    val pd = (nodeSeq \\ "PubDate").headOption.fold("?")(d => pmXmlPubDate(d))
+    PMAbstractDates(dr, pd, ad)
+  }
 
   def dateToString(date: Date): String = DateAndTimeHelpers.localDateFormatter.get().format(date)
 
@@ -69,8 +82,13 @@ object EutilsADT {
     val y = (n \ "Year").text
     val m = (n \ "Month").text
     val d = (n \ "Day").text
-
     s"$y-$m-$d"
+  }
+
+  private def pmXmlPubDate(n: NodeSeq): String = {
+    val y = (n \ "Year").text
+    val m = (n \ "Month").text
+    s"$y, $m"
   }
 
   private def pmXmlAbstToText(n: NodeSeq): String = {

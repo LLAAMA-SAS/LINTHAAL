@@ -2,7 +2,7 @@ package org.linthaal.api.protocols
 
 import org.linthaal.ai.services.{ HuggingFaceInferenceEndpointsService, OpenAIService, Service }
 import org.linthaal.api.routes.{ PrimeKGQAReq, PubMedAISumReq, SumOfSumsReq }
-import com.llaama.linthaal.agents.helpers.eutils.EutilsADT.PMAbstract
+import com.llaama.linthaal.agents.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.qa.primekg.PrimeKGQA.PrimeKGAnswer
 import org.linthaal.tot.pubmed.PubMedSumAct.{ SummarizedAbstract, SummarizedAbstracts, SummaryOfSummaries }
 import org.linthaal.tot.pubmed.PubMedToTManager.{ ActionPerformed, AllSummarizationRequests }
@@ -21,6 +21,8 @@ import org.linthaal.tot.pubmed.PubMedToTManager.{ ActionPerformed, AllSummarizat
   * this program. If not, see <http://www.gnu.org/licenses/>.
   */
 object APIJsonFormats {
+
+  import com.llaama.linthaal.agents.ncbi.eutils.PMJsonProt
   import org.linthaal.helpers.JsonFormats.*
   import spray.json.*
 
@@ -57,8 +59,7 @@ object APIJsonFormats {
 
   implicit val actionPerformedJsonFormat: RootJsonFormat[ActionPerformed] = jsonFormat1(ActionPerformed.apply)
 
-  implicit val pmAbstJsonFormat: RootJsonFormat[PMAbstract] = jsonFormat4(PMAbstract.apply)
-
+  
   implicit val summarizedAbstJsonFormat: RootJsonFormat[SummarizedAbstract] = jsonFormat4(SummarizedAbstract.apply)
 
   implicit val summarizedAbstsJsonFormat: RootJsonFormat[SummarizedAbstracts] = jsonFormat2(SummarizedAbstracts.apply)

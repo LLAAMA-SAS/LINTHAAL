@@ -1,7 +1,7 @@
 package org.linthaal.tot.pubmed.caching
 
 import org.linthaal.api.routes.PubMedAISumReq
-import com.llaama.linthaal.agents.helpers.eutils.EutilsADT.PMAbstract
+import com.llaama.linthaal.agents.ncbi.eutils.EutilsADT.PMAbstract
 import org.linthaal.tot.pubmed.PubMedSumAct.SummarizedAbstract
 import org.slf4j.{ Logger, LoggerFactory }
 
@@ -23,6 +23,8 @@ import java.nio.file.{ Files, Path, StandardOpenOption }
   */
 object CachePubMedResults {
   // should add path as arg
+  import com.llaama.linthaal.agents.ncbi.eutils.PMJsonProt.jsonPMAbstract
+
   val pathToCache = Path.of(System.getProperty("user.dir")).resolve("cache")
   val cacheFolder = pathToCache.toFile
   if (!cacheFolder.exists()) cacheFolder.mkdirs()
